@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::sync::Mutex;
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 
 use serde_json::{json, Value};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
@@ -246,11 +246,12 @@ fn create_island(app: &AppHandle) -> Result<(), String> {
 fn hit_loop(app: AppHandle) {
     let mut previous: Option<bool> = None;
     let mut last_cursor = (f64::NAN, f64::NAN);
+    let mut strip_hover_started: Option<Instant> = None;
     loop {
         std::thread::sleep(Duration::from_millis(30));
         let Ok(window) = island(&app) else { continue };
         let (hit, focused, hidden) = with_state(&app, |s| (s.hit, s.focused, s.island_hidden));
-        let inside = if hidden {
+        let raw_inside = if hidden {
             false
         } else if focused {
             true
@@ -263,6 +264,17 @@ fn hit_loop(app: AppHandle) {
                 }
                 _ => false,
             }
+        };
+        // The collapsed strip is a 12px hit region. Keep the transparent window
+        // click-through until the cursor has stayed on that strip for 2 seconds;
+        // otherwise Windows/WebView can deliver hover immediately on activation.
+        let strip = !hidden && !focused && hit.2 > 0.0 && hit.3 <= 12.0;
+        let inside = if strip && raw_inside {
+            let started = strip_hover_started.get_or_insert_with(Instant::now);
+            started.elapsed() >= Duration::from_secs(2)
+        } else {
+            strip_hover_started = None;
+            raw_inside
         };
         // Координаты курсора нужны жидкому краю (тянется к курсору) и персонажам (глаза следят).
         if !hidden {
