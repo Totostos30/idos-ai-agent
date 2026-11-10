@@ -1,0 +1,30 @@
+# Ядро Эйдоса (Python 3.11). Всё, кроме первых трёх строк, необязательно: без пакета функция просто выключается.
+psutil>=5.9
+Pillow>=10
+numpy>=1.26
+# Windows: окна, UIA, звук, плеер (SMTC)
+uiautomation>=2.0; sys_platform == "win32"
+comtypes>=1.2; sys_platform == "win32"
+pycaw>=20240210; sys_platform == "win32"
+PyAudioWPatch>=0.2.12; sys_platform == "win32"
+winrt-runtime>=2.0; sys_platform == "win32"
+winrt-Windows.Foundation>=2.0; sys_platform == "win32"
+winrt-Windows.Foundation.Collections>=2.0; sys_platform == "win32"
+winrt-Windows.Media.Control>=2.0; sys_platform == "win32"
+winrt-Windows.Storage.Streams>=2.0; sys_platform == "win32"
+winrt-Windows.Media.Ocr>=2.0; sys_platform == "win32"
+winrt-Windows.Graphics.Imaging>=2.0; sys_platform == "win32"
+winrt-Windows.Globalization>=2.0; sys_platform == "win32"
+# интернет и браузер
+ddgs>=9
+playwright>=1.45
+# документы, QR, OCR
+pypdf>=4
+python-docx>=1.1
+markitdown>=0.0.1
+pyzbar>=0.1.9
+opencv-python-headless>=4.9
+pytesseract>=0.3.10
+# голос: Silero (локально, CPU) и запасной --extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.3
+scipy>=1.11
