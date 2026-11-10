@@ -1,0 +1,32 @@
+# Зависимости и артефакты
+.venv/
+node_modules/
+dist/
+src-tauri/target/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Пользовательские данные и секреты
+data/
+logs/
+Temp/
+backups/
+.env
+*.db
+*.db-shm
+*.db-wal
+
+# Крупные локальные бинарники и модели
+models/
+tools/ffmpeg/
+tools/gigastt/
+*.onnx
+*.pt
+*.exe
+
+# Среда
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
