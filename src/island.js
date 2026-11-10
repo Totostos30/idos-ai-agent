@@ -704,6 +704,7 @@ export function mountIsland() {
   listen("island-cursor", (p) => { if (Array.isArray(p)) onCursor(p[0], p[1]); else if (p) onCursor(p.x, p.y); });
   lip.addEventListener("mouseenter", peek);
   lip.addEventListener("mousemove", peek);
+  lip.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); peek(); });
   root.addEventListener("mouseleave", () => {
     if (!S.hover) return;
     setTimeout(() => { if (!isl.matches(":hover") && !lip.matches(":hover")) { S.hover = false; render(); } }, 500);
