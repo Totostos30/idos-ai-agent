@@ -12,8 +12,7 @@ export class Fluid {
     this.edgeCv = edgeCanvas;
     this.edgeCtx = edgeCanvas.getContext("2d");
     this.edgeDrops = [];
-    this.edgeWaveAt = 0;
-    this.edgeWaveActive = false;
+    this.wasHidden = false;
     this.get = getState;
     this.cursor = null;
     this.reach = 0;
@@ -164,9 +163,22 @@ export class Fluid {
     const ctx = this.edgeCtx;
     const cv = this.edgeCv;
     if (!ctx || !cv) return;
-    if (!st.hidden || !st.playing || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const collapsedNow = !!st.hidden;
+    const justCollapsed = collapsedNow && !this.wasHidden;
+    this.wasHidden = collapsedNow;
+    if (justCollapsed && st.playing && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const bands = st.bands || [];
+      const energy = bands.length ? bands.reduce((sum, value) => sum + (Number(value) || 0), 0) / bands.length : 0.35;
+      const radius = 1.4 + Math.max(0, Math.min(1, energy)) * 1.8;
+      for (const direction of [-1, 1]) {
+        for (let i = 0; i < 22; i++) {
+          this.edgeDrops.push({ direction, started: now + i * 24, radius: radius * (0.8 + Math.random() * 0.4),
+            phase: Math.random() * Math.PI * 2 });
+        }
+      }
+    }
+    if (!collapsedNow || !this.edgeDrops.length) {
       this.edgeDrops.length = 0;
-      this.edgeWaveActive = false;
       ctx.clearRect(0, 0, cv.width, cv.height);
       return;
     }
@@ -180,28 +192,19 @@ export class Fluid {
       cv.style.width = width + "px";
       cv.style.height = height + "px";
     }
-    if (!this.edgeWaveActive) {
-      this.edgeWaveActive = true;
-      this.edgeWaveAt = now - 440;
-    }
-    if (now - this.edgeWaveAt >= 440) {
-      this.edgeWaveAt = now;
-      const bands = st.bands || [];
-      const energy = bands.length ? bands.reduce((sum, value) => sum + (Number(value) || 0), 0) / bands.length : 0.35;
-      for (const direction of [-1, 1]) {
-        this.edgeDrops.push({ direction, started: now, radius: 1.4 + Math.max(0, Math.min(1, energy)) * 1.8,
-          phase: Math.random() * Math.PI * 2 });
-      }
-    }
-
+    const islandRect = this.isl.getBoundingClientRect();
+    const originX = Math.max(0, Math.min(width, islandRect.left + islandRect.width / 2));
     this.edgeDrops = this.edgeDrops.filter((drop) => now - drop.started < 3000);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
     for (const drop of this.edgeDrops) {
-      const progress = Math.max(0, Math.min(1, (now - drop.started) / 3000));
-      const x = width / 2 + drop.direction * width / 2 * progress;
+      const age = now - drop.started;
+      if (age < 0) continue;
+      const progress = Math.min(1, age / 3000);
+      const edgeX = drop.direction < 0 ? 0 : width;
+      const x = originX + (edgeX - originX) * progress;
       const y = 7 + Math.sin(drop.phase + progress * Math.PI * 8) * 2;
-      const pulse = 0.75 + 0.25 * Math.sin(drop.phase + (now - drop.started) / 95);
+      const pulse = 0.75 + 0.25 * Math.sin(drop.phase + age / 95);
       ctx.globalAlpha = (1 - progress) ** 1.35 * pulse;
       ctx.fillStyle = st.accent;
       ctx.shadowColor = st.accent;
