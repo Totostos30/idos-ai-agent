@@ -654,6 +654,12 @@ async function reportResult(title, promise, quiet = false) {
 async function applyConfig(cfg) {
   S.cfg = Object.assign({ island: {}, hotkeys: {} }, cfg || {});
   const isl0 = S.cfg.island;
+  const waves = isl0.waves || {};
+  const lipPeriod = Math.max(0.5, Math.min(6, Number(waves.lip_breath_period_s ?? 2.4)));
+  const reducedMotion = waves.respect_reduced_motion !== false && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  root.style.setProperty("--wave-lip-animation", waves.lip_breath_enabled === false || reducedMotion ? "none" : `lipbreath ${lipPeriod}s ease-in-out infinite`);
+  if (/^#[0-9a-f]{6}$/i.test(waves.color || "")) root.style.setProperty("--wave-accent", waves.color);
+  else root.style.removeProperty("--wave-accent");
   document.documentElement.dataset.theme = isl0.theme || "dark";
   document.documentElement.style.setProperty("--scale", String(isl0.scale || 1));
   document.documentElement.style.setProperty("--op-closed", String(isl0.opacity_collapsed ?? 1));
@@ -682,12 +688,14 @@ export function mountIsland() {
   fluid = new Fluid(isl, cv, () => {
     const m = mode();
     const cs = getComputedStyle(isl);
+    const waves = S.cfg.island.waves || {};
     return {
       hidden: root.classList.contains("hidden"),
+      waves,
       liquid: (S.cfg.island.character || "liquid") === "liquid" && (!root.classList.contains("hidden") || (m === "music" && S.media.playing)),
       pill: m !== "panel" && m !== "bar" && m !== "confirm" && isl.dataset.lyric !== "1" && musicKind() !== "mini" || m === "idle",
-      playing: !!(S.media.active && S.media.playing), edge: S.cfg.island.eq_edge !== false, bands: S.bands,
-      accent: (cs.getPropertyValue("--accent") || "#7c8cff").trim(), bg: (cs.getPropertyValue("--bg") || "#000").trim(),
+      playing: !!(S.media.active && S.media.playing), edge: S.cfg.island.eq_edge !== false && waves.music_enabled !== false, bands: S.bands,
+      accent: (waves.color || cs.getPropertyValue("--accent") || "#7c8cff").trim(), bg: (cs.getPropertyValue("--bg") || "#000").trim(),
       rainColor: "rgba(150,190,255,0.9)", away: S.away, rain: S.weather && ["rain", "sleet", "thunder", "snow"].includes(S.weather.kind),
     };
   }, wideDrops);

@@ -32,11 +32,13 @@ export class Fluid {
   // Капля отрывается от середины края и падает (успешное действие, готовый ответ, скриншот).
   bead(strength = 1) {
     if (this.beads.length > 6) return;
-    this.beads.push({ x: 0.5, y: 0, vy: 0, r: BEAD_R * strength, age: 0, small: false });
+    const waves = this.get().waves || {};
+    const radius = Math.max(1, Math.min(8, Number(waves.success_drop_size ?? BEAD_R)));
+    this.beads.push({ x: 0.5, y: 0, vy: 0, r: radius * strength, age: 0, small: false });
   }
 
-  drip() {
-    this.beads.push({ x: 0.22 + Math.random() * 0.56, y: 0, vy: 0, r: 1.9, age: 0, small: true });
+  drip(radius = 1.9) {
+    this.beads.push({ x: 0.22 + Math.random() * 0.56, y: 0, vy: 0, r: radius, age: 0, small: true });
   }
 
   quiet(st) {
@@ -46,6 +48,8 @@ export class Fluid {
   loop(now) {
     requestAnimationFrame(this.loop);
     const st = this.get();
+    const waves = st.waves || {};
+    const reducedMotion = waves.respect_reduced_motion !== false && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const dt = Math.min(48, now - this.last) / 16.7;
     this.frame++;
     this.drawWideDrops(st, now);
@@ -75,30 +79,43 @@ export class Fluid {
     const R = Math.min(parseFloat(cs.borderBottomLeftRadius) || 18, this.isl.offsetHeight / 2);
     const a = R * 0.75, b = W - R * 0.75, span = Math.max(1, b - a);
     const t = now / 1000;
+    const ambientAmplitude = Math.max(0, Math.min(3, Number(waves.ambient_amplitude ?? 1)));
+    const ambientSpeed = Math.max(0.2, Math.min(3, Number(waves.ambient_speed ?? 1)));
 
     // Тянемся к курсору, если он под островом и недалеко.
     let reachTarget = 0;
-    if (this.cursor && now - this.cursor.at < 600 && st.pill) {
+    if (!reducedMotion && waves.cursor_enabled !== false && this.cursor && now - this.cursor.at < 600 && st.pill) {
       const rect = this.cv.getBoundingClientRect();
       const k = rect.width / W || 1;
       const cx = (this.cursor.x - rect.left) / k, cy = (this.cursor.y - rect.top) / k;
       if (cy > -2 && cy < 150 && cx > a - 60 && cx < b + 60) {
-        reachTarget = 11 * (1 - Math.max(0, cy) / 150);
+        reachTarget = Math.max(0, Math.min(24, Number(waves.cursor_strength ?? 11))) * (1 - Math.max(0, cy) / 150);
         const tx = Math.max(a + 24, Math.min(b - 24, cx));
         this.reachX = this.reachX < 0 ? tx : this.reachX + (tx - this.reachX) * 0.25 * dt;
       }
     }
     this.reach += (reachTarget - this.reach) * 0.14 * dt;
-    this.sag += ((st.away && st.pill ? 7 : 0) - this.sag) * 0.03 * dt;
+    const sagTarget = !reducedMotion && st.away && st.pill && waves.away_sag_enabled !== false
+      ? Math.max(0, Math.min(18, Number(waves.away_sag_strength ?? 7))) : 0;
+    this.sag += (sagTarget - this.sag) * 0.03 * dt;
 
     const bands = st.bands || [];
-    const n = Math.max(1, Math.min(32, bands.length || 12));
+    const peakCount = Math.max(4, Math.min(32, Number(waves.music_peak_count ?? 32)));
+    const n = Math.max(1, Math.min(peakCount, bands.length || 12));
+    const musicGain = Math.max(0, Math.min(2, Number(waves.music_gain ?? 1)));
+    const musicAttack = Math.max(0.05, Math.min(1, Number(waves.music_attack ?? 0.55)));
+    const musicRelease = Math.max(0.05, Math.min(1, Number(waves.music_release ?? 0.18)));
     for (let i = 0; i < n; i++) {
-      const target = st.playing && st.edge && st.pill ? Math.min(1, bands[i] || 0) : 0;
-      this.spikes[i] += (target - this.spikes[i]) * (target > this.spikes[i] ? 0.55 : 0.18) * dt;
+      const sourceIndex = bands.length ? Math.min(bands.length - 1, Math.floor((i + 0.5) * bands.length / n)) : i;
+      const target = !reducedMotion && st.playing && st.edge && st.pill ? Math.max(0, Math.min(1.8, (Number(bands[sourceIndex]) || 0) * musicGain)) : 0;
+      this.spikes[i] += (target - this.spikes[i]) * (target > this.spikes[i] ? musicAttack : musicRelease) * dt;
     }
 
-    if (st.rain && now - this.lastDrip > 2400 + Math.random() * 2600) { this.lastDrip = now; this.drip(); }
+    const rainInterval = Math.max(1, Math.min(12, Number(waves.rain_interval_s ?? 4))) * 1000;
+    if (!reducedMotion && waves.rain_enabled !== false && st.rain && now - this.lastDrip > rainInterval * (0.65 + Math.random() * 0.7)) {
+      this.lastDrip = now;
+      this.drip(Math.max(0.8, Math.min(4, Number(waves.rain_drop_size ?? 1.9))));
+    }
 
     const necks = [];
     for (const d of this.beads) {
@@ -112,12 +129,12 @@ export class Fluid {
     const f = (x) => {
       if (x <= a || x >= b) return 0;
       const taper = Math.pow(Math.sin(Math.PI * (x - a) / span), 0.7);
-      let y = 1.1 + 0.7 * Math.sin(t * 1.3 + x / 37) + 0.4 * Math.sin(t * 0.7 - x / 23);
+      let y = 1.1 + ambientAmplitude * (0.7 * Math.sin(t * 1.3 * ambientSpeed + x / 37) + 0.4 * Math.sin(t * 0.7 * ambientSpeed - x / 23));
       if (this.reach > 0.02) y += this.reach * gauss(x - this.reachX, 20);
       if (this.sag > 0.02) y += this.sag * gauss(x - W / 2, span * 0.3) * (1 + 0.08 * Math.sin(t * 0.9));
       for (let i = 0; i < n; i++) {
         const v = this.spikes[i];
-        if (v > 0.02) y += v * 65 * gauss(x - (a + ((i + 0.5) / n) * span), (span / n) * 0.3);
+        if (v > 0.02) y += v * 65 * gauss(x - (a + ((i + 0.5) / n) * span), (span / n) * Math.max(0.1, Math.min(0.8, Number(waves.music_peak_width ?? 0.3))));
       }
       for (const [nx, h, s] of necks) y += h * gauss(x - nx, s);
       return y * taper;
@@ -142,7 +159,7 @@ export class Fluid {
       ctx.save();
       ctx.globalAlpha = 0.95;
       ctx.shadowColor = st.accent;
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = Math.max(0, Math.min(24, Number(waves.music_glow ?? 10)));
       ctx.fillStyle = g;
       ctx.fill();
       ctx.restore();
@@ -163,11 +180,15 @@ export class Fluid {
     const cv = this.wideDropsCv;
     const ctx = this.wideDropsCtx;
     if (!cv || !ctx) return;
+    const waves = st.waves || {};
     const hiddenNow = !!st.hidden;
     const justCollapsed = hiddenNow && !this.wasHidden;
     this.wasHidden = hiddenNow;
-    if (justCollapsed && st.playing) this.wideWaveStarted = now;
-    if (!hiddenNow || this.wideWaveStarted === null || now - this.wideWaveStarted >= 3000) {
+    const reducedMotion = waves.respect_reduced_motion !== false && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (waves.full_width_enabled === false || reducedMotion) this.wideWaveStarted = null;
+    if (justCollapsed && st.playing && waves.full_width_enabled !== false && !reducedMotion) this.wideWaveStarted = now;
+    const duration = Math.max(0.8, Math.min(8, Number(waves.full_width_duration_s ?? 3))) * 1000;
+    if (!hiddenNow || this.wideWaveStarted === null || now - this.wideWaveStarted >= duration) {
       this.wideWaveStarted = null;
       ctx.clearRect(0, 0, cv.width, cv.height);
       return;
@@ -183,16 +204,20 @@ export class Fluid {
       cv.style.height = height + "px";
     }
 
-    const count = 32;
+    const count = Math.round(Math.max(8, Math.min(64, Number(waves.full_width_density ?? 32))));
     const elapsed = now - this.wideWaveStarted;
-    const travel = Math.max(0, Math.min(1, elapsed / 3000));
+    const travel = Math.max(0, Math.min(1, elapsed / duration));
     const canvasRect = cv.getBoundingClientRect();
     const islandRect = this.isl.getBoundingClientRect();
     const viewScale = canvasRect.width / width || 1;
     const originX = Math.max(0, Math.min(width,
       (islandRect.left + islandRect.width / 2 - canvasRect.left) / viewScale));
-    const waveWidth = Math.max(24, width / 32 * 1.8);
-    const second = now / 1000 * Math.PI * 2;
+    const waveWidth = Math.max(8, width / count * Math.max(0.5, Math.min(3.5, Number(waves.full_width_front_width ?? 1.8))));
+    const pulseHz = Math.max(0.2, Math.min(3, Number(waves.full_width_pulse_hz ?? 1)));
+    const amplitude = Math.max(0.2, Math.min(1.8, Number(waves.full_width_amplitude ?? 1)));
+    const second = now / 1000 * Math.PI * 2 * pulseHz;
+    const ambientAmplitude = Math.max(0, Math.min(3, Number(waves.ambient_amplitude ?? 1)));
+    const ambientSpeed = Math.max(0.2, Math.min(3, Number(waves.ambient_speed ?? 1)));
     const span = Math.max(1, width);
     const spikes = Array.from({ length: count }, (_, i) => {
       const x = ((i + 0.5) / count) * span;
@@ -201,11 +226,11 @@ export class Fluid {
         : Math.abs(x - originX) - (width - originX) * travel;
       const envelope = Math.exp(-(distance ** 2) / (2 * waveWidth ** 2));
       const fade = 1 - travel;
-      return (0.5 + 0.5 * Math.sin(second + i * 0.55)) * envelope * fade;
+      return (0.5 + 0.5 * Math.sin(second + i * 0.55)) * envelope * fade * amplitude;
     });
     const waveY = (x) => {
       const taper = Math.pow(Math.max(0, Math.sin(Math.PI * x / span)), 0.7);
-      let y = 1.1 + 0.7 * Math.sin(second * 0.65 + x / 37) + 0.4 * Math.sin(second * 0.35 - x / 23);
+      let y = 1.1 + ambientAmplitude * (0.7 * Math.sin(second * 0.65 * ambientSpeed + x / 37) + 0.4 * Math.sin(second * 0.35 * ambientSpeed - x / 23));
       for (let i = 0; i < count; i++) {
         if (spikes[i] > 0.02) y += spikes[i] * 65 * gauss(x - ((i + 0.5) / count) * span, (span / count) * 0.3);
       }
@@ -222,11 +247,12 @@ export class Fluid {
     ctx.fill();
     const gradient = ctx.createLinearGradient(0, 0, 0, 22);
     gradient.addColorStop(0, "rgba(0,0,0,0)");
-    gradient.addColorStop(0.35, st.accent);
-    gradient.addColorStop(1, st.accent);
+    const accent = /^#[0-9a-f]{6}$/i.test(waves.color || "") ? waves.color : st.accent;
+    gradient.addColorStop(0.35, accent);
+    gradient.addColorStop(1, accent);
     ctx.fillStyle = gradient;
-    ctx.shadowColor = st.accent;
-    ctx.shadowBlur = 10;
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = Math.max(0, Math.min(24, Number(waves.full_width_glow ?? 10)));
     ctx.fill();
     ctx.shadowBlur = 0;
   }
