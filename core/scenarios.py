@@ -76,7 +76,7 @@ BLOCKS: dict[str, dict[str, Any]] = {
                   "params": {"var": "", "operator": "equals", "value": ""}},
     "repeat": {"title": "Повторить", "outs": ["body", "done"], "params": {"count": 3, "var": "iteration"}},
     "read": {"title": "Получить данные элемента", "outs": ["next", "fail"],
-             "params": {"target": None, "var": "value", "property": "value", "timeout": 10.0}},
+             "params": {"target": None, "var": "value", "property": "all_text", "timeout": 10.0}},
     "media": {"title": "Медиа-клавиша", "outs": ["next"], "params": {"action": "play_pause"}},
     "open": {"title": "Открыть файл/ссылку", "outs": ["next", "fail"], "params": {"path": ""}},
     "say": {"title": "Сказать вслух", "outs": ["next"], "params": {"text": "", "wait": True}},
@@ -808,7 +808,7 @@ class Engine:
             reader = getattr(d, "read", None)
             if reader is None:
                 raise StepError("получение данных элементов недоступно")
-            value = await reader(self._target(p), str(p.get("property") or "value"),
+            value = await reader(self._target(p), "all_text",
                                  float(p.get("timeout") or 10), lambda: self._check(outer))
             name = var_name(p.get("var"))
             variables[name] = str(value or "")[:6000]

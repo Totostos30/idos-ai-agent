@@ -289,8 +289,43 @@ def resolve(target: dict, allow_coords: bool = True) -> dict | None:
 
 
 def read_element(control: Any, property_name: str = "value") -> str:
-    """Читает доступное свойство UIA-контрола на UIA-потоке."""
+    """Читает свойство контрола или весь текст его поддерева на UIA-потоке."""
     from .win import uia
+    if property_name in ("all_text", "tree_text"):
+        started, lines, size = time.monotonic(), [], 0
+        previous = ""
+        truncated = False
+        for visited, (item, _depth) in enumerate(uia.module().WalkControl(control, includeTop=True, maxDepth=50)):
+            if visited >= 5000 or time.monotonic() - started > 8:
+                truncated = True
+                break
+            try:
+                kind = str(getattr(item, "ControlTypeName", "") or "")
+                value = uia._value(item)
+                document = uia._document_text(item, 6000) if kind == "DocumentControl" else ""
+                name = str(getattr(item, "Name", "") or "")
+            except Exception:  # noqa: BLE001 - controls may disappear during the scan
+                continue
+            parts = [document] if document else [value] + ([name] if name and name != value else [])
+            text = "\n".join(part for part in parts if part)
+            text = "\n".join(part.strip() for part in str(text).splitlines() if part.strip())
+            if not text or text == previous:
+                continue
+            previous = text
+            remaining = 6000 - size
+            if remaining <= 0:
+                truncated = True
+                break
+            if len(text) > remaining:
+                lines.append(text[:remaining])
+                truncated = True
+                break
+            lines.append(text)
+            size += len(text) + 1
+        result = "\n".join(lines).strip()
+        if truncated and len(result) < 6000:
+            result = (result + "\n…")[:6000]
+        return result
     kind = str(getattr(control, "ControlTypeName", "") or "")
     name = str(getattr(control, "Name", "") or "").strip()
     if property_name == "name":

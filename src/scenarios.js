@@ -815,9 +815,8 @@ function drawInspector() {
     case "if_exists": parts.push(targetEditor(n, "target"), field("Ждать, с", textInput(n, "timeout", "", "number"), "0 — проверить сразу")); break;
     case "read": parts.push(targetEditor(n, "target"),
       field("Сохранить в переменную", textInput(n, "var", "значение")),
-      field("Что прочитать", selectInput(n, "property", { value: "Значение / Value", text: "Текст", name: "Имя элемента", state: "Состояние переключателя", id: "AutomationId" })),
       field("Ждать появления, с", textInput(n, "timeout", "", "number")),
-      el("p", { class: "mut small" }, "Переменная доступна в следующих блоках как {имя}.")); break;
+      el("p", { class: "mut small" }, "При запуске полностью сканирует выбранный элемент и вложенные элементы, собирает доступные текст и значения и сохраняет их в переменную. Переменная доступна в следующих блоках как {имя}.")); break;
     case "condition": parts.push(
       field("Переменная", textInput(n, "var", "город")),
       field("Условие", selectInput(n, "operator", {
