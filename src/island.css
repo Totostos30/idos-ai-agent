@@ -343,6 +343,7 @@ button:disabled { opacity: 0.35; cursor: default; }
 .stage > .island, .stage > .fluid { transition: transform 0.45s var(--spring), opacity 0.3s, width 0.48s var(--spring), border-radius 0.48s var(--spring), padding 0.3s var(--ease); }
 .stage.hidden > .island, .stage.hidden > .fluid { transform: translateY(-140%) scale(0.92); opacity: 0; pointer-events: none;
   transition: transform 0.5s cubic-bezier(.55, 0, .3, 1), opacity 0.35s 0.12s; }
+.stage.hidden > .fluid { transition: none; opacity: 0; }
 /* режим «сквозь»: виден, но не мешает и не раскрывается */
 .stage.through > .island, .stage.through > .fluid { pointer-events: none; opacity: calc(var(--op-closed) * 0.75); }
 

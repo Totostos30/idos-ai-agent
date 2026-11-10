@@ -44,7 +44,14 @@ export class Fluid {
     const st = this.get();
     const dt = Math.min(48, now - this.last) / 16.7;
     this.frame++;
-    if (!st.liquid) { if (this.cv.style.opacity !== "0") this.cv.style.opacity = "0"; return; }
+    if (!st.liquid) {
+      if (this.cv.style.opacity !== "0") this.cv.style.opacity = "0";
+      this.beads.length = 0;
+      this.reach = 0;
+      this.reachX = -1;
+      this.sag = 0;
+      return;
+    }
     this.cv.style.opacity = "1";
     // В покое хватает 30 кадров в секунду: экономим батарею ноутбука.
     if (this.quiet(st) && this.frame % 2) return;
