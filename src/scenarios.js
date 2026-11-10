@@ -16,7 +16,7 @@ const MEDIA_NAMES = { play_pause: "Пуск/пауза", next: "Следующи
 const NODE_W = 230;
 const SVGNS = "http://www.w3.org/2000/svg";
 
-const S = { list: [], cur: null, sel: null, meta: null, status: {}, runtimeValues: {}, dirty: false, running: false, picking: false };
+const S = { list: [], cur: null, sel: null, meta: null, status: {}, runtimeValues: {}, sidebarCollapsed: false, dirty: false, running: false, picking: false };
 let page = null, plane = null, svg = null, inspector = null, active = () => false;
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -58,6 +58,17 @@ function markDirty() {
   S.dirty = true;
   const b = page && page.querySelector(".scn-save");
   if (b) b.classList.add("primary");
+}
+
+function toggleScenarioSidebar() {
+  S.sidebarCollapsed = !S.sidebarCollapsed;
+  const wrap = page && page.querySelector(".scn-wrap");
+  const button = page && page.querySelector(".scn-sidebar-toggle");
+  if (wrap) wrap.classList.toggle("scn-sidebar-collapsed", S.sidebarCollapsed);
+  if (button) {
+    button.textContent = S.sidebarCollapsed ? "›" : "‹";
+    button.title = S.sidebarCollapsed ? "Развернуть панель" : "Свернуть панель до иконок";
+  }
 }
 
 // ------------------------------------------------------------------ public
@@ -308,37 +319,35 @@ function layout() {
 
 // ------------------------------------------------------------------ view
 
-function scenarioVariablesEditor(scenario) {
+function scenarioVariablesEditor(scenario, collapsed = false) {
   if (!Array.isArray(scenario.variables)) scenario.variables = [];
   const rows = scenario.variables.map((v, index) => {
     if (typeof v === "string") v = scenario.variables[index] = { name: v, description: "", value: "" };
     const name = el("input", { class: "field", value: v.name || "", placeholder: "город" });
-    const description = el("input", { class: "field", value: v.description || "", placeholder: "Описание (необязательно)" });
     const value = el("input", { class: "field scn-var-value", value: v.value ?? v.default ?? "",
       placeholder: v.required === false ? "Необязательно — заполняется блоком" : "Обязательное значение" });
-    for (const [input, key] of [[name, "name"], [description, "description"], [value, "value"]]) {
-      input.addEventListener("input", () => { v[key] = input.value; markDirty(); });
-    }
-    value.addEventListener("input", () => { v.default = ""; });
-    return el("tr", {}, el("td", {}, name), el("td", {}, description), el("td", {}, value),
+    name.title = v.description || "Имя переменной";
+    name.addEventListener("input", () => { v.name = name.value; markDirty(); });
+    value.addEventListener("input", () => { v.value = value.value; v.default = ""; markDirty(); });
+    return el("tr", {}, el("td", {}, name), el("td", {}, value),
       el("td", {}, el("button", { class: "icon", title: "Удалить переменную", onclick: () => {
         scenario.variables.splice(index, 1); markDirty(); draw();
       } }, "×")));
   });
   const box = el("details", { class: "scn-vars" });
-  box.open = scenario.variables.length > 0;
+  box.open = !collapsed;
   box.append(el("summary", {}, `Таблица переменных${scenario.variables.length ? ` · ${scenario.variables.length}` : ""}`),
     el("div", { class: "scn-vars-panel" },
-      el("p", { class: "mut small" }, "Заполните значения до запуска. Пустые обязательные переменные остановят сценарий до первого действия. Переменные, создаваемые блоками «Спросить», «Прочитать» и «Повторить», вводить заранее не нужно."),
+      el("p", { class: "mut small" }, "Заполните входы до запуска. Создаваемые блоками значения появятся внизу."),
       el("table", { class: "scn-var-table" },
-        el("thead", {}, el("tr", {}, el("th", {}, "Имя"), el("th", {}, "Описание"), el("th", {}, "Значение"), el("th", {}))),
+        el("thead", {}, el("tr", {}, el("th", {}, "Переменная"), el("th", {}, "Значение"), el("th", {}))),
         el("tbody", {}, ...rows)),
       el("div", { class: "scn-runtime-vars" }, el("b", {}, "Текущие значения выполнения"),
         el("table", { class: "scn-var-table scn-runtime-table" },
           el("thead", {}, el("tr", {}, el("th", {}, "Переменная"), el("th", {}, "Текущее значение"))),
           el("tbody", { class: "scn-runtime-var-body" }, ...runtimeVariableRows()))),
     el("button", { class: "btn small", onclick: () => {
-      scenario.variables.push({ name: "", description: "", value: "" }); markDirty(); draw();
+      scenario.variables.push({ name: "", description: "", value: "" }); S.sel = null; markDirty(); draw();
     } }, "+ Переменная")));
   return box;
 }
@@ -358,18 +367,21 @@ function refreshRuntimeVars() {
 function draw() {
   if (!page || !active()) return;
   const side = el("aside", { class: "scn-side" },
-    el("div", { class: "scn-side-head" }, el("b", {}, "Сценарии"),
-      el("button", { class: "btn small", onclick: newScenario }, "+ Новый")),
-    S.list.length ? S.list.map((s) => el("button", { class: "scn-item" + (S.cur && S.cur.id === s.id ? " on" : ""), onclick: () => openScenario(s.id) },
-      el("div", { class: "t" }, (s.enabled ? "" : "⏸ ") + s.name),
+    el("div", { class: "scn-side-head" },
+      el("button", { class: "icon scn-sidebar-toggle", title: S.sidebarCollapsed ? "Развернуть панель" : "Свернуть панель до иконок", onclick: toggleScenarioSidebar }, S.sidebarCollapsed ? "›" : "‹"),
+      el("b", {}, "Сценарии"),
+      el("button", { class: "btn small scn-new", title: "Новый сценарий", onclick: newScenario }, el("span", { class: "scn-new-icon" }, "+"), el("span", { class: "scn-side-label" }, "Новый"))),
+    S.list.length ? S.list.map((s) => el("button", { class: "scn-item" + (S.cur && S.cur.id === s.id ? " on" : ""), title: s.name, onclick: () => openScenario(s.id) },
+      el("div", { class: "t" }, el("span", { class: "scn-item-icon" }, [...String(s.name || "С")][0].toLocaleUpperCase()),
+        el("span", { class: "scn-item-name" }, (s.enabled ? "" : "⏸ ") + s.name)),
       el("div", { class: "mut small" }, (s.triggers && s.triggers.length ? "«" + s.triggers[0] + "»" : "без фразы") + " · " + s.steps + " шаг.")))
       : el("div", { class: "mut small" }, "Пока нет сценариев"),
     el("div", { class: "scn-side-foot" },
-      el("button", { class: "btn small", onclick: importDialog }, "Импорт JSON")),
+      el("button", { class: "btn small scn-import", title: "Импорт JSON", onclick: importDialog }, el("span", {}, "⇪"), el("span", { class: "scn-side-label" }, "Импорт JSON"))),
     el("p", { class: "mut small" }, "Обычные шаги выполняются без модели. В редакторе заполните таблицу переменных перед запуском; совпавший триггер может передать значения автоматически."));
 
   if (!S.cur) {
-    page.replaceChildren(el("div", { class: "scn-wrap" }, side, el("div", { class: "scn-empty" },
+    page.replaceChildren(el("div", { class: "scn-wrap" + (S.sidebarCollapsed ? " scn-sidebar-collapsed" : "") }, side, el("div", { class: "scn-empty" },
       el("h1", {}, "Сценарии"), el("p", { class: "mut" }, "Соберите блок-схему: «Запустить программу → Нажать на элемент → …». Элементы выбираются пипеткой прямо на экране."),
       el("button", { class: "btn primary", onclick: newScenario }, "Создать сценарий"))));
     return;
@@ -385,8 +397,6 @@ function draw() {
   enabled.addEventListener("change", () => { c.enabled = enabled.checked; markDirty(); });
   const desc = el("input", { class: "field", value: c.description || "", placeholder: "Описание (видит агент)" });
   desc.addEventListener("input", () => { c.description = desc.value; markDirty(); });
-  const varsBox = scenarioVariablesEditor(c);
-
   const head = el("div", { class: "scn-head" },
     el("div", { class: "scn-head-row" }, name,
       el("label", { class: "scn-check", title: "Выключенный сценарий не запускается по фразе" }, enabled, "включён"),
@@ -395,8 +405,7 @@ function draw() {
       el("button", { class: "btn scn-stop", disabled: !S.running, onclick: () => core.try("scenarios.stop") }, "■ Стоп"),
       el("button", { class: "icon", title: "Скопировать JSON", onclick: exportJson }, "⇪"),
       el("button", { class: "icon", title: "Удалить сценарий", onclick: removeScenario }, "✕")),
-    el("div", { class: "scn-head-row" }, triggers, desc),
-    varsBox);
+    el("div", { class: "scn-head-row" }, triggers, desc));
 
   const palette = el("div", { class: "scn-palette" }, PALETTE.map((t) => el("button", { class: "chip", title: "Добавить после выбранного блока", onclick: () => addBlock(t) }, ICONS[t] + " " + blockTitle(t))),
     el("button", { class: "chip ghost", onclick: layout, title: "Разложить блоки по порядку" }, "⇅ Выровнять"));
@@ -408,7 +417,7 @@ function draw() {
   for (const n of c.nodes) plane.append(nodeView(n));
   const canvas = el("div", { class: "scn-canvas", onpointerdown: (e) => { if (e.target === canvas || e.target === plane || e.target === svg) { S.sel = null; drawInspector(); plane.querySelectorAll(".scn-node.sel").forEach((x) => x.classList.remove("sel")); } } }, plane);
   inspector = el("aside", { class: "scn-inspector" });
-  page.replaceChildren(el("div", { class: "scn-wrap" }, side,
+  page.replaceChildren(el("div", { class: "scn-wrap" + (S.sidebarCollapsed ? " scn-sidebar-collapsed" : "") }, side,
     el("div", { class: "scn-editor" }, head, palette, el("div", { class: "scn-work" }, canvas, inspector))));
   sizePlane();
   requestAnimationFrame(drawEdges);
@@ -673,18 +682,9 @@ function drawInspector() {
   if (!inspector) return;
   const n = nodeById(S.sel);
   if (!n) {
-    inspector.replaceChildren(el("h3", {}, "Как собрать сценарий"),
-      el("ol", { class: "mut small scn-help" },
-        el("li", {}, "Добавляйте блоки кнопками сверху — новый блок встаёт после выбранного и сразу связывается."),
-        el("li", {}, "Связи: потяните за метку выхода («далее», «да», «нет») к другому блоку. Клик по линии — удалить связь."),
-        el("li", {}, "Для «Нажать на элемент» добавьте один или несколько элементов пипеткой; они нажимаются по порядку."),
-        el("li", {}, "«Если ошибка» — необязательный выход: куда идти, если элемент не найден."),
-        el("li", {}, "«Проверить переменную» создаёт ветвление; «Повторить» выполняет ограниченное число итераций."),
-        el("li", {}, "«Получить данные элемента» считывает имя, текст, значение, состояние или AutomationId через пипетку."),
-        el("li", {}, "Переменные над схемой задаются в таблице заранее; используйте их как {имя}. Пустые входные значения блокируют запуск до первого действия."),
-        el("li", {}, "💬 «Спросить пользователя» запоминает ответ в переменную — потом пишите {имя} в других блоках."),
-        el("li", {}, "Двойной клик по блоку — запустить сценарий с этого блока."),
-        el("li", {}, "Аварийная остановка: увести курсор в левый верхний угол экрана или «■ Стоп».")));
+    inspector.replaceChildren(el("h3", {}, "Переменные"),
+      el("p", { class: "mut small" }, "Заполните значения до запуска. Пустые входы блокируют выполнение."),
+      scenarioVariablesEditor(S.cur));
     return;
   }
   const p = n.params;
@@ -743,6 +743,7 @@ function drawInspector() {
   inspector.replaceChildren(
     el("h3", {}, (ICONS[n.type] || "") + " " + blockTitle(n.type)),
     ...parts,
+    scenarioVariablesEditor(S.cur, true),
     n.type !== "start" ? field("Заметка", note) : el("p", { class: "mut small" }, "Отсюда начинается сценарий. Потяните «далее» к первому действию."),
     el("div", { class: "scn-row" },
       n.type !== "start" && n.type !== "end" ? el("button", { class: "btn", onclick: () => runScenario(n.id) }, "▶ Отсюда") : null,
