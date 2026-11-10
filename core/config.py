@@ -140,6 +140,7 @@ DEFAULTS: dict[str, Any] = {
             "full_width_duration_s": 3.0,
             "full_width_amplitude": 1.0,
             "full_width_density": 32,
+            "full_width_offset_percent": 0,
             "full_width_front_width": 1.8,
             "full_width_pulse_hz": 1.0,
             "full_width_glow": 10,

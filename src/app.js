@@ -430,7 +430,7 @@ async function renderSettings() {
 function waveSettingsBox(cfg) {
   const values = Object.assign({
     full_width_enabled: true, full_width_duration_s: 3, full_width_amplitude: 1,
-    full_width_density: 32, full_width_front_width: 1.8, full_width_pulse_hz: 1,
+    full_width_density: 32, full_width_offset_percent: 0, full_width_front_width: 1.8, full_width_pulse_hz: 1,
     full_width_glow: 10, color: "", music_enabled: true, music_gain: 1, music_glow: 10,
     music_peak_count: 32, music_peak_width: 0.3, music_attack: 0.55, music_release: 0.18,
     ambient_amplitude: 1, ambient_speed: 1,
@@ -451,13 +451,13 @@ function waveSettingsBox(cfg) {
     hint ? el("span", { class: "mut small wave-hint" }, hint) : null);
   const toggle = (label, key, hint) => row(label,
     el("label", { class: "switch" }, el("input", { type: "checkbox", checked: !!values[key], onchange: (e) => save(key, e.target.checked) }), el("i")), hint);
-  const range = (label, key, min, max, step, unit = "") => {
+  const range = (label, key, min, max, step, unit = "", hint = "") => {
     const input = el("input", { class: "wave-range", type: "range", min: String(min), max: String(max), step: String(step), value: String(values[key]) });
     const digits = (String(step).split(".")[1] || "").length;
     const output = el("span", { class: "mono small wave-value" }, Number(values[key]).toFixed(digits) + unit);
     input.addEventListener("input", () => { output.textContent = Number(input.value).toFixed(digits) + unit; });
     input.addEventListener("change", () => save(key, Number(input.value)));
-    return row(label, el("div", { class: "wave-range-wrap" }, input, output));
+    return row(label, el("div", { class: "wave-range-wrap" }, input, output), hint);
   };
   const subhead = (text) => el("h4", { class: "wave-subhead" }, text);
   const colorInput = el("input", { class: "wave-color", type: "color", value: /^#[0-9a-f]{6}$/i.test(values.color) ? values.color : "#7c8cff", title: "Переопределить цвет волн" });
@@ -471,6 +471,7 @@ function waveSettingsBox(cfg) {
     range("Время распространения", "full_width_duration_s", 0.8, 8, 0.2, " с"),
     range("Высота пиков", "full_width_amplitude", 0.2, 1.8, 0.1, "×"),
     range("Количество пиков", "full_width_density", 8, 64, 1),
+    range("Смещение волнового фронта", "full_width_offset_percent", -50, 50, 1, " %", "От центра островка: − влево, + вправо; значение — процент ширины экрана."),
     range("Ширина фронта", "full_width_front_width", 0.5, 3.5, 0.1, "×"),
     range("Пульсация пиков", "full_width_pulse_hz", 0.2, 3, 0.1, " Гц"),
     range("Свечение", "full_width_glow", 0, 24, 1),

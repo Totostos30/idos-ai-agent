@@ -226,7 +226,8 @@ export class Fluid {
       const origin = canvasRect.width > 0
         ? (islandRect.left + islandRect.width / 2 - canvasRect.left) / canvasRect.width
         : 0.5;
-      this.wideWaveOriginRatio = Math.max(0, Math.min(1, origin));
+      const offset = Math.max(-50, Math.min(50, Number(waves.full_width_offset_percent ?? 0))) / 100;
+      this.wideWaveOriginRatio = Math.max(0, Math.min(1, origin + offset));
     }
     const originX = width * this.wideWaveOriginRatio;
     const maxTravel = Math.max(originX, width - originX);
