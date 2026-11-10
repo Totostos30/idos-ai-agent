@@ -430,7 +430,7 @@ async function renderSettings() {
 function waveSettingsBox(cfg) {
   const values = Object.assign({
     full_width_enabled: true, full_width_duration_s: 3, full_width_amplitude: 1,
-    full_width_density: 32, full_width_offset_percent: 0, full_width_front_width: 1.8, full_width_pulse_hz: 1,
+    full_width_density: 32, full_width_offset_percent: -3, full_width_front_width: 1.8, full_width_pulse_hz: 1,
     full_width_glow: 10, color: "", music_enabled: true, music_gain: 1, music_glow: 10,
     music_peak_count: 32, music_peak_width: 0.3, music_attack: 0.55, music_release: 0.18,
     ambient_amplitude: 1, ambient_speed: 1,

@@ -54,7 +54,11 @@ export class Fluid {
     const reducedMotion = waves.respect_reduced_motion !== false && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const dt = Math.min(48, now - this.last) / 16.7;
     const musicVisible = !reducedMotion && st.playing && st.edge && st.pill ? 1 : 0;
-    this.musicVisibility += (musicVisible - this.musicVisibility) * (1 - Math.exp(-dt / 18));
+    if (musicVisible) {
+      this.musicVisibility += (1 - this.musicVisibility) * (1 - Math.exp(-dt / 18));
+    } else {
+      this.musicVisibility = Math.max(0, this.musicVisibility - dt * 16.7 / 70);
+    }
     this.frame++;
     this.drawWideDrops(st, now);
     if (!st.liquid) {
