@@ -29,5 +29,7 @@ tools/gigastt/
 # Среда
 .idea/
 .vscode/
+.work/
+.manus/
 .DS_Store
 Thumbs.db

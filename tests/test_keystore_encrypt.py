@@ -15,7 +15,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from core import config  # noqa: E402
 from core.keystore import ENC_PREFIX, KeyStore, protect_secret, unprotect_secret  # noqa: E402
 
-SECRET = "gsk_roundtrip_secret_1234567890"
+SECRET = "test-only-not-a-real-secret"
 
 
 @unittest.skipUnless(config.IS_WINDOWS, "DPAPI доступен только в Windows")

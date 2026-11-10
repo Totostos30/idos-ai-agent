@@ -54,7 +54,8 @@ New-Item -ItemType Directory -Force $exeOut | Out-Null
 Copy-Item $exe (Join-Path $exeOut "idos.exe") -Force
 
 $files = @("package.json", "package-lock.json", "requirements.txt", "index.html", "vite.config.js",
-           "README.md", "INSTALL.md", "Start-IDOS.bat", "Selftest-IDOS.bat", ".gitignore")
+           "README.md", "INSTALL.md", "ARCHITECTURE.md", "SECURITY.md", "CONTRIBUTING.md", "LICENSE",
+           "Start-IDOS.bat", "Selftest-IDOS.bat", ".gitignore")
 foreach ($file in $files) {
   if (Test-Path $file) { Copy-Item $file $out -Force }
 }
