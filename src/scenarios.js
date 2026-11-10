@@ -196,14 +196,24 @@ function startPaletteDrag(type, row, e) {
   e.preventDefault();
   const sx = e.clientX, sy = e.clientY;
   let moved = false;
+  const ghost = el("div", { class: "scn-node scn-drag-ghost" },
+    el("div", { class: "scn-node-head" }, el("span", { class: "ic" }, ICONS[type] || "•"), el("span", { class: "tt" }, blockTitle(type))));
+  const moveGhost = (ev) => {
+    ghost.style.left = `${ev.clientX + 14}px`;
+    ghost.style.top = `${ev.clientY + 14}px`;
+  };
+  document.body.append(ghost);
+  moveGhost(e);
   row.classList.add("dragging");
   try { row.setPointerCapture(e.pointerId); } catch (_) { /* fallback below */ }
   const move = (ev) => {
+    moveGhost(ev);
     if (!moved && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 5) return;
     moved = true;
     ev.preventDefault();
   };
   const up = (ev) => {
+    ghost.remove();
     row.classList.remove("dragging");
     try { row.releasePointerCapture(e.pointerId); } catch (_) { /* already released */ }
     row.removeEventListener("pointermove", move);

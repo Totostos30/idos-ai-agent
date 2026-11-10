@@ -270,6 +270,7 @@ button:active > .gmic-wrap .gmic { transform: scale(.86); }
 .scn-edge-hit:hover { stroke: rgba(255,80,80,.25); }
 .scn-node { position: absolute; box-sizing: border-box; background: var(--bg, #15151b); border: 1.5px solid var(--soft2); border-radius: 16px; padding: 10px 12px 26px; box-shadow: 0 6px 22px rgba(0,0,0,.28); cursor: grab; user-select: none; touch-action: none; transition: border-color .15s, box-shadow .15s; }
 .scn-node:active { cursor: grabbing; }
+.scn-drag-ghost { position: fixed !important; z-index: 1000; width: 230px; pointer-events: none; opacity: .86; transform: rotate(1deg); transition: none !important; }
 .scn-node.sel { border-color: #7c8cff; box-shadow: 0 0 0 3px rgba(124,140,255,.25), 0 8px 26px rgba(0,0,0,.35); }
 .scn-node.t-start, .scn-node.t-end { border-radius: 22px; padding-bottom: 24px; }
 .scn-node.t-start { border-color: rgba(80,200,120,.6); }
