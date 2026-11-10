@@ -163,7 +163,7 @@ DEFAULTS: dict[str, Any] = {
             "success_drop_size": 3.4,
             "lip_breath_enabled": True,
             "lip_breath_period_s": 2.4,
-            "respect_reduced_motion": True,
+            "respect_reduced_motion": False,
         },
     },
     "hotkeys": {

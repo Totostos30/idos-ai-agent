@@ -436,7 +436,7 @@ function waveSettingsBox(cfg) {
     ambient_amplitude: 1, ambient_speed: 1,
     cursor_enabled: true, cursor_strength: 11, away_sag_enabled: true,
     away_sag_strength: 7, rain_enabled: true, rain_interval_s: 4, rain_drop_size: 1.9, success_drop_size: 3.4,
-    lip_breath_enabled: true, lip_breath_period_s: 2.4, respect_reduced_motion: true,
+    lip_breath_enabled: true, lip_breath_period_s: 2.4, respect_reduced_motion: false,
   }, cfg.island && cfg.island.waves || {});
   const box = el("section", { class: "box wave-settings" });
   const save = async (key, value) => {
@@ -497,7 +497,7 @@ function waveSettingsBox(cfg) {
     subhead("Анимация полоски"),
     toggle("Пульсация полоски при музыке", "lip_breath_enabled"),
     range("Период пульсации полоски", "lip_breath_period_s", 0.5, 6, 0.1, " с"),
-    toggle("Учитывать системное «уменьшение движения»", "respect_reduced_motion"),
+    toggle("Отключать эффекты при системном «уменьшении движения»", "respect_reduced_motion"),
     el("div", { class: "row2 end" }, el("button", { class: "btn ghost", onclick: async () => { await core.try("settings.reset", { key: "island.waves" }); renderSettings(); } }, "Сбросить параметры волн")));
   return box;
 }
