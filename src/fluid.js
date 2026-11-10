@@ -112,7 +112,7 @@ export class Fluid {
       if (this.sag > 0.02) y += this.sag * gauss(x - W / 2, span * 0.3) * (1 + 0.08 * Math.sin(t * 0.9));
       for (let i = 0; i < n; i++) {
         const v = this.spikes[i];
-        if (v > 0.02) y += v * 13 * gauss(x - (a + ((i + 0.5) / n) * span), (span / n) * 0.3);
+        if (v > 0.02) y += v * 65 * gauss(x - (a + ((i + 0.5) / n) * span), (span / n) * 0.3);
       }
       for (const [nx, h, s] of necks) y += h * gauss(x - nx, s);
       return y * taper;
