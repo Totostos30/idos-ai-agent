@@ -31,5 +31,6 @@ tools/gigastt/
 .vscode/
 .work/
 .manus/
+/handoff
 .DS_Store
 Thumbs.db
