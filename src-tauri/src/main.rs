@@ -248,6 +248,7 @@ fn hit_loop(app: AppHandle) {
     let mut previous: Option<bool> = None;
     let mut last_cursor = (f64::NAN, f64::NAN);
     let mut strip_hover_started: Option<Instant> = None;
+    let mut strip_click_revealed = false;
     loop {
         std::thread::sleep(Duration::from_millis(30));
         let Ok(window) = island(&app) else { continue };
@@ -269,12 +270,20 @@ fn hit_loop(app: AppHandle) {
         // The collapsed strip is a 12px hit region. Keep the transparent window
         // click-through until the cursor has stayed on that strip for 1 second;
         // otherwise Windows/WebView can deliver hover immediately on activation.
+        // A click reveals the strip immediately without changing the hover delay.
         let strip = !hidden && !focused && hit.2 > 0.0 && hit.3 <= 12.0;
-        let inside = if strip && raw_inside {
-            let started = strip_hover_started.get_or_insert_with(Instant::now);
-            started.elapsed() >= Duration::from_secs(1)
-        } else {
+        if !strip || !raw_inside {
             strip_hover_started = None;
+            strip_click_revealed = false;
+        } else if !strip_click_revealed && left_mouse_button_down() {
+            strip_click_revealed = true;
+        }
+        let inside = if strip && raw_inside {
+            strip_click_revealed || {
+                let started = strip_hover_started.get_or_insert_with(Instant::now);
+                started.elapsed() >= Duration::from_secs(1)
+            }
+        } else {
             raw_inside
         };
         // Координаты курсора нужны жидкому краю (тянется к курсору) и персонажам (глаза следят).
@@ -296,6 +305,17 @@ fn hit_loop(app: AppHandle) {
             previous = Some(inside);
         }
     }
+}
+
+#[cfg(windows)]
+fn left_mouse_button_down() -> bool {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
+    unsafe { GetAsyncKeyState(VK_LBUTTON as i32) != 0 }
+}
+
+#[cfg(not(windows))]
+fn left_mouse_button_down() -> bool {
+    false
 }
 
 #[tauri::command]
