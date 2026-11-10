@@ -185,9 +185,12 @@ def build_methods(app) -> dict[str, Callable[..., Any]]:
 
     @method("scenarios.run")
     async def scenarios_run(sid: str = "", data: dict | None = None, arg: str = "", start_at: str = "",
-                            request: str = "") -> dict:
+                            request: str = "", variables: dict | None = None) -> dict:
         ref = app.scenarios.store.save(data) if data else sid
-        return await app.scenarios.run(ref, {"arg": arg, "1": arg}, source="ui", start_at=start_at, request=request)
+        run_variables = {"arg": arg, "1": arg}
+        if isinstance(variables, dict):
+            run_variables.update(variables)
+        return await app.scenarios.run(ref, run_variables, source="ui", start_at=start_at, request=request)
 
     @method("scenarios.answer")
     async def scenarios_answer(text: str = "", skip: bool = False) -> dict:

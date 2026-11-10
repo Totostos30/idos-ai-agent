@@ -643,6 +643,7 @@ export function mountApp() {
   core.on("router.status", () => { if (A.tab === "models") renderModels(); else if (A.tab === "chat" && A.modelPickerFill && document.querySelector(".modelpick") && document.activeElement?.className !== "modelpick") A.modelPickerFill(); });
   core.on("scenario.run", (d) => { if (A.tab === "scenarios") scenarioEvent("run", d); });
   core.on("scenario.step", (d) => { if (A.tab === "scenarios") scenarioEvent("step", d); });
+  core.on("scenario.vars", (d) => { if (A.tab === "scenarios") scenarioEvent("vars", d); });
   core.on("scenario.ask", showAsk);
   core.on("core.connected", async () => { const r = await core.try("scenarios.question", {}); if (r && r.question) showAsk(r.question); });
   core.on("island.card", (c) => { if (document.hasFocus() && c.kind === "error") toast(c.title + (c.text ? ": " + c.text : ""), "error"); });

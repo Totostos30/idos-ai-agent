@@ -205,7 +205,7 @@ class ScenarioTest(unittest.IsolatedAsyncioTestCase):
             {"id": "start", "type": "start", "links": {"next": "say"}},
             {"id": "say", "type": "say", "params": {"text": "{city} в {time}"}, "links": {}},
         ]}
-        result = await self.s.run(scn, request="Закажи поездку в Казань утром")
+        result = await self.s.run(scn, source="agent", request="Закажи поездку в Казань утром")
         self.assertTrue(result["ok"], result)
         self.assertEqual(seen, [("Закажи поездку в Казань утром", ["city", "time"])])
         self.assertEqual(self.driver.calls, [("say", "Казань в 09:00")])
@@ -233,7 +233,7 @@ class ScenarioTest(unittest.IsolatedAsyncioTestCase):
             return {"search_text": "электрические самокаты"}
 
         self.s.engine.variable_extractor = extract
-        result = await self.s.run(scn, request="Найди в интернете электрические самокаты")
+        result = await self.s.run(scn, source="agent", request="Найди в интернете электрические самокаты")
         self.assertTrue(result["ok"], result)
         self.assertEqual(seen, [("Найди в интернете электрические самокаты", ["search_text"])])
         self.assertEqual(self.driver.calls, [("type", "электрические самокаты", False)])
@@ -243,6 +243,18 @@ class ScenarioTest(unittest.IsolatedAsyncioTestCase):
         result = await self.s.run(scn)
         self.assertFalse(result["ok"])
         self.assertIn("{search_text}", result["text"])
+        self.assertEqual(self.driver.calls, [])
+
+    async def test_ui_run_never_extracts_missing_values_with_ai(self) -> None:
+        calls = []
+        async def extract(request, definitions):
+            calls.append(request)
+            return {"city": "Казань"}
+        self.s.engine.variable_extractor = extract
+        scn = chain(("say", {"text": "{city}"}))
+        result = await self.s.run(scn, request="Город Казань")
+        self.assertFalse(result["ok"])
+        self.assertEqual(calls, [])
         self.assertEqual(self.driver.calls, [])
 
     async def test_stop_cancels_variable_extraction(self) -> None:
@@ -256,7 +268,7 @@ class ScenarioTest(unittest.IsolatedAsyncioTestCase):
         scn = {"id": "stop-vars", "name": "Стоп", "variables": [{"name": "city"}], "nodes": [
             {"id": "start", "type": "start", "links": {}},
         ]}
-        run = asyncio.create_task(self.s.run(scn, request="Найди в Казани"))
+        run = asyncio.create_task(self.s.run(scn, source="agent", request="Найди в Казани"))
         await asyncio.wait_for(started.wait(), 1)
         self.assertTrue(self.s.engine.stop())
         result = await asyncio.wait_for(run, 1)

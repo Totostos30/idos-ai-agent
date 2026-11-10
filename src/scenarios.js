@@ -1,4 +1,4 @@
-// Конструктор сценариев: блок-схема действий; объявленные переменные могут заполняться моделью.
+// Конструктор сценариев: блок-схема действий и таблицы входных/runtime-переменных.
 import { core } from "./rpc.js";
 import { el, toast, win } from "./shell.js";
 
@@ -16,7 +16,7 @@ const MEDIA_NAMES = { play_pause: "Пуск/пауза", next: "Следующи
 const NODE_W = 230;
 const SVGNS = "http://www.w3.org/2000/svg";
 
-const S = { list: [], cur: null, sel: null, meta: null, status: {}, dirty: false, running: false, picking: false };
+const S = { list: [], cur: null, sel: null, meta: null, status: {}, runtimeValues: {}, dirty: false, running: false, picking: false };
 let page = null, plane = null, svg = null, inspector = null, active = () => false;
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -87,11 +87,14 @@ export function scenarioEvent(kind, d) {
   if (!d || !S.cur || d.id !== S.cur.id) return;
   if (kind === "run") {
     S.running = d.status === "running";
-    if (d.status === "running") S.status = {};
+    if (d.status === "running") { S.status = {}; S.runtimeValues = {}; refreshRuntimeVars(); }
     else if (d.status === "ok") toast("Сценарий выполнен за " + ((d.ms || 0) / 1000).toFixed(1) + " с");
     else if (d.status === "error") toast("Сценарий: " + (d.text || "ошибка"), "error");
     const stop = page && page.querySelector(".scn-stop");
     if (stop) stop.disabled = !S.running;
+  } else if (kind === "vars") {
+    S.runtimeValues = d.values && typeof d.values === "object" ? d.values : {};
+    refreshRuntimeVars();
   } else if (kind === "step") {
     S.status[d.node] = d;
     const node = plane && plane.querySelector(`.scn-node[data-id="${d.node}"]`);
@@ -105,7 +108,7 @@ async function openScenario(id, redraw = true) {
   if (S.dirty && S.cur && !confirm("Есть несохранённые изменения. Открыть другой сценарий без сохранения?")) return;
   const r = await core.try("scenarios.get", { sid: id }, 10000);
   if (r && r.error) { toast(r.error, "error"); return; }
-  S.cur = r; S.sel = null; S.status = {}; S.dirty = false;
+  S.cur = r; S.sel = null; S.status = {}; S.runtimeValues = {}; S.dirty = false;
   if (redraw) draw();
 }
 
@@ -113,7 +116,7 @@ function newScenario() {
   if (S.dirty && S.cur && !confirm("Есть несохранённые изменения. Создать новый без сохранения?")) return;
   S.cur = { id: "", name: "Новый сценарий", description: "", triggers: [], variables: [], enabled: true,
     nodes: [{ id: "start", type: "start", x: 60, y: 30, params: {}, links: {} }] };
-  S.sel = "start"; S.status = {}; S.dirty = true;
+  S.sel = "start"; S.status = {}; S.runtimeValues = {}; S.dirty = true;
   draw();
 }
 
@@ -133,29 +136,17 @@ async function runScenario(startAt = "") {
   if (!S.cur) return;
   const saved = await save(true);
   if (!saved) return;
-  const definitions = saved.variables || [];
-  let request = "";
-  if (definitions.length) {
-    const names = definitions.map((v) => v.description ? `${v.name} — ${v.description}` : v.name).join(", ");
-    const entered = window.prompt
-      ? window.prompt(`Введите исходный запрос пользователя. Нейросеть извлечёт из него значения переменных: ${names}`, "")
-      : null;
-    if (entered === null) return;
-    request = String(entered || "").trim();
-    if (!request) {
-      toast("Введите исходный запрос, чтобы заполнить переменные", "error");
-      return;
-    }
-  }
-  let arg = "";
-  if ((saved.triggers || []).some((t) => t.includes("*")) || JSON.stringify(saved.nodes).includes("{arg}")) {
-    const entered = window.prompt ? window.prompt("Значение для {arg}:", "") : null;
-    if (entered === null) return;
-    arg = String(entered || "").trim();
+  const variables = Object.fromEntries((saved.variables || []).map((v) =>
+    [varName(v.name), String(v.value ?? v.default ?? "").trim()]));
+  const missing = (saved.variables || []).filter((v) => v.required !== false && !variables[varName(v.name)]);
+  if (missing.length) {
+    const names = missing.map((v) => "{" + varName(v.name) + "}").join(", ");
+    toast(`Не заполнены переменные: ${names}. Заполните таблицу переменных и нажмите «Запустить» ещё раз.`, "error");
+    return;
   }
   S.status = {};
   draw();
-  const r = await core.try("scenarios.run", { sid: saved.id, arg, start_at: startAt, request }, 3600000);
+  const r = await core.try("scenarios.run", { sid: saved.id, variables, start_at: startAt }, 3600000);
   if (r && r.error) toast(r.error, "error");
 }
 
@@ -320,27 +311,48 @@ function layout() {
 function scenarioVariablesEditor(scenario) {
   if (!Array.isArray(scenario.variables)) scenario.variables = [];
   const rows = scenario.variables.map((v, index) => {
-    if (typeof v === "string") v = scenario.variables[index] = { name: v, description: "", default: "" };
+    if (typeof v === "string") v = scenario.variables[index] = { name: v, description: "", value: "" };
     const name = el("input", { class: "field", value: v.name || "", placeholder: "город" });
-    const description = el("input", { class: "field", value: v.description || "", placeholder: "Что извлечь из запроса?" });
-    const fallback = el("input", { class: "field", value: v.default || "", placeholder: "Значение по умолчанию (необязательно)" });
-    for (const [input, key] of [[name, "name"], [description, "description"], [fallback, "default"]]) {
+    const description = el("input", { class: "field", value: v.description || "", placeholder: "Описание (необязательно)" });
+    const value = el("input", { class: "field scn-var-value", value: v.value ?? v.default ?? "",
+      placeholder: v.required === false ? "Необязательно — заполняется блоком" : "Обязательное значение" });
+    for (const [input, key] of [[name, "name"], [description, "description"], [value, "value"]]) {
       input.addEventListener("input", () => { v[key] = input.value; markDirty(); });
     }
-    return el("div", { class: "scn-var-row" }, name, description, fallback,
-      el("button", { class: "icon", title: "Удалить переменную", onclick: () => {
+    value.addEventListener("input", () => { v.default = ""; });
+    return el("tr", {}, el("td", {}, name), el("td", {}, description), el("td", {}, value),
+      el("td", {}, el("button", { class: "icon", title: "Удалить переменную", onclick: () => {
         scenario.variables.splice(index, 1); markDirty(); draw();
-      } }, "×"));
+      } }, "×")));
   });
   const box = el("details", { class: "scn-vars" });
   box.open = scenario.variables.length > 0;
-  box.append(el("summary", {}, `Переменные из запроса${scenario.variables.length ? ` · ${scenario.variables.length}` : ""}`),
-    el("p", { class: "mut small" }, "Переменные можно добавить вручную или указать как {имя} в триггере/тексте блока — они появятся здесь автоматически. При запуске редактор попросит исходный запрос, а модель извлечёт из него значения. В совпавшем триггере именованный шаблон получает соответствующий фрагмент напрямую. Если значение не найдено, задайте значение по умолчанию или добавьте блок «Спросить пользователя»."),
-    ...rows,
+  box.append(el("summary", {}, `Таблица переменных${scenario.variables.length ? ` · ${scenario.variables.length}` : ""}`),
+    el("div", { class: "scn-vars-panel" },
+      el("p", { class: "mut small" }, "Заполните значения до запуска. Пустые обязательные переменные остановят сценарий до первого действия. Переменные, создаваемые блоками «Спросить», «Прочитать» и «Повторить», вводить заранее не нужно."),
+      el("table", { class: "scn-var-table" },
+        el("thead", {}, el("tr", {}, el("th", {}, "Имя"), el("th", {}, "Описание"), el("th", {}, "Значение"), el("th", {}))),
+        el("tbody", {}, ...rows)),
+      el("div", { class: "scn-runtime-vars" }, el("b", {}, "Текущие значения выполнения"),
+        el("table", { class: "scn-var-table scn-runtime-table" },
+          el("thead", {}, el("tr", {}, el("th", {}, "Переменная"), el("th", {}, "Текущее значение"))),
+          el("tbody", { class: "scn-runtime-var-body" }, ...runtimeVariableRows()))),
     el("button", { class: "btn small", onclick: () => {
-      scenario.variables.push({ name: "", description: "", default: "" }); markDirty(); draw();
-    } }, "+ Переменная"));
+      scenario.variables.push({ name: "", description: "", value: "" }); markDirty(); draw();
+    } }, "+ Переменная")));
   return box;
+}
+
+function runtimeVariableRows() {
+  const entries = Object.entries(S.runtimeValues || {}).filter(([, value]) => String(value ?? "").trim())
+    .sort(([a], [b]) => a.localeCompare(b));
+  return entries.length ? entries.map(([name, value]) => el("tr", {}, el("td", {}, name), el("td", {}, String(value ?? ""))))
+    : [el("tr", { class: "scn-runtime-empty" }, el("td", { colspan: 2 }, "Значения появятся после старта сценария."))];
+}
+
+function refreshRuntimeVars() {
+  const body = page && page.querySelector(".scn-runtime-var-body");
+  if (body) body.replaceChildren(...runtimeVariableRows());
 }
 
 function draw() {
@@ -354,7 +366,7 @@ function draw() {
       : el("div", { class: "mut small" }, "Пока нет сценариев"),
     el("div", { class: "scn-side-foot" },
       el("button", { class: "btn small", onclick: importDialog }, "Импорт JSON")),
-    el("p", { class: "mut small" }, "Обычные шаги выполняются без модели. Для переменных из шаблонов {имя} редактор запросит исходную фразу, затем модель извлечёт значения. Скажите фразу-триггер или попросите: «запусти сценарий …»."));
+    el("p", { class: "mut small" }, "Обычные шаги выполняются без модели. В редакторе заполните таблицу переменных перед запуском; совпавший триггер может передать значения автоматически."));
 
   if (!S.cur) {
     page.replaceChildren(el("div", { class: "scn-wrap" }, side, el("div", { class: "scn-empty" },
@@ -669,7 +681,7 @@ function drawInspector() {
         el("li", {}, "«Если ошибка» — необязательный выход: куда идти, если элемент не найден."),
         el("li", {}, "«Проверить переменную» создаёт ветвление; «Повторить» выполняет ограниченное число итераций."),
         el("li", {}, "«Получить данные элемента» считывает имя, текст, значение, состояние или AutomationId через пипетку."),
-        el("li", {}, "Переменные над схемой извлекаются моделью из исходного запроса; используйте их как {имя}."),
+        el("li", {}, "Переменные над схемой задаются в таблице заранее; используйте их как {имя}. Пустые входные значения блокируют запуск до первого действия."),
         el("li", {}, "💬 «Спросить пользователя» запоминает ответ в переменную — потом пишите {имя} в других блоках."),
         el("li", {}, "Двойной клик по блоку — запустить сценарий с этого блока."),
         el("li", {}, "Аварийная остановка: увести курсор в левый верхний угол экрана или «■ Стоп».")));

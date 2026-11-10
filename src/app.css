@@ -344,11 +344,28 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .scn-node-head .tt { min-width: 0; overflow-wrap: anywhere; }
 .scn-outs { justify-content: center; gap: 4px; flex-wrap: wrap; }
 .scn-port { max-width: 100%; overflow-wrap: anywhere; text-align: center; }
-.scn-var-row { display: grid; grid-template-columns: minmax(110px, .7fr) minmax(160px, 1.3fr) minmax(150px, 1fr) 32px; gap: 8px; align-items: center; }
-.scn-vars { border: 1px solid var(--soft2); border-radius: 12px; padding: 8px 10px; }
-.scn-vars > summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--fg); }
-.scn-vars > p { margin: 8px 0; max-width: 760px; }
-.scn-vars > .btn { margin-top: 8px; }
+.scn-vars { position: relative; align-self: flex-start; border: 0; padding: 0; }
+.scn-vars > summary { list-style: none; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--fg); background: var(--soft); padding: 7px 11px; border-radius: 10px; }
+.scn-vars > summary::-webkit-details-marker { display: none; }
+.scn-vars[open] { z-index: 45; }
+.scn-vars-panel { position: absolute; top: calc(100% + 6px); left: 0; width: min(760px, 82vw); max-height: min(48vh, 460px); overflow: auto;
+  padding: 12px; border: 1px solid var(--soft2); border-radius: 14px; background: var(--bg, #15151b); box-shadow: 0 12px 34px rgba(0,0,0,.42); }
+.scn-vars-panel > p { margin: 0 0 10px; max-width: 740px; }
+.scn-var-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.scn-var-table th { color: var(--mut); font-size: 11px; font-weight: 600; text-align: left; padding: 4px 6px; }
+.scn-var-table th:first-child { width: 20%; }
+.scn-var-table th:nth-child(2) { width: 31%; }
+.scn-var-table th:nth-child(3) { width: 42%; }
+.scn-var-table th:last-child { width: 32px; }
+.scn-var-table td { padding: 4px; vertical-align: middle; }
+.scn-var-table .field { min-width: 0; padding: 7px 9px; }
+.scn-var-value:placeholder-shown { border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
+.scn-runtime-vars { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--soft2); }
+.scn-runtime-vars > b { display: block; margin-bottom: 5px; font-size: 12px; }
+.scn-runtime-table th:first-child { width: 28%; }
+.scn-runtime-table th:nth-child(2), .scn-runtime-table th:last-child { width: auto; }
+.scn-runtime-empty { color: var(--mut); font-size: 12px; }
+.scn-vars-panel > .btn { margin-top: 8px; }
 .scn-target-list { display: flex; flex-direction: column; gap: 8px; }
 .scn-target-item { min-width: 0; padding: 9px; border-radius: 11px; background: var(--soft); border: 1px solid var(--soft2); }
 .scn-target-item .mut { overflow-wrap: anywhere; }
@@ -357,7 +374,7 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .scn-vars .field, .scn-target-item .field { min-width: 0; }
 .scn-inspector .scn-f > .scn-target-list { width: 100%; }
 .scn-node.run-running { animation: scnPulse 1s ease-in-out infinite; }
-:root[data-theme="light"] .scn-vars { border-color: #dedee3; }
+:root[data-theme="light"] .scn-vars-panel { border-color: #dedee3; }
 :root[data-theme="light"] .scn-target-item { border-color: #e1e1e5; }
 :focus-visible { outline: 2px solid var(--accent, #7c8cff); outline-offset: 2px; }
 
@@ -384,10 +401,10 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
   .scn-head-row .scn-triggers { flex: 1 1 100%; }
   .scn-head-row > input.field:not(.scn-name) { flex: 1 1 100%; }
   .scn-vars { margin-inline: 2px; }
-  .scn-var-row { grid-template-columns: minmax(0, 1fr) 32px; }
-  .scn-var-row .field:first-child { grid-column: 1; }
-  .scn-var-row .field:nth-child(2), .scn-var-row .field:nth-child(3) { grid-column: 1; }
-  .scn-var-row .icon { grid-column: 2; grid-row: 1 / span 3; }
+  .scn-vars-panel { width: min(760px, 86vw); max-height: 38vh; }
+  .scn-var-table th:first-child { width: 22%; }
+  .scn-var-table th:nth-child(2) { width: 30%; }
+  .scn-var-table th:nth-child(3) { width: 40%; }
 }
 @media (max-width: 480px) {
   .titlebar { gap: 5px; padding-left: 8px; }

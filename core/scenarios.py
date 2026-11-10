@@ -186,6 +186,11 @@ def _variable_strings(value: Any):
 
 def scenario_variables(scenario: dict) -> list[dict]:
     """Явные переменные плюс переменные из шаблонов; выходы read/repeat не считаются входами."""
+    nodes = scenario.get("nodes", []) or []
+    produced = {
+        var_name((node.get("params") or {}).get("var"))
+        for node in nodes if isinstance(node, dict) and node.get("type") in {"read", "repeat", "ask"}
+    }
     definitions = []
     seen: set[str] = set()
     for item in scenario.get("variables", []) or []:
@@ -197,16 +202,14 @@ def scenario_variables(scenario: dict) -> list[dict]:
         if name in seen:
             continue
         seen.add(name)
+        value = item.get("value") if "value" in item else item.get("default")
         definitions.append({"name": name, "description": str(item.get("description") or "")[:300],
-                            "default": str(item.get("default") or "")[:500]})
-
-    nodes = scenario.get("nodes", []) or []
-    produced = {
-        var_name((node.get("params") or {}).get("var"))
-        for node in nodes if isinstance(node, dict) and node.get("type") in {"read", "repeat"}
-    }
+                            "value": str(value or "")[:1000], "default": str(item.get("default") or "")[:500],
+                            "required": name not in produced})
     inferred: set[str] = set()
     for trigger in scenario.get("triggers", []) or []:
+        if "*" in str(trigger):
+            inferred.add("arg")
         for match in VAR.finditer(str(trigger)):
             inferred.add(var_name(match.group(1)))
     for node in nodes:
@@ -215,12 +218,12 @@ def scenario_variables(scenario: dict) -> list[dict]:
                 inferred.update(var_name(match.group(1)) for match in VAR.finditer(text))
 
     for name in sorted(inferred):
-        if name in seen or name in produced or name == "arg" or name.isdigit():
+        if name in seen or name in produced:
             continue
         if len(definitions) >= 30:
             break
-        definitions.append({"name": name, "description": "Извлекается из исходного запроса пользователя.",
-                            "default": ""})
+        definitions.append({"name": name, "description": "Заполните значение перед запуском сценария.",
+                            "value": "", "default": "", "required": True})
     return definitions
 
 
@@ -356,12 +359,15 @@ def validate(data: dict) -> dict:
             item = {"name": item}
         if not isinstance(item, dict):
             continue
+        if not str(item.get("name") or "").strip():
+            continue
         name = var_name(item.get("name"))
         if name in seen_vars:
             continue
         seen_vars.add(name)
+        value = item.get("value") if "value" in item else item.get("default")
         out["variables"].append({"name": name, "description": str(item.get("description") or "")[:300],
-                                 "default": str(item.get("default") or "")[:500]})
+                                 "value": str(value or "")[:1000], "default": str(item.get("default") or "")[:500]})
         if len(out["variables"]) >= 30:
             break
     nodes, seen = [], set()
@@ -589,7 +595,8 @@ class Engine:
                                    "status": "running", "source": source})
         result: dict[str, Any]
         try:
-            await self._fill_declared_variables(scn, run_vars, request, outer)
+            await self._fill_declared_variables(scn, run_vars, request, outer, allow_extraction=source != "ui")
+            self.emit("scenario.vars", {"run": run_id, "id": scn["id"], "values": dict(run_vars)})
             steps = await self._walk(scn, run_vars, run_id, outer, 0, start_at)
             result = {"ok": True, "text": "готово", "steps": steps}
         except Stopped:
@@ -616,10 +623,10 @@ class Engine:
         return result
 
     async def _fill_declared_variables(self, scn: dict, variables: dict[str, str], request: str,
-                                       outer: asyncio.Event | None = None) -> None:
+                                       outer: asyncio.Event | None = None, allow_extraction: bool = True) -> None:
         definitions = scenario_variables(scn)
         missing = [v for v in definitions if not str(variables.get(var_name(v.get("name")), "")).strip()]
-        if missing and request and self.variable_extractor:
+        if missing and request and self.variable_extractor and allow_extraction:
             try:
                 self._check(outer)
                 task = asyncio.create_task(self.variable_extractor(request, missing))
@@ -652,8 +659,14 @@ class Engine:
                 log.info("scenario variable extraction failed", exc_info=True)
         for item in definitions:
             name = var_name(item.get("name"))
-            if not str(variables.get(name, "")).strip() and item.get("default"):
-                variables[name] = str(item["default"])
+            configured = item.get("value") if "value" in item else item.get("default")
+            if not str(variables.get(name, "")).strip() and configured:
+                variables[name] = str(configured).strip()[:1000]
+        missing = [var_name(item.get("name")) for item in definitions if item.get("required", True)
+                   if not str(variables.get(var_name(item.get("name")), "")).strip()]
+        if missing:
+            names = ", ".join("{" + name + "}" for name in missing)
+            raise StepError(f"не заполнены обязательные переменные: {names}; заполните таблицу переменных перед запуском")
 
     def _check(self, outer: asyncio.Event | None) -> None:
         if (self.cancel is not None and self.cancel.is_set()) or (outer is not None and outer.is_set()):
@@ -724,6 +737,7 @@ class Engine:
                 raise StepError(f"шаг «{title}» ({summary(node)}): {exc}") from exc
             self.emit("scenario.step", {"run": run_id, "id": scn["id"], "node": node["id"], "status": "ok",
                                         "text": text, "ms": int((time.time() - t0) * 1000)})
+            self.emit("scenario.vars", {"run": run_id, "id": scn["id"], "values": dict(variables)})
             current = (node.get("links") or {}).get(out)
         return steps
 
