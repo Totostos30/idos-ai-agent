@@ -123,7 +123,9 @@ def capture_point(x: int, y: int, with_path: bool = True, include_text: bool = F
                           "index": index})
             node = parent
         info["path"] = list(reversed(chain))
-        same = twins(auto, top, info)
+        # Read-node capture resolves through its saved tree path; avoid a second
+        # full-window enumeration while the Ctrl picker is active.
+        same = [] if include_text else twins(auto, top, info)
         ordinal = next((i for i, c in enumerate(same, 1) if _same(auto, c, control)), 0)
         info["ref"] = {"runtime": _runtime(control), "ordinal": ordinal, "twins": len(same)}
         if len(same) > 1 and ordinal:
@@ -306,13 +308,13 @@ def read_element(control: Any, property_name: str = "value") -> str:
         started, lines, size = time.monotonic(), [], 0
         previous = ""
         truncated = False
-        for visited, (item, _depth) in enumerate(uia.module().WalkControl(control, includeTop=True, maxDepth=50)):
-            if visited >= 5000 or time.monotonic() - started > 8:
+        for visited, (item, _depth) in enumerate(uia.module().WalkControl(control, includeTop=True, maxDepth=30)):
+            if visited >= 1200 or time.monotonic() - started > 5:
                 truncated = True
                 break
             try:
                 kind = str(getattr(item, "ControlTypeName", "") or "")
-                value = uia._value(item)
+                value = uia._value(item) if kind in uia.VALUED else ""
                 document = uia._document_text(item, 6000) if kind == "DocumentControl" else ""
                 name = str(getattr(item, "Name", "") or "")
             except Exception:  # noqa: BLE001 - controls may disappear during the scan
@@ -595,30 +597,20 @@ class WinDriver:
         return text
 
     async def pick(self, timeout: float = 60.0, include_text: bool = False) -> dict | None:
-        """Пипетка: наведите курсор на элемент и нажмите Ctrl; Esc — отмена."""
+        """Пипетка: нажмите Ctrl над целью для выбора и подсветки; Esc — отмена."""
         from . import win
         hl = Highlighter()
         hl.start()
-        last, info = None, None
         end = time.monotonic() + timeout
         try:
             while key_down(self.VK_CTRL):  # отпустите Ctrl, если он был зажат
                 await asyncio.sleep(0.05)
-            bus.emit("scenario.pick", {"state": "picking", "text": "Наведите на элемент и нажмите Ctrl · Esc — отмена"})
+            bus.emit("scenario.pick", {"state": "picking", "text": "Наведите курсор на цель и нажмите Ctrl для выбора и подсветки · Esc — отмена"})
             while time.monotonic() < end:
                 if key_down(self.VK_ESC):
                     return None
-                pos = await asyncio.to_thread(win.cursor_pos)
-                if pos != last:
-                    last = pos
-                    try:
-                        info = await self._uia(capture_point, pos[0], pos[1], False, timeout=5.0)
-                        hl.show(info["rect"], info["label"] + "  ·  Ctrl — выбрать, Esc — отмена")
-                    except Exception as exc:  # noqa: BLE001
-                        info = None
-                        hl.show(None)
-                        log.debug("hover: %s", exc)
-                if info and key_down(self.VK_CTRL):
+                if key_down(self.VK_CTRL):
+                    pos = await asyncio.to_thread(win.cursor_pos)
                     full = await self._uia(capture_point, pos[0], pos[1], True, include_text, timeout=15.0)
                     hl.show(full["rect"], full["label"] + " · выбрано")
                     await asyncio.sleep(0.9)
