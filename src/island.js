@@ -67,6 +67,14 @@ function mode() {
 }
 
 const runningTimers = () => [...S.timers.values()].filter((t) => t.state === "running");
+function timerLeft(t) {
+  const rawEnd = Number(t.ends_at ?? t.ends);
+  if (Number.isFinite(rawEnd) && rawEnd > 0) {
+    const endSeconds = rawEnd > 100_000_000_000 ? rawEnd / 1000 : rawEnd;
+    return endSeconds - Date.now() / 1000;
+  }
+  return Number(t.seconds) || 0;
+}
 
 // ------------------------------------------------------------------ rendering
 
@@ -187,8 +195,8 @@ const VIEWS = {
       el("button", { class: "icon stop", title: "Остановить запись", onclick: (e) => { e.stopPropagation(); core.try("recorder.stop"); } }, "■")),
   ],
   timer: () => {
-    const t = runningTimers().sort((a, b) => a.ends_at - b.ends_at)[0];
-    const left = t.ends_at ? t.ends_at - Date.now() / 1000 : t.seconds;
+    const t = runningTimers().sort((a, b) => timerLeft(a) - timerLeft(b))[0];
+    const left = timerLeft(t);
     return [el("div", { class: "row pill" }, el("span", { class: "ic" }, icon("timer")),
       el("span", { class: "label mono" }, fmtTime(left)), el("span", { class: "sub" }, t.label || ""),
       el("span", { class: "grow" }),
