@@ -199,48 +199,111 @@ function deleteBlock(id) {
 }
 
 function layout() {
-  // BFS-слои выравнивают блоки по этапам; ветви занимают соседние колонки,
-  // циклические обратные связи не меняют уже назначенный слой.
-  const rank = new Map();
-  const nodeIndex = new Map(S.cur.nodes.map((n, i) => [n.id, i]));
-  let maxRank = -1;
-  const placeComponent = (rootId, rootRank) => {
-    if (!nodeById(rootId) || rank.has(rootId)) return;
-    const queue = [rootId];
-    rank.set(rootId, rootRank);
-    while (queue.length) {
-      const id = queue.shift();
-      const n = nodeById(id);
-      const depth = rank.get(id);
-      maxRank = Math.max(maxRank, depth);
-      for (const out of outsOf(n.type)) {
-        const next = n.links[out];
-        if (next && nodeById(next) && !rank.has(next)) {
-          rank.set(next, depth + 1);
-          queue.push(next);
-        }
-      }
+  const all = S.cur.nodes;
+  const byId = new Map(all.map((n) => [n.id, n]));
+  const order = new Map(all.map((n, i) => [n.id, i]));
+  const edges = [];
+  for (const n of all) for (const [port, outIndex] of outsOf(n.type).map((name, i) => [name, i])) {
+    const to = n.links && n.links[port];
+    if (to && byId.has(to)) edges.push({ from: n.id, to, outIndex });
+  }
+
+  // Схлопываем циклы в компоненты: обратные связи останутся видны,
+  // но не смогут назначить блоку слой раньше его последователей.
+  let nextIndex = 0;
+  const index = new Map(), low = new Map(), stack = [], onStack = new Set(), components = [];
+  const visit = (id) => {
+    index.set(id, nextIndex); low.set(id, nextIndex++);
+    stack.push(id); onStack.add(id);
+    for (const edge of edges) if (edge.from === id) {
+      if (!index.has(edge.to)) { visit(edge.to); low.set(id, Math.min(low.get(id), low.get(edge.to))); }
+      else if (onStack.has(edge.to)) low.set(id, Math.min(low.get(id), index.get(edge.to)));
+    }
+    if (low.get(id) === index.get(id)) {
+      const component = [];
+      let member;
+      do { member = stack.pop(); onStack.delete(member); component.push(member); } while (member !== id);
+      components.push(component);
     }
   };
-  const start = S.cur.nodes.find((n) => n.type === "start");
-  if (start) placeComponent(start.id, 0);
-  for (const n of S.cur.nodes) if (!rank.has(n.id)) placeComponent(n.id, maxRank + 2);
+  for (const n of all) if (!index.has(n.id)) visit(n.id);
+
+  const componentOf = new Map();
+  components.forEach((members, ci) => members.forEach((id) => componentOf.set(id, ci)));
+  const outgoing = components.map(() => new Set());
+  const incoming = components.map(() => new Set());
+  for (const edge of edges) {
+    const from = componentOf.get(edge.from), to = componentOf.get(edge.to);
+    if (from !== to) { outgoing[from].add(to); incoming[to].add(from); }
+  }
+
+  const componentOrder = (ci) => Math.min(...components[ci].map((id) => order.get(id)));
+  const ready = components.map((_, ci) => ci).filter((ci) => !incoming[ci].size).sort((a, b) => componentOrder(a) - componentOrder(b));
+  const topo = [];
+  while (ready.length) {
+    const ci = ready.shift(); topo.push(ci);
+    for (const to of outgoing[ci]) {
+      incoming[to].delete(ci);
+      if (!incoming[to].size) {
+        ready.push(to);
+        ready.sort((a, b) => componentOrder(a) - componentOrder(b));
+      }
+    }
+  }
+  // Rebuild incoming links; Kahn's pass above consumes the sets.
+  for (const set of incoming) set.clear();
+  for (const [from, targets] of outgoing.entries()) for (const to of targets) incoming[to].add(from);
+
+  const start = all.find((n) => n.type === "start");
+  const startComponent = start ? componentOf.get(start.id) : undefined;
+  const reachable = new Set();
+  if (startComponent !== undefined) {
+    const queue = [startComponent]; reachable.add(startComponent);
+    while (queue.length) for (const to of outgoing[queue.shift()]) if (!reachable.has(to)) { reachable.add(to); queue.push(to); }
+  }
+  const rank = new Map();
+  if (startComponent !== undefined) rank.set(startComponent, 0);
+  for (const ci of topo) if (reachable.has(ci) && ci !== startComponent) {
+    rank.set(ci, Math.max(0, ...[...incoming[ci]].filter((p) => reachable.has(p)).map((p) => rank.get(p) + 1)));
+  }
+  const mainDepth = Math.max(0, ...[...rank.values()]);
+  for (const ci of topo) if (!reachable.has(ci)) {
+    const parents = [...incoming[ci]].filter((p) => !reachable.has(p));
+    rank.set(ci, parents.length ? Math.max(...parents.map((p) => rank.get(p) + 1)) : mainDepth + 2);
+  }
+
   const layers = new Map();
-  for (const n of S.cur.nodes) {
-    const depth = rank.get(n.id) || 0;
+  for (const n of all) {
+    const depth = rank.get(componentOf.get(n.id)) ?? 0;
     if (!layers.has(depth)) layers.set(depth, []);
     layers.get(depth).push(n);
   }
-  for (const [depth, nodes] of [...layers.entries()].sort((a, b) => a[0] - b[0])) {
+  const layerOrder = [...layers.keys()].sort((a, b) => a - b);
+  const position = new Map();
+  for (const nodes of layers.values()) nodes.forEach((n, i) => position.set(n.id, i));
+  const reorder = (depth, neighborDepth, forward) => {
+    const nodes = layers.get(depth);
+    const score = (node) => {
+      const related = edges.filter((e) => (forward ? e.to === node.id : e.from === node.id) &&
+        rank.get(componentOf.get(forward ? e.from : e.to)) === neighborDepth);
+      if (!related.length) return [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY];
+      const ids = related.map((e) => forward ? e.from : e.to);
+      return [ids.reduce((sum, id) => sum + position.get(id), 0) / ids.length,
+        Math.min(...related.map((e) => e.outIndex))];
+    };
     nodes.sort((a, b) => {
-      const incomingX = (node) => S.cur.nodes.filter((p) => Object.values(p.links || {}).includes(node.id))
-        .map((p) => p.x).filter(Number.isFinite);
-      const ax = incomingX(a), bx = incomingX(b);
-      const av = ax.length ? ax.reduce((x, y) => x + y, 0) / ax.length : nodeIndex.get(a.id);
-      const bv = bx.length ? bx.reduce((x, y) => x + y, 0) / bx.length : nodeIndex.get(b.id);
-      return av - bv || nodeIndex.get(a.id) - nodeIndex.get(b.id);
+      const [av, ao] = score(a), [bv, bo] = score(b);
+      return av - bv || ao - bo || order.get(a.id) - order.get(b.id);
     });
-    nodes.forEach((n, i) => { n.x = 60 + i * 290; n.y = 35 + depth * 155; });
+    nodes.forEach((n, i) => position.set(n.id, i));
+  };
+  // Несколько проходов по средним позициям родителей/потомков уменьшают пересечения.
+  for (let pass = 0; pass < 3; pass++) {
+    for (let i = 1; i < layerOrder.length; i++) reorder(layerOrder[i], layerOrder[i - 1], true);
+    for (let i = layerOrder.length - 2; i >= 0; i--) reorder(layerOrder[i], layerOrder[i + 1], false);
+  }
+  for (const depth of layerOrder) {
+    layers.get(depth).forEach((n, lane) => { n.x = 60 + lane * 290; n.y = 35 + depth * 155; });
   }
   markDirty();
   draw();
