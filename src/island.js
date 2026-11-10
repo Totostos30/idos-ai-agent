@@ -44,7 +44,7 @@ const S = {
   privacy: {},
 };
 
-let root, isl, cardsBox, fluid, lip, hoverTimer = null, leaveTimer = null, barTimer = null;
+let root, isl, cardsBox, fluid, lip, leaveTimer = null, barTimer = null;
 // автоскрытие: полоска → (навели) капсула → (держишь курсор) большая панель
 let quietSince = Date.now(), tuckTimer = null, peeked = false, lastSig = "";
 const mic = new Mic((st) => { S.mic = st; document.querySelectorAll("button.mic").forEach((b) => setMicState(b, st)); if (st.state === "error") pushCard({ title: "Микрофон", text: st.text, kind: "error" }); render(); });
@@ -474,21 +474,11 @@ function tucked(m) {
   return false;
 }
 
-function expandSoon(delay) {
-  clearTimeout(hoverTimer);
-  if (S.cfg.island.open_on_hover === false) return;
-  hoverTimer = setTimeout(() => {
-    const m = mode();
-    if (S.hover && !S.expanded && m !== "bar" && m !== "confirm") { S.expanded = true; render(); }
-  }, delay);
-}
-
 function peek() {
   if (!root.classList.contains("hidden")) return;
   peeked = true; S.hover = true; S.peekAt = Date.now();
   clearTimeout(leaveTimer);
   render();
-  expandSoon(S.cfg.island.expand_delay_ms || 700);
 }
 
 let lastMode = "";
@@ -707,7 +697,7 @@ export function mountIsland() {
   lip.addEventListener("mousemove", peek);
   root.addEventListener("mouseleave", () => {
     if (!S.hover) return;
-    setTimeout(() => { if (!isl.matches(":hover") && !lip.matches(":hover")) { S.hover = false; clearTimeout(hoverTimer); render(); } }, 500);
+    setTimeout(() => { if (!isl.matches(":hover") && !lip.matches(":hover")) { S.hover = false; render(); } }, 500);
   });
   document.body.append(root);
   new ResizeObserver(scheduleHit).observe(isl);
@@ -717,14 +707,8 @@ export function mountIsland() {
   isl.addEventListener("mouseenter", () => {
     S.hover = true;
     clearTimeout(leaveTimer);
-    if (S.cfg.island.open_on_hover === false || mode() === "bar" || mode() === "confirm") return;
-    // если остров только что выехал с полоски — большое окно открывается только если продолжать держать курсор
-    const fromLip = Date.now() - (S.peekAt || 0) < 1500;
-    if (fromLip) return;
-    expandSoon(S.cfg.island.hover_delay_ms || 280);
   });
   isl.addEventListener("mouseleave", () => {
-    clearTimeout(hoverTimer);
     leaveTimer = setTimeout(() => { if (S.expanded && !S.pinned) { S.expanded = false; render(); } }, 420);
   });
   isl.addEventListener("click", (e) => {
@@ -754,7 +738,6 @@ export function mountIsland() {
     if (inside && root.classList.contains("hidden")) peek();
     if (!inside) {
       S.hover = false;
-      clearTimeout(hoverTimer);
       if (S.cfg.island.auto_hide) render();
     }
     if (!inside && S.expanded && !S.pinned) { leaveTimer = setTimeout(() => { S.expanded = false; render(); }, 420); }
