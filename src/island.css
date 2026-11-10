@@ -254,7 +254,7 @@ button:disabled { opacity: 0.35; cursor: default; }
 
 /* ---- сверка с Island (README exuupery/island) ---- */
 /* жидкий край из феррожидкости под капсулой */
-.fluid { pointer-events: none; margin-top: -1px; opacity: var(--op-closed); transition: opacity 0.25s; }
+.fluid { pointer-events: none; margin-top: -3px; opacity: var(--op-closed); transition: opacity 0.25s; }
 .stage .cards { margin-top: -56px; }
 .island { box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.07); }
 .island[data-edge="on"][data-playing="1"]:is([data-mode="music"], [data-mode="idle"]) { box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.07); }
