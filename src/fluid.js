@@ -14,6 +14,7 @@ export class Fluid {
     this.wideDropsCtx = wideDropsCanvas.getContext("2d");
     this.wideWaveStarted = null;
     this.wideWaveOriginX = null;
+    this.musicVisibility = 0;
     this.get = getState;
     this.cursor = null;
     this.reach = 0;
@@ -52,6 +53,8 @@ export class Fluid {
     const waves = st.waves || {};
     const reducedMotion = waves.respect_reduced_motion !== false && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const dt = Math.min(48, now - this.last) / 16.7;
+    const musicVisible = !reducedMotion && st.playing && st.edge && st.pill ? 1 : 0;
+    this.musicVisibility += (musicVisible - this.musicVisibility) * (1 - Math.exp(-dt / 18));
     this.frame++;
     this.drawWideDrops(st, now);
     if (!st.liquid) {
@@ -108,7 +111,7 @@ export class Fluid {
     const musicRelease = Math.max(0.05, Math.min(1, Number(waves.music_release ?? 0.18)));
     for (let i = 0; i < n; i++) {
       const sourceIndex = bands.length ? Math.min(bands.length - 1, Math.floor((i + 0.5) * bands.length / n)) : i;
-      const target = !reducedMotion && st.playing && st.edge && st.pill ? Math.max(0, Math.min(1.8, (Number(bands[sourceIndex]) || 0) * musicGain)) : 0;
+      const target = !reducedMotion && st.playing && st.edge ? Math.max(0, Math.min(1.8, (Number(bands[sourceIndex]) || 0) * musicGain)) : 0;
       this.spikes[i] += (target - this.spikes[i]) * (target > this.spikes[i] ? musicAttack : musicRelease) * dt;
     }
 
@@ -135,7 +138,7 @@ export class Fluid {
       if (this.sag > 0.02) y += this.sag * gauss(x - W / 2, span * 0.3) * (1 + 0.08 * Math.sin(t * 0.9));
       for (let i = 0; i < n; i++) {
         const v = this.spikes[i];
-        if (v > 0.02) y += v * 65 * gauss(x - (a + ((i + 0.5) / n) * span), (span / n) * Math.max(0.1, Math.min(0.8, Number(waves.music_peak_width ?? 0.3))));
+        if (v > 0.02 && this.musicVisibility > 0.005) y += v * this.musicVisibility * 65 * gauss(x - (a + ((i + 0.5) / n) * span), (span / n) * Math.max(0.1, Math.min(0.8, Number(waves.music_peak_width ?? 0.3))));
       }
       for (const [nx, h, s] of necks) y += h * gauss(x - nx, s);
       return y * taper;
@@ -151,14 +154,14 @@ export class Fluid {
     ctx.closePath();
     ctx.fillStyle = st.bg;
     ctx.fill();
-    if (st.playing && st.edge && st.pill) {
+    if (st.playing && st.edge && this.musicVisibility > 0.005) {
       // Кончики шипов окрашены в цвет обложки и светятся.
       const g = ctx.createLinearGradient(0, 0, 0, 16);
       g.addColorStop(0, "rgba(0,0,0,0)");
       g.addColorStop(0.35, st.accent);
       g.addColorStop(1, st.accent);
       ctx.save();
-      ctx.globalAlpha = 0.95;
+      ctx.globalAlpha = 0.95 * this.musicVisibility;
       ctx.shadowColor = st.accent;
       ctx.shadowBlur = Math.max(0, Math.min(24, Number(waves.music_glow ?? 10)));
       ctx.fillStyle = g;
