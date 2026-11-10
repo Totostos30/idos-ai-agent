@@ -211,7 +211,10 @@ function startPaletteDrag(type, row, e) {
     row.removeEventListener("pointercancel", up);
     if (!moved || !plane) return;
     const hit = document.elementFromPoint(ev.clientX, ev.clientY);
-    if (hit && hit.closest(".scn-canvas")) addBlock(type, planePoint(ev));
+    if (hit && hit.closest(".scn-canvas")) {
+      const [x, y] = planePoint(ev);
+      addBlock(type, { x, y });
+    }
   };
   row.addEventListener("pointermove", move);
   row.addEventListener("pointerup", up);
