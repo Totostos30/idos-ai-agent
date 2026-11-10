@@ -212,8 +212,9 @@ fn place_island(app: &AppHandle) -> Result<(), String> {
         None => window.primary_monitor().map_err(|e| e.to_string())?.ok_or("Не найден экран")?,
     };
     let scale = monitor.scale_factor();
-    window.set_size(tauri::LogicalSize::new(ISLAND_W, ISLAND_H)).map_err(|e| e.to_string())?;
-    let x = monitor.position().x as f64 + (monitor.size().width as f64 - ISLAND_W * scale) / 2.0 + offset * scale;
+    let width = monitor.size().width as f64 / scale;
+    window.set_size(tauri::LogicalSize::new(width, ISLAND_H)).map_err(|e| e.to_string())?;
+    let x = monitor.position().x as f64 + offset * scale;
     window
         .set_position(PhysicalPosition::new(x.round() as i32, monitor.position().y))
         .map_err(|e| e.to_string())?;

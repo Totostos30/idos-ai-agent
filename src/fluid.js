@@ -2,13 +2,16 @@
 // Нижний край тянется к курсору, колется шипами под музыку цветом обложки (низкие слева, высокие справа),
 // роняет каплю, когда что-то удалось, провисает, когда вас нет, и подкапывает в дождь.
 const H = 64;
+const BEAD_R = 3.4;
 const gauss = (d, s) => Math.exp(-(d * d) / (2 * s * s));
 
 export class Fluid {
-  constructor(island, canvas, getState) {
+  constructor(island, canvas, getState, wideDropsCanvas) {
     this.isl = island;
     this.cv = canvas;
     this.ctx = canvas.getContext("2d");
+    this.wideDropsCv = wideDropsCanvas;
+    this.wideDropsCtx = wideDropsCanvas.getContext("2d");
     this.get = getState;
     this.cursor = null;
     this.reach = 0;
@@ -28,7 +31,7 @@ export class Fluid {
   // Капля отрывается от середины края и падает (успешное действие, готовый ответ, скриншот).
   bead(strength = 1) {
     if (this.beads.length > 6) return;
-    this.beads.push({ x: 0.5, y: 0, vy: 0, r: 3.4 * strength, age: 0, small: false });
+    this.beads.push({ x: 0.5, y: 0, vy: 0, r: BEAD_R * strength, age: 0, small: false });
   }
 
   drip() {
@@ -44,6 +47,7 @@ export class Fluid {
     const st = this.get();
     const dt = Math.min(48, now - this.last) / 16.7;
     this.frame++;
+    this.drawWideDrops(st, now);
     if (!st.liquid) {
       if (this.cv.style.opacity !== "0") this.cv.style.opacity = "0";
       this.beads.length = 0;
@@ -152,5 +156,46 @@ export class Fluid {
       ctx.fill();
       ctx.globalAlpha = 1;
     }
+  }
+
+  drawWideDrops(st, now) {
+    const cv = this.wideDropsCv;
+    const ctx = this.wideDropsCtx;
+    if (!cv || !ctx) return;
+    if (!st.hidden) {
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      return;
+    }
+
+    const width = Math.max(1, window.innerWidth);
+    const height = 16;
+    const dpr = window.devicePixelRatio || 1;
+    if (cv.width !== Math.round(width * dpr) || cv.height !== Math.round(height * dpr)) {
+      cv.width = Math.round(width * dpr);
+      cv.height = Math.round(height * dpr);
+      cv.style.width = width + "px";
+      cv.style.height = height + "px";
+    }
+
+    const spacing = 36;
+    const count = Math.ceil(width / spacing) + 1;
+    const second = now / 1000 * Math.PI * 2;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = st.accent;
+    ctx.shadowColor = st.accent;
+    ctx.shadowBlur = 6;
+    for (let i = 0; i < count; i++) {
+      const x = i * spacing;
+      const phase = second + (x / width) * Math.PI * 2;
+      const pulse = (Math.sin(phase) + 1) / 2;
+      const y = 7 + pulse * 4;
+      ctx.globalAlpha = 0.55 + pulse * 0.45;
+      ctx.beginPath();
+      ctx.arc(x, y, BEAD_R, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
   }
 }
