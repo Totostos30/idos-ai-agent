@@ -345,8 +345,6 @@ button:disabled { opacity: 0.35; cursor: default; }
   transition: transform 0.5s cubic-bezier(.55, 0, .3, 1), opacity 0.35s 0.12s; }
 .stage.hidden > .fluid { transition: none; opacity: 0; }
 .stage.hidden[data-playing="1"] > .fluid { transform: translateY(-52%) scale(0.92); opacity: var(--op-closed) !important; }
-.edge-wave { position: absolute; top: 0; left: 0; z-index: 4; pointer-events: none; opacity: 0; }
-.stage.hidden[data-playing="1"] > .edge-wave { opacity: 1; }
 /* режим «сквозь»: виден, но не мешает и не раскрывается */
 .stage.through > .island, .stage.through > .fluid { pointer-events: none; opacity: calc(var(--op-closed) * 0.75); }
 
