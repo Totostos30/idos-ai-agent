@@ -16,8 +16,8 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
-/// Логический размер прозрачного окна острова: остров «дышит» внутри него средствами CSS,
-/// а клики вне его формы уходят в окна под ним.
+/// Начальный размер прозрачного окна острова; при размещении ширина подстраивается под экран.
+/// Капсула «дышит» внутри него средствами CSS, а клики вне её формы уходят в окна под ними.
 const ISLAND_W: f64 = 820.0;
 const ISLAND_H: f64 = 660.0;
 
@@ -212,8 +212,9 @@ fn place_island(app: &AppHandle) -> Result<(), String> {
         None => window.primary_monitor().map_err(|e| e.to_string())?.ok_or("Не найден экран")?,
     };
     let scale = monitor.scale_factor();
-    window.set_size(tauri::LogicalSize::new(ISLAND_W, ISLAND_H)).map_err(|e| e.to_string())?;
-    let x = monitor.position().x as f64 + (monitor.size().width as f64 - ISLAND_W * scale) / 2.0 + offset * scale;
+    let width = monitor.size().width as f64 / scale;
+    window.set_size(tauri::LogicalSize::new(width, ISLAND_H)).map_err(|e| e.to_string())?;
+    let x = monitor.position().x as f64 + offset * scale;
     window
         .set_position(PhysicalPosition::new(x.round() as i32, monitor.position().y))
         .map_err(|e| e.to_string())?;

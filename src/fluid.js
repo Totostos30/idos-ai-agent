@@ -5,10 +5,15 @@ const H = 64;
 const gauss = (d, s) => Math.exp(-(d * d) / (2 * s * s));
 
 export class Fluid {
-  constructor(island, canvas, getState) {
+  constructor(island, canvas, getState, edgeCanvas) {
     this.isl = island;
     this.cv = canvas;
     this.ctx = canvas.getContext("2d");
+    this.edgeCv = edgeCanvas;
+    this.edgeCtx = edgeCanvas.getContext("2d");
+    this.edgeDrops = [];
+    this.edgeWaveAt = 0;
+    this.edgeWaveActive = false;
     this.get = getState;
     this.cursor = null;
     this.reach = 0;
@@ -44,6 +49,7 @@ export class Fluid {
     const st = this.get();
     const dt = Math.min(48, now - this.last) / 16.7;
     this.frame++;
+    this.drawEdgeWave(st, now);
     if (!st.liquid) {
       if (this.cv.style.opacity !== "0") this.cv.style.opacity = "0";
       this.beads.length = 0;
@@ -152,5 +158,59 @@ export class Fluid {
       ctx.fill();
       ctx.globalAlpha = 1;
     }
+  }
+
+  drawEdgeWave(st, now) {
+    const ctx = this.edgeCtx;
+    const cv = this.edgeCv;
+    if (!ctx || !cv) return;
+    if (!st.hidden || !st.playing || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      this.edgeDrops.length = 0;
+      this.edgeWaveActive = false;
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      return;
+    }
+
+    const width = Math.max(1, window.innerWidth);
+    const height = 18;
+    const dpr = window.devicePixelRatio || 1;
+    if (cv.width !== Math.round(width * dpr) || cv.height !== Math.round(height * dpr)) {
+      cv.width = Math.round(width * dpr);
+      cv.height = Math.round(height * dpr);
+      cv.style.width = width + "px";
+      cv.style.height = height + "px";
+    }
+    if (!this.edgeWaveActive) {
+      this.edgeWaveActive = true;
+      this.edgeWaveAt = now - 440;
+    }
+    if (now - this.edgeWaveAt >= 440) {
+      this.edgeWaveAt = now;
+      const bands = st.bands || [];
+      const energy = bands.length ? bands.reduce((sum, value) => sum + (Number(value) || 0), 0) / bands.length : 0.35;
+      for (const direction of [-1, 1]) {
+        this.edgeDrops.push({ direction, started: now, radius: 1.4 + Math.max(0, Math.min(1, energy)) * 1.8,
+          phase: Math.random() * Math.PI * 2 });
+      }
+    }
+
+    this.edgeDrops = this.edgeDrops.filter((drop) => now - drop.started < 3000);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+    for (const drop of this.edgeDrops) {
+      const progress = Math.max(0, Math.min(1, (now - drop.started) / 3000));
+      const x = width / 2 + drop.direction * width / 2 * progress;
+      const y = 7 + Math.sin(drop.phase + progress * Math.PI * 8) * 2;
+      const pulse = 0.75 + 0.25 * Math.sin(drop.phase + (now - drop.started) / 95);
+      ctx.globalAlpha = (1 - progress) ** 1.35 * pulse;
+      ctx.fillStyle = st.accent;
+      ctx.shadowColor = st.accent;
+      ctx.shadowBlur = 7;
+      ctx.beginPath();
+      ctx.ellipse(x, y, drop.radius * pulse, drop.radius * 0.72, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
   }
 }

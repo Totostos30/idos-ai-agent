@@ -676,19 +676,23 @@ export function mountIsland() {
   isl = el("div", { class: "island", "data-mode": "idle" });
   cardsBox = el("div", { class: "cards" });
   const cv = el("canvas", { class: "fluid" });
+  const edgeCv = el("canvas", { class: "edge-wave" });
   lip = el("div", { class: "lip" });
-  root.append(lip, isl, cv, cardsBox);
+  root.append(lip, isl, cv, edgeCv, cardsBox);
   fluid = new Fluid(isl, cv, () => {
     const m = mode();
     const cs = getComputedStyle(isl);
+    const hidden = root.classList.contains("hidden");
+    const musicWave = hidden && m === "music" && S.media.playing;
     return {
-      liquid: (S.cfg.island.character || "liquid") === "liquid" && (!root.classList.contains("hidden") || (m === "music" && S.media.playing)),
+      liquid: ((S.cfg.island.character || "liquid") === "liquid" && (!hidden || (m === "music" && S.media.playing))) || musicWave,
+      hidden,
       pill: m !== "panel" && m !== "bar" && m !== "confirm" && isl.dataset.lyric !== "1" && musicKind() !== "mini" || m === "idle",
       playing: !!(S.media.active && S.media.playing), edge: S.cfg.island.eq_edge !== false, bands: S.bands,
       accent: (cs.getPropertyValue("--accent") || "#7c8cff").trim(), bg: (cs.getPropertyValue("--bg") || "#000").trim(),
       rainColor: "rgba(150,190,255,0.9)", away: S.away, rain: S.weather && ["rain", "sleet", "thunder", "snow"].includes(S.weather.kind),
     };
-  });
+  }, edgeCv);
   const onCursor = (x, y) => {
     fluid.setCursor(x, y);
     const r = isl.getBoundingClientRect();
