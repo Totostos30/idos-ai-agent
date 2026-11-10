@@ -302,8 +302,14 @@ function layout() {
     for (let i = 1; i < layerOrder.length; i++) reorder(layerOrder[i], layerOrder[i - 1], true);
     for (let i = layerOrder.length - 2; i >= 0; i--) reorder(layerOrder[i], layerOrder[i + 1], false);
   }
+  const heights = new Map([...plane.querySelectorAll(".scn-node")].map((view) =>
+    [view.dataset.id, view.getBoundingClientRect().height || 0]));
+  let y = 35;
   for (const depth of layerOrder) {
-    layers.get(depth).forEach((n, lane) => { n.x = 60 + lane * 290; n.y = 35 + depth * 155; });
+    const nodes = layers.get(depth);
+    nodes.forEach((n, lane) => { n.x = 60 + lane * 290; n.y = y; });
+    const rowHeight = Math.max(110, ...nodes.map((n) => heights.get(n.id) || 0));
+    y += rowHeight + 50;
   }
   markDirty();
   draw();
