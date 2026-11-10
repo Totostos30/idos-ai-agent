@@ -15,6 +15,8 @@ export class Fluid {
     this.wideWaveStarted = null;
     this.wideWaveOriginRatio = null;
     this.musicVisibility = 0;
+    this.musicCanvasWidth = 0;
+    this.musicWidthChangedAt = 0;
     this.get = getState;
     this.cursor = null;
     this.reach = 0;
@@ -76,6 +78,16 @@ export class Fluid {
 
     const W = this.isl.offsetWidth;
     if (!W) return;
+    if (this.musicCanvasWidth && this.musicCanvasWidth !== W) {
+      this.musicCanvasWidth = W;
+      this.musicWidthChangedAt = now;
+      this.musicVisibility = 0;
+      this.spikes.fill(0);
+    } else if (!this.musicCanvasWidth) {
+      this.musicCanvasWidth = W;
+    }
+    const musicResizing = this.musicWidthChangedAt > 0 && now - this.musicWidthChangedAt < 100;
+    if (musicResizing) this.musicVisibility = 0;
     const dpr = window.devicePixelRatio || 1;
     if (this.cv.width !== Math.round(W * dpr) || this.cv.height !== Math.round(H * dpr)) {
       this.cv.width = Math.round(W * dpr);
