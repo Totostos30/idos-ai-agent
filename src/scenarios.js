@@ -177,10 +177,10 @@ function addBlock(type, dropPoint = null) {
   if (!S.cur) return;
   const spec = S.meta.blocks[type];
   const from = nodeById(S.sel) || (dropPoint ? null : S.cur.nodes[S.cur.nodes.length - 1]);
-  const x = dropPoint ? Math.max(20, Math.round((dropPoint.x - NODE_W / 2) / 10) * 10) : (from ? from.x : 60);
-  const y = dropPoint ? Math.max(20, Math.round((dropPoint.y - 45) / 10) * 10) : (from ? from.y + 120 : 40);
+  const x = dropPoint ? dropPoint.x - NODE_W / 2 : (from ? from.x : 60);
+  const y = dropPoint ? dropPoint.y - 45 : (from ? from.y + 120 : 40);
   const node = { id: uid(), type, params: clone(spec.params), links: {}, x, y };
-  while (S.cur.nodes.some((n) => Math.abs(n.x - node.x) < 40 && Math.abs(n.y - node.y) < 60)) node.y += 110;
+  if (!dropPoint) while (S.cur.nodes.some((n) => Math.abs(n.x - node.x) < 40 && Math.abs(n.y - node.y) < 60)) node.y += 110;
   if (from && outsOf(from.type).length) {
     const out = outsOf(from.type).find((o) => o !== "fail" && !from.links[o]);
     if (out) from.links[out] = node.id;
@@ -189,6 +189,18 @@ function addBlock(type, dropPoint = null) {
   S.sel = node.id;
   markDirty();
   draw();
+  if (dropPoint) {
+    const view = plane && plane.querySelector(`.scn-node[data-id="${node.id}"]`);
+    if (view) {
+      const planeRect = plane.getBoundingClientRect();
+      const nodeRect = view.getBoundingClientRect();
+      const scaleX = planeRect.width ? plane.offsetWidth / planeRect.width : 1;
+      const scaleY = planeRect.height ? plane.offsetHeight / planeRect.height : 1;
+      node.x += dropPoint.x - (nodeRect.left + nodeRect.width / 2 - planeRect.left) * scaleX;
+      node.y += dropPoint.y - (nodeRect.top + nodeRect.height / 2 - planeRect.top) * scaleY;
+      draw();
+    }
+  }
 }
 
 function startPaletteDrag(type, row, e) {
@@ -199,8 +211,8 @@ function startPaletteDrag(type, row, e) {
   const ghost = el("div", { class: "scn-node scn-drag-ghost" },
     el("div", { class: "scn-node-head" }, el("span", { class: "ic" }, ICONS[type] || "•"), el("span", { class: "tt" }, blockTitle(type))));
   const moveGhost = (ev) => {
-    ghost.style.left = `${ev.clientX + 14}px`;
-    ghost.style.top = `${ev.clientY + 14}px`;
+    ghost.style.left = `${ev.clientX - ghost.offsetWidth / 2}px`;
+    ghost.style.top = `${ev.clientY - ghost.offsetHeight / 2}px`;
   };
   document.body.append(ghost);
   moveGhost(e);
