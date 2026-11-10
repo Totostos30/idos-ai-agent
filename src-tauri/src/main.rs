@@ -266,12 +266,12 @@ fn hit_loop(app: AppHandle) {
             }
         };
         // The collapsed strip is a 12px hit region. Keep the transparent window
-        // click-through until the cursor has stayed on that strip for 2 seconds;
+        // click-through until the cursor has stayed on that strip for 10 seconds;
         // otherwise Windows/WebView can deliver hover immediately on activation.
         let strip = !hidden && !focused && hit.2 > 0.0 && hit.3 <= 12.0;
         let inside = if strip && raw_inside {
             let started = strip_hover_started.get_or_insert_with(Instant::now);
-            started.elapsed() >= Duration::from_secs(2)
+            started.elapsed() >= Duration::from_secs(10)
         } else {
             strip_hover_started = None;
             raw_inside
