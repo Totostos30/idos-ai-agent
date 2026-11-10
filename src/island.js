@@ -473,9 +473,9 @@ function tucked(m) {
   if (sig !== lastSig) { lastSig = sig; quietSince = Date.now(); }
   // Обычные задачи не скрываем. Автоскрытие действует только для покоя и музыки.
   const transient = m === "idle" || m === "music";
-  const quiet = !!I.auto_hide && !S.hover && !S.near && !S.expanded && !S.pinned && transient && !S.cards.length && !S.bar.open;
+  const quiet = !!I.auto_hide && !S.hover && (m === "music" || !S.near) && !S.expanded && !S.pinned && transient && !S.cards.length && !S.bar.open;
   if (!quiet) { quietSince = Date.now(); clearTimeout(tuckTimer); tuckTimer = null; return false; }
-  const wait = m === "music" ? 3000 : 1000;
+  const wait = 1000;
   const left = quietSince + wait - Date.now();
   if (left <= 0) { peeked = false; return true; }
   if (!tuckTimer) tuckTimer = setTimeout(() => { tuckTimer = null; render(); }, left + 30);
