@@ -19,6 +19,7 @@ const SVGNS = "http://www.w3.org/2000/svg";
 const S = { list: [], cur: null, sel: null, meta: null, status: {}, runtimeValues: {}, sidebarCollapsed: false,
   scenarioQuery: "", nodeQuery: "", dirty: false, running: false, picking: false };
 let page = null, plane = null, svg = null, inspector = null, active = () => false;
+let scenarioKeyHandlerInstalled = false;
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
 const uid = () => Math.random().toString(16).slice(2, 10);
@@ -201,6 +202,7 @@ function addBlock(type, dropPoint = null) {
       draw();
     }
   }
+  if (page && page.isConnected) page.focus({ preventScroll: true });
 }
 
 function startPaletteDrag(type, row, e) {
@@ -510,11 +512,25 @@ function draw() {
   sizePlane();
   requestAnimationFrame(drawEdges);
   drawInspector();
-  page.onkeydown = (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") { e.preventDefault(); save(); }
-    if (e.key === "Delete" && S.sel && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) deleteBlock(S.sel);
-  };
   page.tabIndex = -1;
+  if (!scenarioKeyHandlerInstalled) {
+    document.addEventListener("keydown", (e) => {
+      if (!active() || !page || !page.isConnected) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        save();
+        return;
+      }
+      const target = e.target;
+      const editing = target && (target.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(target.tagName));
+      if (e.key === "Delete" && S.sel && !editing) {
+        e.preventDefault();
+        e.stopPropagation();
+        deleteBlock(S.sel);
+      }
+    });
+    scenarioKeyHandlerInstalled = true;
+  }
 }
 
 function sizePlane() {
