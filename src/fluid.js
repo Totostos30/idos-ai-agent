@@ -12,6 +12,7 @@ export class Fluid {
     this.ctx = canvas.getContext("2d");
     this.wideDropsCv = wideDropsCanvas;
     this.wideDropsCtx = wideDropsCanvas.getContext("2d");
+    this.wideWaveStarted = null;
     this.get = getState;
     this.cursor = null;
     this.reach = 0;
@@ -162,7 +163,12 @@ export class Fluid {
     const cv = this.wideDropsCv;
     const ctx = this.wideDropsCtx;
     if (!cv || !ctx) return;
-    if (!st.hidden) {
+    const hiddenNow = !!st.hidden;
+    const justCollapsed = hiddenNow && !this.wasHidden;
+    this.wasHidden = hiddenNow;
+    if (justCollapsed && st.playing) this.wideWaveStarted = now;
+    if (!hiddenNow || this.wideWaveStarted === null || now - this.wideWaveStarted >= 3000) {
+      this.wideWaveStarted = null;
       ctx.clearRect(0, 0, cv.width, cv.height);
       return;
     }
@@ -178,9 +184,18 @@ export class Fluid {
     }
 
     const count = 32;
+    const elapsed = now - this.wideWaveStarted;
+    const travel = Math.max(0, Math.min(1, elapsed / 3000));
+    const front = width * 0.5 * travel;
+    const waveWidth = Math.max(24, width / 32 * 1.8);
     const second = now / 1000 * Math.PI * 2;
     const span = Math.max(1, width);
-    const spikes = Array.from({ length: count }, (_, i) => 0.5 + 0.5 * Math.sin(second + i * 0.55));
+    const spikes = Array.from({ length: count }, (_, i) => {
+      const x = ((i + 0.5) / count) * span;
+      const envelope = Math.exp(-((Math.abs(x - width / 2) - front) ** 2) / (2 * waveWidth ** 2));
+      const fade = 1 - travel;
+      return (0.5 + 0.5 * Math.sin(second + i * 0.55)) * envelope * fade;
+    });
     const waveY = (x) => {
       const taper = Math.pow(Math.max(0, Math.sin(Math.PI * x / span)), 0.7);
       let y = 1.1 + 0.7 * Math.sin(second * 0.65 + x / 37) + 0.4 * Math.sin(second * 0.35 - x / 23);
