@@ -506,6 +506,7 @@ function render() {
   root.classList.toggle("hidden", tucked(m));
   root.dataset.playing = isl.dataset.playing;
   root.style.setProperty("--accent", isl.style.getPropertyValue("--accent"));
+  root.style.setProperty("--lip-width", `${Math.max(1, isl.offsetWidth)}px`);
   root.classList.toggle("through", !!S.cfg.island.through_mode && (m === "idle" || m === "music" || m === "timer" || m === "rec"));
   const focusedValue = m === "bar" ? null : undefined;
   isl.replaceChildren(...(VIEWS[m] || VIEWS.idle)().filter(Boolean));
@@ -524,7 +525,7 @@ function scheduleHit() {
     hitQueued = false;
     const r = isl.getBoundingClientRect();
     if (root.classList.contains("through")) { invoke("set_hit_region", { x: 0, y: 0, width: 0, height: 0 }); return; }
-    if (root.classList.contains("hidden")) { const cx = r.left + r.width / 2; invoke("set_hit_region", { x: Math.round(cx - 110), y: 0, width: 220, height: 12 }); return; }
+    if (root.classList.contains("hidden")) { const lr = lip.getBoundingClientRect(); invoke("set_hit_region", { x: Math.round(lr.left), y: 0, width: Math.round(lr.width), height: 12 }); return; }
     let x1 = r.left, y1 = 0, x2 = r.right, y2 = r.bottom;
     for (const c of cardsBox.children) {
       const cr = c.getBoundingClientRect();
@@ -681,7 +682,7 @@ export function mountIsland() {
     const m = mode();
     const cs = getComputedStyle(isl);
     return {
-      liquid: (S.cfg.island.character || "liquid") === "liquid" && !root.classList.contains("hidden"),
+      liquid: (S.cfg.island.character || "liquid") === "liquid" && (!root.classList.contains("hidden") || (m === "music" && S.media.playing)),
       pill: m !== "panel" && m !== "bar" && m !== "confirm" && isl.dataset.lyric !== "1" && musicKind() !== "mini" || m === "idle",
       playing: !!(S.media.active && S.media.playing), edge: S.cfg.island.eq_edge !== false, bands: S.bands,
       accent: (cs.getPropertyValue("--accent") || "#7c8cff").trim(), bg: (cs.getPropertyValue("--bg") || "#000").trim(),
