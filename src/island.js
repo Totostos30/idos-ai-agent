@@ -43,7 +43,7 @@ const S = {
   privacy: {},
 };
 
-let root, isl, cardsBox, fluid, lip, hoverTimer = null, leaveTimer = null, barTimer = null;
+let root, isl, cardsBox, fluid, lip, hoverTimer = null, leaveTimer = null, peekTimer = null, barTimer = null;
 // автоскрытие: полоска → (навели) капсула → (держишь курсор) большая панель
 let quietSince = Date.now(), tuckTimer = null, peeked = false, lastSig = "";
 const mic = new Mic((st) => { S.mic = st; document.querySelectorAll("button.mic").forEach((b) => setMicState(b, st)); if (st.state === "error") pushCard({ title: "Микрофон", text: st.text, kind: "error" }); render(); });
@@ -490,6 +490,12 @@ function peek() {
   expandSoon(S.cfg.island.expand_delay_ms || 700);
 }
 
+function peekSoon() {
+  if (!root.classList.contains("hidden") || peekTimer) return;
+  const delay = Math.max(0, Number(S.cfg.island.peek_delay_ms ?? 2000));
+  peekTimer = setTimeout(() => { peekTimer = null; peek(); }, delay);
+}
+
 let lastMode = "";
 function render() {
   if (!isl) return;
@@ -698,9 +704,11 @@ export function mountIsland() {
   };
   document.addEventListener("mousemove", (e) => onCursor(e.clientX, e.clientY));
   listen("island-cursor", (p) => { if (Array.isArray(p)) onCursor(p[0], p[1]); else if (p) onCursor(p.x, p.y); });
-  lip.addEventListener("mouseenter", peek);
-  lip.addEventListener("mousemove", peek);
+  lip.addEventListener("mouseenter", peekSoon);
+  lip.addEventListener("mousemove", peekSoon);
   root.addEventListener("mouseleave", () => {
+    clearTimeout(peekTimer);
+    peekTimer = null;
     if (!S.hover) return;
     setTimeout(() => { if (!isl.matches(":hover") && !lip.matches(":hover")) { S.hover = false; clearTimeout(hoverTimer); render(); } }, 500);
   });
