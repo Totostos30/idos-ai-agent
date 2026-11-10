@@ -216,3 +216,38 @@ class Worker:
 
 def env_flag(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+_NOISY_WINERRORS = {10038, 10053, 10054, 10058, 10061}
+
+
+def _is_dropped_connection(exc: BaseException | None, message: str) -> bool:
+    if isinstance(exc, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)):
+        return True
+    if isinstance(exc, OSError) and getattr(exc, "winerror", None) in _NOISY_WINERRORS:
+        return True
+    text = f"{message} {exc or ''}".lower()
+    return "_call_connection_lost" in text or "10054" in text
+
+
+def install_asyncio_error_handler(loop: asyncio.AbstractEventLoop) -> None:
+    """Keep dropped sockets out of the error log.
+
+    On Windows the Proactor loop reports ConnectionResetError (WinError 10054) from
+    _call_connection_lost whenever a browser or a client closes its side first. That is normal
+    network noise, not a core failure: log it at DEBUG and let every other error through.
+    """
+    previous = loop.get_exception_handler()
+
+    def handler(active: asyncio.AbstractEventLoop, context: dict[str, Any]) -> None:
+        exc = context.get("exception")
+        message = str(context.get("message") or "")
+        if _is_dropped_connection(exc, message):
+            log.debug("asyncio: %s", message or exc)
+            return
+        if previous is not None:
+            previous(active, context)
+        else:
+            active.default_exception_handler(context)
+
+    loop.set_exception_handler(handler)

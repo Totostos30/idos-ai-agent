@@ -12,6 +12,7 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 import time
 from typing import Any
 
@@ -194,8 +195,19 @@ def _duration(seconds: float) -> str:
     return (f"{days} д " if days else "") + (f"{hours} ч " if hours or days else "") + f"{mins} мин"
 
 
+def os_name() -> str:
+    """Windows 11 still reports release "10" through platform.release(); the build number is reliable."""
+    if not win.IS_WINDOWS:
+        return platform.system()
+    try:
+        build = sys.getwindowsversion().build
+    except AttributeError:
+        return platform.system()
+    return "Windows 11" if build >= 22000 else "Windows 10"
+
+
 def system_info() -> str:
-    lines = [f"Система: {platform.system()} {platform.release()} ({platform.version()})", f"Компьютер: {platform.node()}"]
+    lines = [f"Система: {os_name()} {platform.release()} ({platform.version()})", f"Компьютер: {platform.node()}"]
     ps = _psutil()
     if ps is not None:
         memory = ps.virtual_memory()

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import pathlib
+import platform
 import subprocess
 import sys
 import tempfile
@@ -162,12 +163,22 @@ class SystemTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.tool("clipboard_set", text="привет"), "скопировал в буфер 6 симв.")
         self.win["set_clipboard"].assert_called_once_with("привет")
 
+    def test_os_name_uses_build_number(self) -> None:
+        with mock.patch.object(system.win, "IS_WINDOWS", True), \
+                mock.patch.object(system.sys, "getwindowsversion", return_value=SimpleNamespace(build=22631)):
+            self.assertEqual(system.os_name(), "Windows 11")
+        with mock.patch.object(system.win, "IS_WINDOWS", True), \
+                mock.patch.object(system.sys, "getwindowsversion", return_value=SimpleNamespace(build=19045)):
+            self.assertEqual(system.os_name(), "Windows 10")
+        with mock.patch.object(system.win, "IS_WINDOWS", False):
+            self.assertEqual(system.os_name(), platform.system())
+
     async def test_info_processes_settings(self) -> None:
         csv_text = '"chrome.exe","1234","Console","1","250 000 K"\r\n"notepad.exe","4321","Console","1","12 345 K"\r\n'
         with mock.patch.object(system, "_psutil", lambda: None):
             info = await self.tool("info")
             self.assertIn("Компьютер:", info)
-            self.assertIn("Диск /: свободно", info)
+            self.assertRegex(info, r"Диск .+: свободно")
             with mock.patch.object(system, "run_hidden", return_value=subprocess.CompletedProcess([], 0, csv_text, "")):
                 self.assertEqual((await self.tool("processes", limit=5)).splitlines()[0], "chrome.exe (PID 1234): 244.1 МБ")
                 self.assertEqual(await self.tool("processes", name="note"), "notepad.exe (PID 4321): 12.1 МБ")

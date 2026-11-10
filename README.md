@@ -1,4 +1,4 @@
-# Эйдос (IDOS) 2.0
+# Эйдос (IDOS) 2.5.6
 
 > Подробная инструкция по установке: [INSTALL.md](INSTALL.md)
 
@@ -13,6 +13,25 @@
 5. Самопроверка: `Selftest-IDOS.bat` или «Настройки → Самопроверка».
 
 GigaSTT (`tools\gigastt\bin`, порт 9876) запускается автоматически, если он установлен.
+
+Приложение рассчитано на **Windows 10/11**: в ядре используются UIA, WASAPI, Media Session и WinRT-OCR.
+На других ОС доступен только демо-режим без действий на компьютере.
+
+## Безопасность данных
+
+- API-ключи из интерфейса хранятся в `data/keys.json` **зашифрованными** через Windows DPAPI
+  (`CryptProtectData`): файл нельзя прочитать под другой учётной записью Windows. Старые файлы с
+  открытым текстом шифруются автоматически при первом запуске новой версии.
+- Если DPAPI недоступен, ключ сохраняется как раньше, с предупреждением в `logs/core.log`.
+- `.env`, `data/` (ключи, история, память), `logs/` и модели исключены из git и не попадают в релиз.
+- Инструменты файлов агента отказываются читать `.env` и `keys.json`; ключи маскируются в логах.
+- Пароли и коды из СМС агент не запрашивает и не сохраняет.
+
+## Навыки
+
+Встроенные плейбуки лежат в `skills/*.md` (`windows-apps`, `web-research`, `files-cleanup`).
+Пользовательские навыки создаются в интерфейсе или инструментом `skill save` и попадают в
+`data/skills/`; они перекрывают встроенные с тем же именем. Формат описан в `skills/README.md`.
 
 ## Остров: визуальные фишки
 
@@ -48,8 +67,17 @@ GigaSTT (`tools\gigastt\bin`, порт 9876) запускается автома
 
 ## Разработка
 
-- Тесты ядра: `.venv\Scripts\python -m unittest discover -s tests`.
+- Тесты ядра: `.venv\Scripts\python -m unittest discover -s tests` (полный набор без сети и ключей).
 - Демо без Windows и ключей: `python -m core --demo`, затем откройте `index.html?view=island&port=…&token=…` (данные из `data/runtime/core.json`) и вызовите `demo.play`.
+- Версия задаётся один раз в `core/config.py`; тест `tests/test_version.py` проверяет совпадение с
+  `package.json`, `package-lock.json`, `tauri.conf.json`, `Cargo.toml`/`Cargo.lock` и заголовками документации.
+- Крупные модули разделены: `core/agent_text.py` (чистый текст агента), `core/scenario_driver.py`
+  (UIA, окна, пипетка); `agent.py` и `scenarios.py` остаются точками входа и реэкспортируют имена.
+- CI (`.github/workflows/ci.yml`): тесты Python 3.11 на Windows, сборка Vite, `cargo check` оболочки.
+- Portable-релиз: `powershell -ExecutionPolicy Bypass -File scripts\Build-Release.ps1`
+  (тесты → Vite → exe Tauri → `release\IDOS-<версия>` и zip). NSIS-установщик намеренно не используется:
+  приложению нужны Python-ядро и `.venv` рядом с exe, поэтому релиз — папка, которую пользователь
+  один раз готовит через `scripts\Setup.ps1`.
 
 ## Сверка с Island (v2.1)
 

@@ -115,12 +115,16 @@ class MediaFeatureTest(BusCase):
         media.state = {"active": True, "playing": False, "title": "Song", "artist": "Band", "app": "Spotify",
                        "position": 10.0, "duration": 200.0, "position_at": time.time(), "track_id": "abc"}
         media.lyrics = {"synced": True, "lines": LYRICS, "plain": "", "track_id": "abc"}
+        # The tool refreshes from Windows first; on a machine without a player that would wipe the fixture state.
+        media.supported = lambda: False
+        media.refresh = mock.AsyncMock(return_value=False)
         run = lambda action, args: asyncio.run(handler(action, args, None))  # noqa: E731
         self.assertEqual(run("now", {}), "на паузе в Spotify: Band — Song (0:10 из 3:20)")
         self.assertIn("▶ вторая", run("lyrics", {}))
         self.assertIn("третья", run("lyrics", {"full": True}))
-        with self.assertRaises(ToolError):
-            run("control", {"command": "next"})
+        with mock.patch.object(media_mod.config, "IS_WINDOWS", False):
+            with self.assertRaises(ToolError):
+                run("control", {"command": "next"})
         with mock.patch.object(media_mod.config, "IS_WINDOWS", True), mock.patch("core.win.hotkey") as hotkey:
             self.assertEqual(run("control", {"command": "next"}), "следующий трек")
         hotkey.assert_called_once_with("media_next")

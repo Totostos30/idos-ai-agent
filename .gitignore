@@ -2,6 +2,7 @@
 .venv/
 node_modules/
 dist/
+release/
 src-tauri/target/
 __pycache__/
 *.py[cod]

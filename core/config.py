@@ -21,12 +21,13 @@ def _root() -> pathlib.Path:
 
 
 ROOT = _root()
+CODE_ROOT = pathlib.Path(__file__).resolve().parents[1]  # встроенные навыки живут рядом с кодом, не в IDOS_HOME
 DATA = ROOT / "data"
 TEMP = ROOT / "Temp"
 LOGS = ROOT / "logs"
 MODELS = ROOT / "models"
 TOOLS_DIR = ROOT / "tools"
-SKILLS_DIR = ROOT / "skills"
+SKILLS_DIR = CODE_ROOT / "skills"
 RUNTIME = DATA / "runtime"
 BACKUPS = TEMP / "backups"
 WORKSPACE = DATA / "workspace"

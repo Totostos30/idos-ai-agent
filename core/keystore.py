@@ -1,4 +1,4 @@
-"""API keys: data/keys.json (managed from the UI) plus .env / environment variables.
+"""API keys: data/keys.json (managed from the UI, encrypted at rest with Windows DPAPI) plus .env / environment variables.
 
 Several keys per provider are supported (GROQ_API_KEYS=key1,key2 or GROQ_API_KEY_1=…, GROQ_API_KEY_2=…).
 The agent's file tools refuse to read .env and keys.json; util.SecretFilter masks keys in logs.
@@ -19,6 +19,83 @@ from typing import Any, Mapping
 from . import config
 
 log = logging.getLogger("idos.keystore")
+
+ENC_PREFIX = "enc:v1:"
+CRYPTPROTECT_UI_FORBIDDEN = 0x1
+
+
+class _DataBlob:
+    """ctypes DATA_BLOB for CryptProtectData / CryptUnprotectData (Windows DPAPI)."""
+
+    def __init__(self, data: bytes = b"") -> None:
+        import ctypes
+        from ctypes import wintypes
+
+        self._ctypes = ctypes
+        self._buffer = ctypes.create_string_buffer(data) if data else None
+        self.blob = ctypes.Structure  # replaced below by the real instance
+        blob_type = type("DATA_BLOB", (ctypes.Structure,), {
+            "_fields_": [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_char))]})
+        self.blob = blob_type(len(data), ctypes.cast(self._buffer, ctypes.POINTER(ctypes.c_char)) if data else None)
+        self._blob_type = blob_type
+
+    def free(self) -> None:
+        if self.blob.pbData:
+            self._ctypes.windll.kernel32.LocalFree(self.blob.pbData)
+
+
+def protect_secret(secret: str) -> str:
+    """Encrypt an API key at rest with the current Windows user's DPAPI key.
+
+    Falls back to plaintext on non-Windows or when DPAPI is unavailable, so a key is never lost.
+    """
+    if not secret or secret.startswith(ENC_PREFIX) or not config.IS_WINDOWS:
+        return secret
+    try:
+        import base64
+        import ctypes
+
+        src = _DataBlob(secret.encode("utf-8"))
+        dst = _DataBlob()
+        ok = ctypes.windll.crypt32.CryptProtectData(
+            ctypes.byref(src.blob), "IDOS API key", None, None, None,
+            CRYPTPROTECT_UI_FORBIDDEN, ctypes.byref(dst.blob))
+        if not ok:
+            raise ctypes.WinError()
+        try:
+            raw = ctypes.string_at(dst.blob.pbData, dst.blob.cbData)
+            return ENC_PREFIX + base64.b64encode(raw).decode("ascii")
+        finally:
+            dst.free()
+    except Exception as exc:  # noqa: BLE001 - never lose a key because encryption failed
+        log.warning("cannot encrypt API key at rest, keeping plaintext: %s", exc)
+        return secret
+
+
+def unprotect_secret(secret: str) -> str:
+    """Decrypt a value written by protect_secret; empty string means the key is unreadable."""
+    if not secret or not secret.startswith(ENC_PREFIX):
+        return secret
+    try:
+        import base64
+        import ctypes
+
+        raw = base64.b64decode(secret[len(ENC_PREFIX):])
+        src = _DataBlob(raw)
+        dst = _DataBlob()
+        ok = ctypes.windll.crypt32.CryptUnprotectData(
+            ctypes.byref(src.blob), None, None, None, None,
+            CRYPTPROTECT_UI_FORBIDDEN, ctypes.byref(dst.blob))
+        if not ok:
+            raise ctypes.WinError()
+        try:
+            return ctypes.string_at(dst.blob.pbData, dst.blob.cbData).decode("utf-8")
+        finally:
+            dst.free()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("cannot decrypt a stored API key (different Windows user or machine?): %s", exc)
+        return ""
+
 
 ENV_NAMES: dict[str, tuple[str, ...]] = {
     "groq": ("GROQ_API_KEY", "GROQ_API_KEYS"),
@@ -85,15 +162,61 @@ class KeyStore:
             return {"keys": [], "env": {}}
         data.setdefault("keys", [])
         data.setdefault("env", {})
+        for item in data["keys"]:
+            if not isinstance(item, dict) or not item.get("secret"):
+                continue
+            plain = unprotect_secret(str(item["secret"]))
+            if plain:
+                item["secret"] = plain
+            else:
+                # Ключ зашифрован другим пользователем Windows или файл повреждён: не отдаём мусор.
+                item["secret"] = ""
+                item["unreadable"] = True
         return data
 
     def _save(self, data: dict[str, Any]) -> None:
-        config.atomic_write(self.path, json.dumps(data, ensure_ascii=False, indent=2))
+        out = dict(data)
+        out["keys"] = [
+            dict(item, secret=protect_secret(str(item.get("secret", ""))))
+            if isinstance(item, dict) else item
+            for item in data.get("keys", [])
+        ]
+        config.atomic_write(self.path, json.dumps(out, ensure_ascii=False, indent=2))
 
     def _env_values(self) -> dict[str, str]:
         values = parse_env_file(self.env_file)
         values.update({k: v for k, v in self.environ.items() if k.endswith(tuple("0123456789")) or "API_KEY" in k})
         return values
+
+    def migrate_plaintext(self) -> int:
+        """Зашифровать ключи, сохранённые старыми версиями открытым текстом.
+
+        Вызывается при старте: сама по себе загрузка не перезаписывает файл. Возвращает число
+        ключей, которые удалось зашифровать (0, если миграция не нужна или DPAPI недоступен).
+        """
+        if not config.IS_WINDOWS:
+            return 0
+        with self._lock:
+            try:
+                raw = json.loads(self.path.read_text(encoding="utf-8-sig"))
+            except (OSError, ValueError):
+                return 0
+            items = raw.get("keys") if isinstance(raw, dict) else None
+            plain = [item for item in items or []
+                     if isinstance(item, dict) and item.get("secret")
+                     and not str(item["secret"]).startswith(ENC_PREFIX)]
+            if not plain:
+                return 0
+            try:
+                self._save(self._load())
+                stored = self.path.read_text(encoding="utf-8-sig")
+            except OSError as exc:
+                log.warning("cannot encrypt stored API keys (read-only folder?): %s", exc)
+                return 0
+            if ENC_PREFIX not in stored:
+                return 0
+            log.info("encrypted %d API key(s) at rest", len(plain))
+            return len(plain)
 
     def entries(self, provider: str | None = None) -> list[dict[str, Any]]:
         """All keys in a stable order: [{id, provider, secret, label, source, enabled}]."""

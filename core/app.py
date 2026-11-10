@@ -25,7 +25,7 @@ from .stt import GigaSTT
 from .tools import build_registry
 from .tools.browser import BrowserManager
 from .tts import TTS
-from .util import setup_logging
+from .util import install_asyncio_error_handler, setup_logging
 
 log = logging.getLogger("idos.app")
 
@@ -86,6 +86,7 @@ class App:
         self.settings = settings or config.settings()
         self.db = DB()
         self.keystore = KeyStore()
+        self.keystore.migrate_plaintext()
         self.router = Router(self.settings, self.keystore, bus.emit)
         self.memory = Memory(self.db)
         self.skills = Skills()
@@ -180,6 +181,7 @@ class App:
 
 async def run(port: int = 9877, demo: bool = False) -> None:
     setup_logging(os.environ.get("IDOS_LOG_LEVEL", "INFO"))
+    install_asyncio_error_handler(asyncio.get_running_loop())
     app = App(demo=demo)
     await app.start(port)
     loop = asyncio.get_running_loop()

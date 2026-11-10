@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import io
 import json
-import shutil
 import sys
 import time
 import types
@@ -211,12 +210,13 @@ class OcrTest(unittest.TestCase):
         ImageDraw.Draw(img).text((10, 25), "HELLO OCR 2026", fill="black")
         buf = io.BytesIO()
         img.resize((1680, 320)).save(buf, "PNG")
-        if shutil.which("tesseract"):
-            self.assertIsInstance(asyncio.run(ocr.recognize(buf.getvalue(), "en")), list)
+        # Windows OCR or Tesseract may be installed: then recognition succeeds, otherwise the error explains why.
+        try:
+            lines = asyncio.run(ocr.recognize(buf.getvalue(), "en"))
+        except ocr.OcrUnavailable as exc:
+            self.assertTrue(str(exc))
         else:
-            with self.assertRaises(ocr.OcrUnavailable) as caught:
-                asyncio.run(ocr.recognize(buf.getvalue()))
-            self.assertIn("winrt", str(caught.exception))
+            self.assertIsInstance(lines, list)
 
 
 WINDOWS = [
