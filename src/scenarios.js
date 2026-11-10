@@ -191,6 +191,33 @@ function addBlock(type, dropPoint = null) {
   draw();
 }
 
+function startPaletteDrag(type, row, e) {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  const sx = e.clientX, sy = e.clientY;
+  let moved = false;
+  row.classList.add("dragging");
+  try { row.setPointerCapture(e.pointerId); } catch (_) { /* fallback below */ }
+  const move = (ev) => {
+    if (!moved && Math.abs(ev.clientX - sx) + Math.abs(ev.clientY - sy) < 5) return;
+    moved = true;
+    ev.preventDefault();
+  };
+  const up = (ev) => {
+    row.classList.remove("dragging");
+    try { row.releasePointerCapture(e.pointerId); } catch (_) { /* already released */ }
+    row.removeEventListener("pointermove", move);
+    row.removeEventListener("pointerup", up);
+    row.removeEventListener("pointercancel", up);
+    if (!moved || !plane) return;
+    const hit = document.elementFromPoint(ev.clientX, ev.clientY);
+    if (hit && hit.closest(".scn-canvas")) addBlock(type, planePoint(ev));
+  };
+  row.addEventListener("pointermove", move);
+  row.addEventListener("pointerup", up);
+  row.addEventListener("pointercancel", up);
+}
+
 function deleteBlock(id) {
   const node = nodeById(id);
   if (!node || node.type === "start") return;
@@ -381,12 +408,12 @@ function draw() {
   filterScenarioRows();
 
   const nodeSearch = el("input", { class: "field scn-list-search scn-node-search", type: "search", placeholder: "Поиск узла", value: S.nodeQuery });
-  const nodeRows = PALETTE.map((t) => el("button", { class: "scn-node-item", draggable: true, title: blockTitle(t), "data-search": blockTitle(t).toLocaleLowerCase(),
-    ondragstart: (e) => {
-      e.dataTransfer.effectAllowed = "copy";
-      e.dataTransfer.setData("application/x-idos-scenario-block", t);
-      e.dataTransfer.setData("text/plain", t);
-    } }, el("span", { class: "scn-node-icon" }, ICONS[t]), el("span", { class: "scn-node-label" }, blockTitle(t))));
+  const nodeRows = PALETTE.map((t) => {
+    const row = el("button", { class: "scn-node-item", title: blockTitle(t), "data-search": blockTitle(t).toLocaleLowerCase() },
+      el("span", { class: "scn-node-icon" }, ICONS[t]), el("span", { class: "scn-node-label" }, blockTitle(t)));
+    row.addEventListener("pointerdown", (e) => startPaletteDrag(t, row, e));
+    return row;
+  });
   const nodeList = el("div", { class: "scn-list scn-node-list" }, nodeRows);
   const filterNodeRows = () => {
     S.nodeQuery = nodeSearch.value;
@@ -513,6 +540,9 @@ function select(id) {
 }
 
 function startMove(n, view, e) {
+  e.preventDefault();
+  e.stopPropagation();
+  try { view.setPointerCapture(e.pointerId); } catch (_) { /* fallback to window listeners */ }
   const sx = e.clientX, sy = e.clientY, ox = n.x, oy = n.y;
   let moved = false;
   const move = (ev) => {
@@ -527,10 +557,13 @@ function startMove(n, view, e) {
   const up = () => {
     window.removeEventListener("pointermove", move);
     window.removeEventListener("pointerup", up);
+    window.removeEventListener("pointercancel", up);
+    try { view.releasePointerCapture(e.pointerId); } catch (_) { /* already released */ }
     if (moved) { markDirty(); sizePlane(); drawEdges(); }
   };
   window.addEventListener("pointermove", move);
   window.addEventListener("pointerup", up);
+  window.addEventListener("pointercancel", up);
 }
 
 function planePoint(ev) {

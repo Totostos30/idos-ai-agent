@@ -237,8 +237,9 @@ button:active > .gmic-wrap .gmic { transform: scale(.86); }
 .scn-list-search { flex: none; min-height: 34px; padding: 6px 9px; }
 .scn-list { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; }
 .scn-node-list { align-content: flex-start; }
-.scn-node-item { display: flex; align-items: center; gap: 8px; flex: none; min-width: 0; padding: 6px 8px; border: 0; border-radius: 9px; background: transparent; color: var(--fg); text-align: left; cursor: grab; user-select: none; }
+.scn-node-item { display: flex; align-items: center; gap: 8px; flex: none; min-width: 0; padding: 6px 8px; border: 0; border-radius: 9px; background: transparent; color: var(--fg); text-align: left; cursor: grab; user-select: none; touch-action: none; }
 .scn-node-item:hover { background: var(--soft); }
+.scn-node-item.dragging { opacity: .65; cursor: grabbing; }
 .scn-node-item:active { cursor: grabbing; }
 .scn-node-icon { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 8px; background: var(--soft); }
 .scn-node-label { min-width: 0; overflow-wrap: anywhere; }
@@ -267,7 +268,7 @@ button:active > .gmic-wrap .gmic { transform: scale(.86); }
 .scn-arrow { fill: none; stroke: #7c8cff; stroke-width: 2.2; stroke-linecap: round; }
 .scn-edge-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
 .scn-edge-hit:hover { stroke: rgba(255,80,80,.25); }
-.scn-node { position: absolute; box-sizing: border-box; background: var(--bg, #15151b); border: 1.5px solid var(--soft2); border-radius: 16px; padding: 10px 12px 26px; box-shadow: 0 6px 22px rgba(0,0,0,.28); cursor: grab; user-select: none; transition: border-color .15s, box-shadow .15s; }
+.scn-node { position: absolute; box-sizing: border-box; background: var(--bg, #15151b); border: 1.5px solid var(--soft2); border-radius: 16px; padding: 10px 12px 26px; box-shadow: 0 6px 22px rgba(0,0,0,.28); cursor: grab; user-select: none; touch-action: none; transition: border-color .15s, box-shadow .15s; }
 .scn-node:active { cursor: grabbing; }
 .scn-node.sel { border-color: #7c8cff; box-shadow: 0 0 0 3px rgba(124,140,255,.25), 0 8px 26px rgba(0,0,0,.35); }
 .scn-node.t-start, .scn-node.t-end { border-radius: 22px; padding-bottom: 24px; }
