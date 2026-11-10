@@ -79,7 +79,7 @@ BLOCKS: dict[str, dict[str, Any]] = {
              "params": {"target": None, "var": "value", "property": "value", "timeout": 10.0}},
     "media": {"title": "Медиа-клавиша", "outs": ["next"], "params": {"action": "play_pause"}},
     "open": {"title": "Открыть файл/ссылку", "outs": ["next", "fail"], "params": {"path": ""}},
-    "say": {"title": "Сказать вслух", "outs": ["next"], "params": {"text": ""}},
+    "say": {"title": "Сказать вслух", "outs": ["next"], "params": {"text": "", "wait": True}},
     "ask": {"title": "Спросить пользователя", "outs": ["next", "fail"],
             "params": {"question": "", "var": "answer", "mode": "any", "choices": "", "default": "", "timeout": 60.0,
                        "extract": "", "skip_known": True}},
@@ -804,7 +804,7 @@ class Engine:
         if kind == "open":
             return "next", await d.open(str(p.get("path") or ""))
         if kind == "say":
-            return "next", await d.say(str(p.get("text") or ""))
+            return "next", await d.say(str(p.get("text") or ""), wait=bool(p.get("wait", True)))
         if kind == "ask":
             return await self._do_ask(p, variables, run_id, outer)
         if kind == "window":

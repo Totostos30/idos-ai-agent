@@ -19,6 +19,7 @@ from core.scenarios import Scenarios, StepError, Store, norm, validate  # noqa: 
 class FakeDriver:
     def __init__(self, missing: set[str] | None = None) -> None:
         self.calls: list[tuple] = []
+        self.say_waits: list[bool] = []
         self.missing = missing or set()
 
     async def launch(self, app):
@@ -60,8 +61,9 @@ class FakeDriver:
         self.calls.append(("open", path))
         return path
 
-    async def say(self, text):
+    async def say(self, text, wait=False):
         self.calls.append(("say", text))
+        self.say_waits.append(wait)
         return text
 
 
@@ -116,6 +118,15 @@ class ScenarioTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(statuses.count("ok"), 4)
         runs = [d["status"] for e, d in self.events if e == "scenario.run"]
         self.assertEqual(runs, ["running", "ok"])
+
+    async def test_say_wait_flag_defaults_to_wait_and_can_be_disabled(self) -> None:
+        default = await self.s.run(chain(("say", {"text": "Подожду"})))
+        self.assertTrue(default["ok"], default)
+        self.assertEqual(self.driver.say_waits, [True])
+
+        disabled = await self.s.run(chain(("say", {"text": "Не жду", "wait": False})))
+        self.assertTrue(disabled["ok"], disabled)
+        self.assertEqual(self.driver.say_waits, [True, False])
 
     async def test_branches_and_fail_link(self) -> None:
         self.driver.missing = {"Реклама", "Нет такой"}

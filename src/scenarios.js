@@ -639,7 +639,9 @@ function drawInspector() {
       field("Переменная итерации", textInput(n, "var", "iteration"), "Внутри цикла принимает значения от 1 до N.")); break;
     case "media": parts.push(field("Действие", selectInput(n, "action", MEDIA_NAMES))); break;
     case "open": parts.push(field("Файл, папка или ссылка", textInput(n, "path", "https://music.yandex.ru или C:\\…"))); break;
-    case "say": parts.push(field("Фраза", textInput(n, "text", "Включаю вашу музыку"), "Можно подставлять ответы: «Включаю {исполнитель}»")); break;
+    case "say": parts.push(
+      field("Фраза", textInput(n, "text", "Включаю вашу музыку"), "Можно подставлять ответы: «Включаю {исполнитель}»"),
+      checkInput(n, "wait", "Ждать окончания речи")); break;
     case "ask": parts.push(
       field("Вопрос", textInput(n, "question", "Какого исполнителя включить?")),
       field("Имя переменной", textInput(n, "var", "исполнитель"), "Дальше пишите {" + varName(p.var) + "} в любом текстовом поле: «Ввести текст», «Сказать», «Открыть», «Запустить»…"),

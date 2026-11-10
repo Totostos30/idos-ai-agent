@@ -542,10 +542,10 @@ class WinDriver:
         except win.WinError as exc:
             raise StepError(str(exc)) from exc
 
-    async def say(self, text: str) -> str:
+    async def say(self, text: str, wait: bool = False) -> str:
         tts = getattr(self.app, "tts", None)
         if tts and text:
-            await tts.say(text, interrupt=True)
+            await tts.say(text, interrupt=True, wait=wait)
         return text
 
     async def pick(self, timeout: float = 60.0) -> dict | None:
@@ -608,7 +608,7 @@ class NoDriver:
 
     launch = focus = click = read = type = hotkey = media = open = window = _no
 
-    async def say(self, text: str) -> str:
+    async def say(self, text: str, wait: bool = False) -> str:
         return text
 
     async def find(self, *_: Any) -> None:
