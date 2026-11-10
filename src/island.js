@@ -459,14 +459,14 @@ function renderCards() {
 
 function tucked(m) {
   const I = S.cfg.island;
-  // смена режима, трека или паузы — тоже «что-то произошло»: остров показывается на пару секунд
+  // Смена режима, трека или состояния воспроизведения запускает новый короткий показ.
   const sig = m + "|" + (S.media.track_id || S.media.title || "") + "|" + (S.media.playing ? 1 : 0);
   if (sig !== lastSig) { lastSig = sig; quietSince = Date.now(); }
-  const music = m === "music" && I.auto_hide_music !== false;
-  const quiet = !!I.auto_hide && !S.hover && !S.expanded && !S.pinned && (m === "idle" || music) && !S.cards.length && !S.bar.open;
+  // Обычные задачи не скрываем. Автоскрытие действует только для покоя и музыки.
+  const transient = m === "idle" || m === "music";
+  const quiet = !!I.auto_hide && !S.hover && !S.expanded && !S.pinned && transient && !S.cards.length && !S.bar.open;
   if (!quiet) { quietSince = Date.now(); clearTimeout(tuckTimer); tuckTimer = null; return false; }
-  // после «подглядывания» с полоски уезжаем обратно быстро, иначе — после auto_hide_delay секунд тишины
-  const wait = peeked ? 1200 : Math.max(1, Number(I.auto_hide_delay ?? 6)) * 1000;
+  const wait = m === "music" ? 3000 : 1000;
   const left = quietSince + wait - Date.now();
   if (left <= 0) { peeked = false; return true; }
   if (!tuckTimer) tuckTimer = setTimeout(() => { tuckTimer = null; render(); }, left + 30);
@@ -747,7 +747,11 @@ export function mountIsland() {
   listen("island-hover", (inside) => {
     // Rust releases the strip hit-region only after the 2-second dwell.
     if (inside && root.classList.contains("hidden")) peek();
-    if (!inside && S.hover && S.cfg.island.auto_hide) setTimeout(() => { if (!isl.matches(":hover")) { S.hover = false; clearTimeout(hoverTimer); render(); } }, 700);
+    if (!inside) {
+      S.hover = false;
+      clearTimeout(hoverTimer);
+      if (S.cfg.island.auto_hide) render();
+    }
     if (!inside && S.expanded && !S.pinned) { leaveTimer = setTimeout(() => { S.expanded = false; render(); }, 420); }
   });
   listen("core-restarted", () => pushCard({ title: "Ядро перезапущено", kind: "ok", timeout: 3 }));
