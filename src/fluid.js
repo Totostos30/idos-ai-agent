@@ -168,7 +168,7 @@ export class Fluid {
     }
 
     const width = Math.max(1, window.innerWidth);
-    const height = 16;
+    const height = H;
     const dpr = window.devicePixelRatio || 1;
     if (cv.width !== Math.round(width * dpr) || cv.height !== Math.round(height * dpr)) {
       cv.width = Math.round(width * dpr);
@@ -177,25 +177,35 @@ export class Fluid {
       cv.style.height = height + "px";
     }
 
-    const spacing = 36;
-    const count = Math.ceil(width / spacing) + 1;
+    const count = 32;
     const second = now / 1000 * Math.PI * 2;
+    const span = Math.max(1, width);
+    const spikes = Array.from({ length: count }, (_, i) => 0.5 + 0.5 * Math.sin(second + i * 0.55));
+    const waveY = (x) => {
+      const taper = Math.pow(Math.max(0, Math.sin(Math.PI * x / span)), 0.7);
+      let y = 1.1 + 0.7 * Math.sin(second * 0.65 + x / 37) + 0.4 * Math.sin(second * 0.35 - x / 23);
+      for (let i = 0; i < count; i++) {
+        if (spikes[i] > 0.02) y += spikes[i] * 65 * gauss(x - ((i + 0.5) / count) * span, (span / count) * 0.3);
+      }
+      return y * taper;
+    };
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = st.accent;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    for (let x = 0; x <= width; x += 2) ctx.lineTo(x, waveY(x));
+    ctx.lineTo(width, 0);
+    ctx.closePath();
+    ctx.fillStyle = st.bg;
+    ctx.fill();
+    const gradient = ctx.createLinearGradient(0, 0, 0, 22);
+    gradient.addColorStop(0, "rgba(0,0,0,0)");
+    gradient.addColorStop(0.35, st.accent);
+    gradient.addColorStop(1, st.accent);
+    ctx.fillStyle = gradient;
     ctx.shadowColor = st.accent;
-    ctx.shadowBlur = 6;
-    for (let i = 0; i < count; i++) {
-      const x = i * spacing;
-      const phase = second + (x / width) * Math.PI * 2;
-      const pulse = (Math.sin(phase) + 1) / 2;
-      const y = 7 + pulse * 4;
-      ctx.globalAlpha = 0.55 + pulse * 0.45;
-      ctx.beginPath();
-      ctx.arc(x, y, BEAD_R, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 10;
+    ctx.fill();
     ctx.shadowBlur = 0;
   }
 }
