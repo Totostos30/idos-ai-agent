@@ -821,6 +821,17 @@ export function mountIsland() {
     if (t.state === "cancelled") S.timers.delete(t.id);
     render();
   });
+  core.on("core.lost", () => {
+    S.bands = new Array(12).fill(0);
+    S.media = { ...(S.media || {}), playing: false };
+    if (isl) { isl.style.setProperty("--lvl", "0"); isl.style.setProperty("--bass", "0"); }
+    render();
+  });
+  core.on("core.connected", () => {
+    core.try("media.state", {}, 5000).then((m) => {
+      if (m && !m.error) { S.media = m; render(); }
+    });
+  });
   core.on("media.state", (m) => { S.media = m || { active: false }; render(); });
   core.on("media.position", (p) => { if (S.media) { S.media.position = p.position; if (mode() === "panel" && S.tab === "now" && Date.now() - (S.posDrawn || 0) > 900) { S.posDrawn = Date.now(); render(); } } });
   core.on("media.levels", (d) => {

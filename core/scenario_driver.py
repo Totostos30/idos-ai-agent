@@ -9,9 +9,11 @@ from __future__ import annotations
 import asyncio
 import base64
 import io
+import json
 import logging
 import os
-import queue
+import subprocess
+import sys
 import threading
 import time
 from typing import Any, Callable
@@ -361,74 +363,103 @@ def key_down(vk: int) -> bool:
     return bool(ctypes.windll.user32.GetAsyncKeyState(vk) & 0x8000)
 
 
+_HIGHLIGHTER_CHILD = r'''
+import ctypes, json, queue, sys, threading, tkinter as tk
+ox, oy, width, height = (lambda g: (g["x"], g["y"], g["width"], g["height"]))(json.loads(sys.argv[1]))
+commands = queue.Queue()
+def read_commands():
+    for line in sys.stdin:
+        try: commands.put(json.loads(line))
+        except Exception: pass
+threading.Thread(target=read_commands, daemon=True).start()
+root = tk.Tk()
+root.overrideredirect(True)
+root.attributes("-topmost", True)
+root.configure(bg="#ff00ff")
+root.attributes("-transparentcolor", "#ff00ff")
+root.geometry(f"{width}x{height}+{ox}+{oy}")
+canvas = tk.Canvas(root, bg="#ff00ff", highlightthickness=0)
+canvas.pack(fill="both", expand=True)
+root.update_idletasks()
+hwnd = ctypes.windll.user32.GetParent(root.winfo_id()) or root.winfo_id()
+style = ctypes.windll.user32.GetWindowLongW(hwnd, -20)
+ctypes.windll.user32.SetWindowLongW(hwnd, -20, style | 0x80000 | 0x20 | 0x80 | 0x08000000)
+def poll():
+    try:
+        while True:
+            command = commands.get_nowait()
+            if command.get("cmd") == "stop":
+                root.destroy()
+                return
+            canvas.delete("all")
+            rect, text = command.get("rect"), command.get("text", "")
+            if rect:
+                l, t, r, b = rect[0] - ox - 3, rect[1] - oy - 3, rect[2] - ox + 3, rect[3] - oy + 3
+                canvas.create_rectangle(l, t, r, b, outline="#7c8cff", width=3)
+                ty = t - 26 if t > 30 else b + 6
+                label = canvas.create_text(l + 8, ty + 10, text=text, anchor="w", fill="#ffffff", font=("Segoe UI", 10, "bold"))
+                box = canvas.bbox(label)
+                if box:
+                    bg = canvas.create_rectangle(box[0] - 8, box[1] - 4, box[2] + 8, box[3] + 4, fill="#1b1b22", outline="#7c8cff")
+                    canvas.tag_lower(bg, label)
+    except queue.Empty:
+        pass
+    root.after(30, poll)
+root.after(30, poll)
+root.mainloop()
+'''
+
+
 class Highlighter:
-    """Прозрачное окно поверх всего экрана с рамкой вокруг элемента (tkinter, без кликов)."""
+    """Прозрачная рамка в изолированном процессе: Tkinter запускается в главном потоке процесса."""
 
     def __init__(self) -> None:
-        self.q: queue.Queue = queue.Queue()
-        self.thread: threading.Thread | None = None
+        self.process: subprocess.Popen | None = None
+        self.lock = threading.Lock()
 
     def start(self) -> None:
         if os.name != "nt":
             return
-        self.thread = threading.Thread(target=self._run, name="idos-pick", daemon=True)
-        self.thread.start()
+        try:
+            from . import win
+            geometry = json.dumps(win.virtual_screen())
+            self.process = subprocess.Popen(
+                [sys.executable, "-c", _HIGHLIGHTER_CHILD, geometry],
+                stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                text=True, encoding="utf-8", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except Exception:  # noqa: BLE001 - без подсветки пипетка всё равно работает
+            self.process = None
+            log.debug("highlighter process failed to start", exc_info=True)
 
     def show(self, rect: list[int] | None, text: str = "") -> None:
-        if self.thread:
-            self.q.put(("rect", rect, text))
+        with self.lock:
+            process = self.process
+            if process is None or process.poll() is not None or process.stdin is None:
+                return
+            try:
+                process.stdin.write(json.dumps({"cmd": "rect", "rect": rect, "text": text}, ensure_ascii=False) + "\n")
+                process.stdin.flush()
+            except (OSError, ValueError):
+                log.debug("highlighter process stopped before update")
 
     def close(self) -> None:
-        if self.thread:
-            self.q.put(("stop", None, ""))
-
-    def _run(self) -> None:  # pragma: no cover - нужен рабочий стол Windows
+        with self.lock:
+            process, self.process = self.process, None
+            if process is None:
+                return
+            try:
+                if process.stdin:
+                    process.stdin.write('{"cmd":"stop"}\n')
+                    process.stdin.flush()
+                    process.stdin.close()
+            except (OSError, ValueError):
+                pass
         try:
-            import ctypes
-            import tkinter as tk
-            from . import win
-            vs = win.virtual_screen()
-            root = tk.Tk()
-            root.overrideredirect(True)
-            root.attributes("-topmost", True)
-            root.configure(bg="#ff00ff")
-            root.attributes("-transparentcolor", "#ff00ff")
-            root.geometry(f"{vs['width']}x{vs['height']}+{vs['x']}+{vs['y']}")
-            canvas = tk.Canvas(root, bg="#ff00ff", highlightthickness=0)
-            canvas.pack(fill="both", expand=True)
-            root.update_idletasks()
-            hwnd = ctypes.windll.user32.GetParent(root.winfo_id()) or root.winfo_id()
-            style = ctypes.windll.user32.GetWindowLongW(hwnd, -20)
-            ctypes.windll.user32.SetWindowLongW(hwnd, -20, style | 0x80000 | 0x20 | 0x80 | 0x08000000)
-            ox, oy = vs["x"], vs["y"]
-
-            def poll() -> None:
-                try:
-                    while True:
-                        cmd, rect, text = self.q.get_nowait()
-                        if cmd == "stop":
-                            root.destroy()
-                            return
-                        canvas.delete("all")
-                        if rect:
-                            l, t, r, b = rect[0] - ox - 3, rect[1] - oy - 3, rect[2] - ox + 3, rect[3] - oy + 3
-                            canvas.create_rectangle(l, t, r, b, outline="#7c8cff", width=3)
-                            ty = t - 26 if t > 30 else b + 6
-                            label = canvas.create_text(l + 8, ty + 10, text=text, anchor="w", fill="#ffffff",
-                                                       font=("Segoe UI", 10, "bold"))
-                            box = canvas.bbox(label)
-                            if box:
-                                bg = canvas.create_rectangle(box[0] - 8, box[1] - 4, box[2] + 8, box[3] + 4,
-                                                             fill="#1b1b22", outline="#7c8cff")
-                                canvas.tag_lower(bg, label)
-                except queue.Empty:
-                    pass
-                root.after(30, poll)
-
-            root.after(30, poll)
-            root.mainloop()
-        except Exception:  # noqa: BLE001 - без подсветки пипетка всё равно работает
-            log.debug("highlighter failed", exc_info=True)
+            process.wait(timeout=1.0)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=1.0)
 
 
 def preview_png(rect: list[int], max_w: int = 220) -> str:
@@ -621,7 +652,7 @@ class WinDriver:
                 await asyncio.sleep(0.07)
             return None
         finally:
-            hl.close()
+            await asyncio.to_thread(hl.close)
             bus.emit("scenario.pick", {"state": "done"})
 
     async def probe(self, target: dict) -> dict:
@@ -636,9 +667,11 @@ class WinDriver:
                 extracted = f"Не удалось прочитать текст: {exc}"
         hl = Highlighter()
         hl.start()
-        hl.show(found["rect"], f"нашёл: {target_label(target)} ({found['how']})")
-        await asyncio.sleep(1.6)
-        hl.close()
+        try:
+            hl.show(found["rect"], f"нашёл: {target_label(target)} ({found['how']})")
+            await asyncio.sleep(1.6)
+        finally:
+            await asyncio.to_thread(hl.close)
         return {"found": True, "how": found["how"], "x": found["x"], "y": found["y"],
                 "text": f"нашёл {target_label(target)} — {found['how']}", "extracted_text": extracted}
 
