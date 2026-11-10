@@ -16,7 +16,8 @@ const MEDIA_NAMES = { play_pause: "Пуск/пауза", next: "Следующи
 const NODE_W = 230;
 const SVGNS = "http://www.w3.org/2000/svg";
 
-const S = { list: [], cur: null, sel: null, meta: null, status: {}, runtimeValues: {}, sidebarCollapsed: false, dirty: false, running: false, picking: false };
+const S = { list: [], cur: null, sel: null, meta: null, status: {}, runtimeValues: {}, sidebarCollapsed: false,
+  scenarioQuery: "", nodeQuery: "", dirty: false, running: false, picking: false };
 let page = null, plane = null, svg = null, inspector = null, active = () => false;
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
@@ -172,12 +173,13 @@ async function removeScenario() {
   draw();
 }
 
-function addBlock(type) {
-  if (!S.cur) newScenario();
+function addBlock(type, dropPoint = null) {
+  if (!S.cur) return;
   const spec = S.meta.blocks[type];
-  const from = nodeById(S.sel) || S.cur.nodes[S.cur.nodes.length - 1];
-  const node = { id: uid(), type, params: clone(spec.params), links: {},
-    x: from ? from.x : 60, y: from ? from.y + 120 : 40 };
+  const from = nodeById(S.sel) || (dropPoint ? null : S.cur.nodes[S.cur.nodes.length - 1]);
+  const x = dropPoint ? Math.max(20, Math.round((dropPoint.x - NODE_W / 2) / 10) * 10) : (from ? from.x : 60);
+  const y = dropPoint ? Math.max(20, Math.round((dropPoint.y - 45) / 10) * 10) : (from ? from.y + 120 : 40);
+  const node = { id: uid(), type, params: clone(spec.params), links: {}, x, y };
   while (S.cur.nodes.some((n) => Math.abs(n.x - node.x) < 40 && Math.abs(n.y - node.y) < 60)) node.y += 110;
   if (from && outsOf(from.type).length) {
     const out = outsOf(from.type).find((o) => o !== "fail" && !from.links[o]);
@@ -338,7 +340,6 @@ function scenarioVariablesEditor(scenario, collapsed = false) {
   box.open = !collapsed;
   box.append(el("summary", {}, `Таблица переменных${scenario.variables.length ? ` · ${scenario.variables.length}` : ""}`),
     el("div", { class: "scn-vars-panel" },
-      el("p", { class: "mut small" }, "Заполните входы до запуска. Создаваемые блоками значения появятся внизу."),
       el("table", { class: "scn-var-table" },
         el("thead", {}, el("tr", {}, el("th", {}, "Переменная"), el("th", {}, "Значение"), el("th", {}))),
         el("tbody", {}, ...rows)),
@@ -355,8 +356,7 @@ function scenarioVariablesEditor(scenario, collapsed = false) {
 function runtimeVariableRows() {
   const entries = Object.entries(S.runtimeValues || {}).filter(([, value]) => String(value ?? "").trim())
     .sort(([a], [b]) => a.localeCompare(b));
-  return entries.length ? entries.map(([name, value]) => el("tr", {}, el("td", {}, name), el("td", {}, String(value ?? ""))))
-    : [el("tr", { class: "scn-runtime-empty" }, el("td", { colspan: 2 }, "Значения появятся после старта сценария."))];
+  return entries.map(([name, value]) => el("tr", {}, el("td", {}, name), el("td", {}, String(value ?? ""))));
 }
 
 function refreshRuntimeVars() {
@@ -366,24 +366,53 @@ function refreshRuntimeVars() {
 
 function draw() {
   if (!page || !active()) return;
+  const scenarioRows = S.list.map((s) => el("button", { class: "scn-item" + (S.cur && S.cur.id === s.id ? " on" : ""), title: s.name,
+    "data-search": [s.name || "", ...(s.triggers || [])].join(" ").toLocaleLowerCase(), onclick: () => openScenario(s.id) },
+    el("div", { class: "t" }, el("span", { class: "scn-item-icon" }, [...String(s.name || "С")][0].toLocaleUpperCase()),
+      el("span", { class: "scn-item-name" }, (s.enabled ? "" : "⏸ ") + s.name))));
+  const scenarioSearch = el("input", { class: "field scn-list-search scn-scenario-search", type: "search", placeholder: "Поиск сценария", value: S.scenarioQuery });
+  const scenarioList = el("div", { class: "scn-list scn-scenario-list" }, scenarioRows.length ? scenarioRows : el("div", { class: "mut small scn-list-empty" }, "Пока нет сценариев"));
+  const filterScenarioRows = () => {
+    S.scenarioQuery = scenarioSearch.value;
+    const q = S.scenarioQuery.trim().toLocaleLowerCase();
+    scenarioRows.forEach((row) => { row.style.display = !q || row.dataset.search.includes(q) ? "" : "none"; });
+  };
+  scenarioSearch.addEventListener("input", filterScenarioRows);
+  filterScenarioRows();
+
+  const nodeSearch = el("input", { class: "field scn-list-search scn-node-search", type: "search", placeholder: "Поиск узла", value: S.nodeQuery });
+  const nodeRows = PALETTE.map((t) => el("button", { class: "scn-node-item", draggable: true, title: blockTitle(t), "data-search": blockTitle(t).toLocaleLowerCase(),
+    ondragstart: (e) => {
+      e.dataTransfer.effectAllowed = "copy";
+      e.dataTransfer.setData("application/x-idos-scenario-block", t);
+      e.dataTransfer.setData("text/plain", t);
+    } }, el("span", { class: "scn-node-icon" }, ICONS[t]), el("span", { class: "scn-node-label" }, blockTitle(t))));
+  const nodeList = el("div", { class: "scn-list scn-node-list" }, nodeRows);
+  const filterNodeRows = () => {
+    S.nodeQuery = nodeSearch.value;
+    const q = S.nodeQuery.trim().toLocaleLowerCase();
+    nodeRows.forEach((row) => { row.style.display = !q || row.dataset.search.includes(q) ? "" : "none"; });
+  };
+  nodeSearch.addEventListener("input", filterNodeRows);
+  filterNodeRows();
+
   const side = el("aside", { class: "scn-side" },
-    el("div", { class: "scn-side-head" },
-      el("button", { class: "icon scn-sidebar-toggle", title: S.sidebarCollapsed ? "Развернуть панель" : "Свернуть панель до иконок", onclick: toggleScenarioSidebar }, S.sidebarCollapsed ? "›" : "‹"),
-      el("b", {}, "Сценарии"),
-      el("button", { class: "btn small scn-new", title: "Новый сценарий", onclick: newScenario }, el("span", { class: "scn-new-icon" }, "+"), el("span", { class: "scn-side-label" }, "Новый"))),
-    S.list.length ? S.list.map((s) => el("button", { class: "scn-item" + (S.cur && S.cur.id === s.id ? " on" : ""), title: s.name, onclick: () => openScenario(s.id) },
-      el("div", { class: "t" }, el("span", { class: "scn-item-icon" }, [...String(s.name || "С")][0].toLocaleUpperCase()),
-        el("span", { class: "scn-item-name" }, (s.enabled ? "" : "⏸ ") + s.name)),
-      el("div", { class: "mut small" }, (s.triggers && s.triggers.length ? "«" + s.triggers[0] + "»" : "без фразы") + " · " + s.steps + " шаг.")))
-      : el("div", { class: "mut small" }, "Пока нет сценариев"),
-    el("div", { class: "scn-side-foot" },
-      el("button", { class: "btn small scn-import", title: "Импорт JSON", onclick: importDialog }, el("span", {}, "⇪"), el("span", { class: "scn-side-label" }, "Импорт JSON"))),
-    el("p", { class: "mut small" }, "Обычные шаги выполняются без модели. В редакторе заполните таблицу переменных перед запуском; совпавший триггер может передать значения автоматически."));
+    el("section", { class: "scn-side-panel scn-scenario-panel" },
+      el("div", { class: "scn-side-head" },
+        el("button", { class: "icon scn-sidebar-toggle", title: S.sidebarCollapsed ? "Развернуть панель" : "Свернуть панель до иконок", onclick: toggleScenarioSidebar }, S.sidebarCollapsed ? "›" : "‹"),
+        el("b", {}, "Сценарии"),
+        el("button", { class: "btn small scn-new", title: "Новый сценарий", onclick: newScenario }, el("span", { class: "scn-new-icon" }, "+"), el("span", { class: "scn-side-label" }, "Новый"))),
+      scenarioSearch, scenarioList,
+      el("div", { class: "scn-side-foot" },
+        el("button", { class: "btn small scn-import", title: "Импорт JSON", onclick: importDialog }, el("span", {}, "⇪"), el("span", { class: "scn-side-label" }, "Импорт JSON")))),
+    el("section", { class: "scn-side-panel scn-node-panel" },
+      el("div", { class: "scn-node-head" }, el("b", {}, "Узлы"),
+        el("button", { class: "icon scn-layout-btn", title: "Выровнять узлы", onclick: layout }, "⇅")),
+      nodeSearch, nodeList));
 
   if (!S.cur) {
     page.replaceChildren(el("div", { class: "scn-wrap" + (S.sidebarCollapsed ? " scn-sidebar-collapsed" : "") }, side, el("div", { class: "scn-empty" },
-      el("h1", {}, "Сценарии"), el("p", { class: "mut" }, "Соберите блок-схему: «Запустить программу → Нажать на элемент → …». Элементы выбираются пипеткой прямо на экране."),
-      el("button", { class: "btn primary", onclick: newScenario }, "Создать сценарий"))));
+      el("h1", {}, "Сценарии"), el("button", { class: "btn primary", onclick: newScenario }, "Создать сценарий"))));
     return;
   }
   const c = S.cur;
@@ -407,18 +436,25 @@ function draw() {
       el("button", { class: "icon", title: "Удалить сценарий", onclick: removeScenario }, "✕")),
     el("div", { class: "scn-head-row" }, triggers, desc));
 
-  const palette = el("div", { class: "scn-palette" }, PALETTE.map((t) => el("button", { class: "chip", title: "Добавить после выбранного блока", onclick: () => addBlock(t) }, ICONS[t] + " " + blockTitle(t))),
-    el("button", { class: "chip ghost", onclick: layout, title: "Разложить блоки по порядку" }, "⇅ Выровнять"));
-
   plane = el("div", { class: "scn-plane" });
   svg = document.createElementNS(SVGNS, "svg");
   svg.setAttribute("class", "scn-edges");
   plane.append(svg);
   for (const n of c.nodes) plane.append(nodeView(n));
-  const canvas = el("div", { class: "scn-canvas", onpointerdown: (e) => { if (e.target === canvas || e.target === plane || e.target === svg) { S.sel = null; drawInspector(); plane.querySelectorAll(".scn-node.sel").forEach((x) => x.classList.remove("sel")); } } }, plane);
+  const canvas = el("div", { class: "scn-canvas",
+    ondragover: (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; canvas.classList.add("drag-over"); },
+    ondragleave: (e) => { if (!canvas.contains(e.relatedTarget)) canvas.classList.remove("drag-over"); },
+    ondrop: (e) => {
+      e.preventDefault(); canvas.classList.remove("drag-over");
+      const type = e.dataTransfer.getData("application/x-idos-scenario-block") || e.dataTransfer.getData("text/plain");
+      if (!type || !S.meta.blocks[type]) return;
+      const rect = plane.getBoundingClientRect();
+      addBlock(type, { x: e.clientX - rect.left, y: e.clientY - rect.top });
+    },
+    onpointerdown: (e) => { if (e.target === canvas || e.target === plane || e.target === svg) { S.sel = null; drawInspector(); plane.querySelectorAll(".scn-node.sel").forEach((x) => x.classList.remove("sel")); } } }, plane);
   inspector = el("aside", { class: "scn-inspector" });
   page.replaceChildren(el("div", { class: "scn-wrap" + (S.sidebarCollapsed ? " scn-sidebar-collapsed" : "") }, side,
-    el("div", { class: "scn-editor" }, head, palette, el("div", { class: "scn-work" }, canvas, inspector))));
+    el("div", { class: "scn-editor" }, head, el("div", { class: "scn-work" }, canvas, inspector))));
   sizePlane();
   requestAnimationFrame(drawEdges);
   drawInspector();
