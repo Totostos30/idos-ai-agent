@@ -423,8 +423,13 @@ class Highlighter:
         try:
             from . import win
             geometry = json.dumps(win.virtual_screen())
+            executable = sys.executable
+            if os.path.basename(executable).lower() == "pythonw.exe":
+                console_python = os.path.join(os.path.dirname(executable), "python.exe")
+                if os.path.isfile(console_python):
+                    executable = console_python
             self.process = subprocess.Popen(
-                [sys.executable, "-c", _HIGHLIGHTER_CHILD, geometry],
+                [executable, "-c", _HIGHLIGHTER_CHILD, geometry],
                 stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 text=True, encoding="utf-8", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
