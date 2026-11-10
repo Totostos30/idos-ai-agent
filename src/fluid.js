@@ -186,13 +186,20 @@ export class Fluid {
     const count = 32;
     const elapsed = now - this.wideWaveStarted;
     const travel = Math.max(0, Math.min(1, elapsed / 3000));
-    const front = width * 0.5 * travel;
+    const canvasRect = cv.getBoundingClientRect();
+    const islandRect = this.isl.getBoundingClientRect();
+    const viewScale = canvasRect.width / width || 1;
+    const originX = Math.max(0, Math.min(width,
+      (islandRect.left + islandRect.width / 2 - canvasRect.left) / viewScale));
     const waveWidth = Math.max(24, width / 32 * 1.8);
     const second = now / 1000 * Math.PI * 2;
     const span = Math.max(1, width);
     const spikes = Array.from({ length: count }, (_, i) => {
       const x = ((i + 0.5) / count) * span;
-      const envelope = Math.exp(-((Math.abs(x - width / 2) - front) ** 2) / (2 * waveWidth ** 2));
+      const distance = x < originX
+        ? Math.abs(x - originX) - originX * travel
+        : Math.abs(x - originX) - (width - originX) * travel;
+      const envelope = Math.exp(-(distance ** 2) / (2 * waveWidth ** 2));
       const fade = 1 - travel;
       return (0.5 + 0.5 * Math.sin(second + i * 0.55)) * envelope * fade;
     });
