@@ -9,11 +9,9 @@ from __future__ import annotations
 import asyncio
 import base64
 import io
-import json
 import logging
 import os
-import subprocess
-import sys
+import queue
 import threading
 import time
 from typing import Any, Callable
@@ -79,7 +77,7 @@ def _clickable(auto: Any, control: Any) -> Any:
     return control
 
 
-def capture_point(x: int, y: int, with_path: bool = True, include_text: bool = False) -> dict:
+def capture_point(x: int, y: int, with_path: bool = True) -> dict:
     """Описание элемента под точкой экрана. Вызывать на потоке UIA."""
     from .win import uia
     from . import win
@@ -125,15 +123,11 @@ def capture_point(x: int, y: int, with_path: bool = True, include_text: bool = F
                           "index": index})
             node = parent
         info["path"] = list(reversed(chain))
-        # Read-node capture resolves through its saved tree path; avoid a second
-        # full-window enumeration while the Ctrl picker is active.
-        same = [] if include_text else twins(auto, top, info)
+        same = twins(auto, top, info)
         ordinal = next((i for i, c in enumerate(same, 1) if _same(auto, c, control)), 0)
         info["ref"] = {"runtime": _runtime(control), "ordinal": ordinal, "twins": len(same)}
         if len(same) > 1 and ordinal:
             info["label"] += f" · №{ordinal} из {len(same)} одинаковых"
-    if include_text:
-        info["extracted_text"] = read_element(control, "all_text")
     return info
 
 
@@ -226,7 +220,6 @@ def resolve_in(auto: Any, root: Any, target: dict, allow_coords: bool = True) ->
     """Находит выбранный пипеткой элемент внутри окна root.
 
     Порядок: ref (тот же элемент по RuntimeId) → путь в дереве окна → №N среди одинаковых → координаты.
-    При восстановлении по пути изменяемое Name не считается обязательным идентификатором.
     Так при нескольких одинаковых кнопках нажимается именно выбранная, а не первая попавшаяся.
     """
     wl, wt, wr, wb = _rect(root)
@@ -257,15 +250,7 @@ def resolve_in(auto: Any, root: Any, target: dict, allow_coords: bool = True) ->
             node = _follow_path(root, target["path"])
         except Exception:  # noqa: BLE001
             node = None
-        if node is not None:
-            try:
-                if target.get("type") and node.ControlTypeName != target["type"]:
-                    node = None
-                elif target.get("id") and node.AutomationId != target["id"]:
-                    node = None
-            except Exception:  # noqa: BLE001 - the UI may replace controls during lookup
-                node = None
-        if node is not None:
+        if node is not None and (not keyed or _matches(node, target)):
             chosen, how = node, "ref: путь в окне"
     if chosen is None and found:
         n, k = int(ref.get("twins") or 0), int(ref.get("ordinal") or 0)
@@ -304,43 +289,8 @@ def resolve(target: dict, allow_coords: bool = True) -> dict | None:
 
 
 def read_element(control: Any, property_name: str = "value") -> str:
-    """Читает свойство контрола или весь текст его поддерева на UIA-потоке."""
+    """Читает доступное свойство UIA-контрола на UIA-потоке."""
     from .win import uia
-    if property_name in ("all_text", "tree_text"):
-        started, lines, size = time.monotonic(), [], 0
-        previous = ""
-        truncated = False
-        for visited, (item, _depth) in enumerate(uia.module().WalkControl(control, includeTop=True, maxDepth=30)):
-            if visited >= 1200 or time.monotonic() - started > 5:
-                truncated = True
-                break
-            try:
-                kind = str(getattr(item, "ControlTypeName", "") or "")
-                value = uia._value(item) if kind in uia.VALUED else ""
-                document = uia._document_text(item, 6000) if kind == "DocumentControl" else ""
-                name = str(getattr(item, "Name", "") or "")
-            except Exception:  # noqa: BLE001 - controls may disappear during the scan
-                continue
-            parts = [document] if document else [value] + ([name] if name and name != value else [])
-            text = "\n".join(part for part in parts if part)
-            text = "\n".join(part.strip() for part in str(text).splitlines() if part.strip())
-            if not text or text == previous:
-                continue
-            previous = text
-            remaining = 6000 - size
-            if remaining <= 0:
-                truncated = True
-                break
-            if len(text) > remaining:
-                lines.append(text[:remaining])
-                truncated = True
-                break
-            lines.append(text)
-            size += len(text) + 1
-        result = "\n".join(lines).strip()
-        if truncated and len(result) < 6000:
-            result = (result + "\n…")[:6000]
-        return result
     kind = str(getattr(control, "ControlTypeName", "") or "")
     name = str(getattr(control, "Name", "") or "").strip()
     if property_name == "name":
@@ -363,108 +313,74 @@ def key_down(vk: int) -> bool:
     return bool(ctypes.windll.user32.GetAsyncKeyState(vk) & 0x8000)
 
 
-_HIGHLIGHTER_CHILD = r'''
-import ctypes, json, queue, sys, threading, tkinter as tk
-ox, oy, width, height = (lambda g: (g["x"], g["y"], g["width"], g["height"]))(json.loads(sys.argv[1]))
-commands = queue.Queue()
-def read_commands():
-    for line in sys.stdin:
-        try: commands.put(json.loads(line))
-        except Exception: pass
-threading.Thread(target=read_commands, daemon=True).start()
-root = tk.Tk()
-root.overrideredirect(True)
-root.attributes("-topmost", True)
-root.configure(bg="#ff00ff")
-root.attributes("-transparentcolor", "#ff00ff")
-root.geometry(f"{width}x{height}+{ox}+{oy}")
-canvas = tk.Canvas(root, bg="#ff00ff", highlightthickness=0)
-canvas.pack(fill="both", expand=True)
-root.update_idletasks()
-hwnd = ctypes.windll.user32.GetParent(root.winfo_id()) or root.winfo_id()
-style = ctypes.windll.user32.GetWindowLongW(hwnd, -20)
-ctypes.windll.user32.SetWindowLongW(hwnd, -20, style | 0x80000 | 0x20 | 0x80 | 0x08000000)
-def poll():
-    try:
-        while True:
-            command = commands.get_nowait()
-            if command.get("cmd") == "stop":
-                root.destroy()
-                return
-            canvas.delete("all")
-            rect, text = command.get("rect"), command.get("text", "")
-            if rect:
-                l, t, r, b = rect[0] - ox - 3, rect[1] - oy - 3, rect[2] - ox + 3, rect[3] - oy + 3
-                canvas.create_rectangle(l, t, r, b, outline="#7c8cff", width=3)
-                ty = t - 26 if t > 30 else b + 6
-                label = canvas.create_text(l + 8, ty + 10, text=text, anchor="w", fill="#ffffff", font=("Segoe UI", 10, "bold"))
-                box = canvas.bbox(label)
-                if box:
-                    bg = canvas.create_rectangle(box[0] - 8, box[1] - 4, box[2] + 8, box[3] + 4, fill="#1b1b22", outline="#7c8cff")
-                    canvas.tag_lower(bg, label)
-    except queue.Empty:
-        pass
-    root.after(30, poll)
-root.after(30, poll)
-root.mainloop()
-'''
-
-
 class Highlighter:
-    """Прозрачная рамка в изолированном процессе: Tkinter запускается в главном потоке процесса."""
+    """Прозрачное окно поверх всего экрана с рамкой вокруг элемента (tkinter, без кликов)."""
 
     def __init__(self) -> None:
-        self.process: subprocess.Popen | None = None
-        self.lock = threading.Lock()
+        self.q: queue.Queue = queue.Queue()
+        self.thread: threading.Thread | None = None
 
     def start(self) -> None:
         if os.name != "nt":
             return
-        try:
-            from . import win
-            geometry = json.dumps(win.virtual_screen())
-            executable = sys.executable
-            if os.path.basename(executable).lower() == "pythonw.exe":
-                console_python = os.path.join(os.path.dirname(executable), "python.exe")
-                if os.path.isfile(console_python):
-                    executable = console_python
-            self.process = subprocess.Popen(
-                [executable, "-c", _HIGHLIGHTER_CHILD, geometry],
-                stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                text=True, encoding="utf-8", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
-        except Exception:  # noqa: BLE001 - без подсветки пипетка всё равно работает
-            self.process = None
-            log.debug("highlighter process failed to start", exc_info=True)
+        self.thread = threading.Thread(target=self._run, name="idos-pick", daemon=True)
+        self.thread.start()
 
     def show(self, rect: list[int] | None, text: str = "") -> None:
-        with self.lock:
-            process = self.process
-            if process is None or process.poll() is not None or process.stdin is None:
-                return
-            try:
-                process.stdin.write(json.dumps({"cmd": "rect", "rect": rect, "text": text}, ensure_ascii=False) + "\n")
-                process.stdin.flush()
-            except (OSError, ValueError):
-                log.debug("highlighter process stopped before update")
+        if self.thread:
+            self.q.put(("rect", rect, text))
 
     def close(self) -> None:
-        with self.lock:
-            process, self.process = self.process, None
-            if process is None:
-                return
-            try:
-                if process.stdin:
-                    process.stdin.write('{"cmd":"stop"}\n')
-                    process.stdin.flush()
-                    process.stdin.close()
-            except (OSError, ValueError):
-                pass
+        if self.thread:
+            self.q.put(("stop", None, ""))
+
+    def _run(self) -> None:  # pragma: no cover - нужен рабочий стол Windows
         try:
-            process.wait(timeout=1.0)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=1.0)
+            import ctypes
+            import tkinter as tk
+            from . import win
+            vs = win.virtual_screen()
+            root = tk.Tk()
+            root.overrideredirect(True)
+            root.attributes("-topmost", True)
+            root.configure(bg="#ff00ff")
+            root.attributes("-transparentcolor", "#ff00ff")
+            root.geometry(f"{vs['width']}x{vs['height']}+{vs['x']}+{vs['y']}")
+            canvas = tk.Canvas(root, bg="#ff00ff", highlightthickness=0)
+            canvas.pack(fill="both", expand=True)
+            root.update_idletasks()
+            hwnd = ctypes.windll.user32.GetParent(root.winfo_id()) or root.winfo_id()
+            style = ctypes.windll.user32.GetWindowLongW(hwnd, -20)
+            ctypes.windll.user32.SetWindowLongW(hwnd, -20, style | 0x80000 | 0x20 | 0x80 | 0x08000000)
+            ox, oy = vs["x"], vs["y"]
+
+            def poll() -> None:
+                try:
+                    while True:
+                        cmd, rect, text = self.q.get_nowait()
+                        if cmd == "stop":
+                            root.destroy()
+                            return
+                        canvas.delete("all")
+                        if rect:
+                            l, t, r, b = rect[0] - ox - 3, rect[1] - oy - 3, rect[2] - ox + 3, rect[3] - oy + 3
+                            canvas.create_rectangle(l, t, r, b, outline="#7c8cff", width=3)
+                            ty = t - 26 if t > 30 else b + 6
+                            label = canvas.create_text(l + 8, ty + 10, text=text, anchor="w", fill="#ffffff",
+                                                       font=("Segoe UI", 10, "bold"))
+                            box = canvas.bbox(label)
+                            if box:
+                                bg = canvas.create_rectangle(box[0] - 8, box[1] - 4, box[2] + 8, box[3] + 4,
+                                                             fill="#1b1b22", outline="#7c8cff")
+                                canvas.tag_lower(bg, label)
+                except queue.Empty:
+                    pass
+                root.after(30, poll)
+
+            root.after(30, poll)
+            root.mainloop()
+        except Exception:  # noqa: BLE001 - без подсветки пипетка всё равно работает
+            log.debug("highlighter failed", exc_info=True)
 
 
 def preview_png(rect: list[int], max_w: int = 220) -> str:
@@ -632,24 +548,32 @@ class WinDriver:
             await tts.say(text, interrupt=True, wait=wait)
         return text
 
-    async def pick(self, timeout: float = 60.0, include_text: bool = False) -> dict | None:
-        """Пипетка: нажмите Ctrl над целью для выбора и подсветки; Esc — отмена."""
+    async def pick(self, timeout: float = 60.0) -> dict | None:
+        """Пипетка: наведите курсор на элемент и нажмите Ctrl; Esc — отмена."""
         from . import win
         hl = Highlighter()
         hl.start()
+        last, info = None, None
         end = time.monotonic() + timeout
         try:
             while key_down(self.VK_CTRL):  # отпустите Ctrl, если он был зажат
                 await asyncio.sleep(0.05)
-            bus.emit("scenario.pick", {"state": "picking", "text": "Наведите курсор на цель и нажмите Ctrl для выбора и подсветки · Esc — отмена"})
+            bus.emit("scenario.pick", {"state": "picking", "text": "Наведите на элемент и нажмите Ctrl · Esc — отмена"})
             while time.monotonic() < end:
                 if key_down(self.VK_ESC):
                     return None
-                if key_down(self.VK_CTRL):
-                    pos = await asyncio.to_thread(win.cursor_pos)
-                    full = await self._uia(capture_point, pos[0], pos[1], True, include_text, timeout=15.0)
-                    hl.show(full["rect"], full["label"] + " · выбрано")
-                    await asyncio.sleep(0.9)
+                pos = await asyncio.to_thread(win.cursor_pos)
+                if pos != last:
+                    last = pos
+                    try:
+                        info = await self._uia(capture_point, pos[0], pos[1], False, timeout=5.0)
+                        hl.show(info["rect"], info["label"] + "  ·  Ctrl — выбрать, Esc — отмена")
+                    except Exception as exc:  # noqa: BLE001
+                        info = None
+                        hl.show(None)
+                        log.debug("hover: %s", exc)
+                if info and key_down(self.VK_CTRL):
+                    full = await self._uia(capture_point, pos[0], pos[1], True, timeout=10.0)
                     hl.show(None)
                     await asyncio.sleep(0.08)
                     full["preview"] = await asyncio.to_thread(preview_png, full["rect"])
@@ -657,28 +581,20 @@ class WinDriver:
                 await asyncio.sleep(0.07)
             return None
         finally:
-            await asyncio.to_thread(hl.close)
+            hl.close()
             bus.emit("scenario.pick", {"state": "done"})
 
     async def probe(self, target: dict) -> dict:
         found = await self.find(target, 2.0, lambda: None)
         if not found:
             return {"found": False, "text": f"не нашёл {target_label(target)}"}
-        extracted = ""
-        if found.get("control") is not None:
-            try:
-                extracted = str(await self._uia(read_element, found["control"], "all_text", timeout=15.0) or "")
-            except Exception as exc:  # noqa: BLE001 - keep highlight useful even if text patterns fail
-                extracted = f"Не удалось прочитать текст: {exc}"
         hl = Highlighter()
         hl.start()
-        try:
-            hl.show(found["rect"], f"нашёл: {target_label(target)} ({found['how']})")
-            await asyncio.sleep(1.6)
-        finally:
-            await asyncio.to_thread(hl.close)
+        hl.show(found["rect"], f"нашёл: {target_label(target)} ({found['how']})")
+        await asyncio.sleep(1.6)
+        hl.close()
         return {"found": True, "how": found["how"], "x": found["x"], "y": found["y"],
-                "text": f"нашёл {target_label(target)} — {found['how']}", "extracted_text": extracted}
+                "text": f"нашёл {target_label(target)} — {found['how']}"}
 
 
 class NoDriver:
@@ -698,7 +614,7 @@ class NoDriver:
     async def find(self, *_: Any) -> None:
         return None
 
-    async def pick(self, timeout: float = 60.0, include_text: bool = False) -> None:
+    async def pick(self, timeout: float = 60.0) -> None:
         raise StepError("пипетка работает только в Windows")
 
     async def probe(self, target: dict) -> dict:

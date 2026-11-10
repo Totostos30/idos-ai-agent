@@ -213,10 +213,9 @@ def build_methods(app) -> dict[str, Callable[..., Any]]:
         return {"id": found[0]["id"], "name": found[0]["name"], "vars": found[1]} if found else {"id": None}
 
     @method("scenarios.pick")
-    async def scenarios_pick(timeout: float = 60.0, include_text: bool = False) -> dict:
-        target = await app.scenarios.driver.pick(float(timeout), bool(include_text))
-        extracted = target.pop("extracted_text", "") if isinstance(target, dict) else ""
-        return {"target": target, "extracted_text": extracted}
+    async def scenarios_pick(timeout: float = 60.0) -> dict:
+        target = await app.scenarios.driver.pick(float(timeout))
+        return {"target": target}
 
     @method("scenarios.probe")
     async def scenarios_probe(target: dict) -> dict:

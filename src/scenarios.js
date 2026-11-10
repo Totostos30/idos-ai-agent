@@ -17,8 +17,7 @@ const NODE_W = 230;
 const SVGNS = "http://www.w3.org/2000/svg";
 
 const S = { list: [], cur: null, sel: null, meta: null, status: {}, runtimeValues: {}, sidebarCollapsed: false,
-  scenarioQuery: "", nodeQuery: "", dirty: false, running: false, picking: false,
-  readPreviewNode: "", readPreviewText: "" };
+  scenarioQuery: "", nodeQuery: "", dirty: false, running: false, picking: false };
 let page = null, plane = null, svg = null, inspector = null, active = () => false;
 let scenarioKeyHandlerInstalled = false;
 
@@ -719,18 +718,8 @@ function targetEditor(n, key, optional = false) {
     details.length ? el("div", { class: "mut small" }, details.map(([k, v]) => el("div", {}, k + ": " + v))) : null,
     el("div", { class: "scn-row" },
       el("button", { class: "btn primary", disabled: S.picking, onclick: () => pipette(n, key) }, "🎯 Пипетка"),
-      t ? el("button", { class: "btn", onclick: () => probe(t, n) }, "Проверить") : null,
-      t && n.type === "read" ? el("button", { class: "btn", disabled: S.picking,
-        onclick: () => pickTarget(n, null, { includeText: true }) }, "Проверить с Ctrl") : null,
+      t ? el("button", { class: "btn", onclick: () => probe(t) }, "Проверить") : null,
       t && optional ? el("button", { class: "btn", onclick: () => { n.params[key] = null; markDirty(); refreshNode(n); drawInspector(); } }, "Убрать") : null),
-    n.type === "read" ? el("div", { class: "scn-read-preview-box" },
-      el("div", { class: "scn-row" },
-        el("div", { class: "k" }, "Извлечённый текст"),
-        el("button", { class: "btn small", disabled: S.readPreviewNode !== n.id || !S.readPreviewText,
-          onclick: () => copyReadPreview() }, "Копировать")),
-      el("pre", { class: "scn-read-preview" }, S.readPreviewNode === n.id
-        ? (S.readPreviewText || "Элемент найден, но доступный текст пуст.")
-        : "Текст появится после выбора элемента пипеткой или проверки.")) : null,
     el("details", { class: "scn-adv" }, el("summary", { class: "mut small" }, "Вручную"), field("Имя", name), field("Процесс", proc)));
   return box;
 }
@@ -766,29 +755,21 @@ function targetListEditor(n) {
 }
 
 async function pipette(n, key) {
-  return pickTarget(n, (target) => { n.params[key] = target; markDirty(); }, { includeText: n.type === "read" });
+  return pickTarget(n, (target) => { n.params[key] = target; markDirty(); });
 }
 
-async function pickTarget(n, setTarget, options = {}) {
+async function pickTarget(n, setTarget) {
   if (S.picking) return;
   S.picking = true;
   drawInspector();
-  toast(options.includeText
-    ? "Наведите курсор на элемент и нажмите Ctrl — он подсветится, его текст появится в редакторе. Esc — отмена."
-    : "Наведите курсор на нужную кнопку и нажмите Ctrl. Esc — отмена.");
+  toast("Наведите курсор на нужную кнопку и нажмите Ctrl. Esc — отмена.");
   try {
     if (win) { try { await win.minimize(); } catch (e) { /* ignore */ } }
     await new Promise((r) => setTimeout(r, 450));
-    const r = await core.call("scenarios.pick", { timeout: 60, include_text: !!options.includeText }, null, 90000);
+    const r = await core.call("scenarios.pick", { timeout: 60 }, null, 75000);
     if (r && r.target) {
-      if (setTarget) setTarget(r.target);
-      if (options.includeText) {
-        S.readPreviewNode = n.id;
-        S.readPreviewText = String(r.extracted_text || "");
-      }
-      toast(options.includeText && !setTarget
-        ? "Проверка завершена: " + (r.target.label || r.target.name || "элемент")
-        : "Выбрано: " + (r.target.label || r.target.name || "элемент"));
+      setTarget(r.target);
+      toast("Выбрано: " + (r.target.label || r.target.name || "элемент"));
     } else toast("Пипетка отменена");
   } catch (e) {
     toast("Пипетка: " + (e.message || e), "error");
@@ -799,26 +780,12 @@ async function pickTarget(n, setTarget, options = {}) {
   }
 }
 
-async function probe(target, n = null) {
+async function probe(target) {
   if (win) { try { await win.minimize(); } catch (e) { /* ignore */ } }
   await new Promise((r) => setTimeout(r, 400));
   const r = await core.try("scenarios.probe", { target }, 30000);
   if (win) { try { await win.unminimize(); await win.setFocus(); } catch (e) { /* ignore */ } }
-  if (n && n.type === "read" && r && r.found) {
-    S.readPreviewNode = n.id;
-    S.readPreviewText = String(r.extracted_text || "");
-    drawInspector();
-  }
   toast(r && r.text ? r.text : (r && r.error) || "нет ответа", r && r.found ? "info" : "error");
-}
-
-async function copyReadPreview() {
-  try {
-    await navigator.clipboard.writeText(S.readPreviewText || "");
-    toast("Текст элемента скопирован");
-  } catch (e) {
-    toast("Не удалось скопировать текст: " + e.message, "error");
-  }
 }
 
 function drawInspector() {
@@ -848,8 +815,9 @@ function drawInspector() {
     case "if_exists": parts.push(targetEditor(n, "target"), field("Ждать, с", textInput(n, "timeout", "", "number"), "0 — проверить сразу")); break;
     case "read": parts.push(targetEditor(n, "target"),
       field("Сохранить в переменную", textInput(n, "var", "значение")),
+      field("Что прочитать", selectInput(n, "property", { value: "Значение / Value", text: "Текст", name: "Имя элемента", state: "Состояние переключателя", id: "AutomationId" })),
       field("Ждать появления, с", textInput(n, "timeout", "", "number")),
-      el("p", { class: "mut small" }, "При запуске полностью сканирует выбранный элемент и вложенные элементы, собирает доступные текст и значения и сохраняет их в переменную. Переменная доступна в следующих блоках как {имя}.")); break;
+      el("p", { class: "mut small" }, "Переменная доступна в следующих блоках как {имя}.")); break;
     case "condition": parts.push(
       field("Переменная", textInput(n, "var", "город")),
       field("Условие", selectInput(n, "operator", {
