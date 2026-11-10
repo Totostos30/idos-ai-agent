@@ -13,6 +13,7 @@ export class Fluid {
     this.wideDropsCv = wideDropsCanvas;
     this.wideDropsCtx = wideDropsCanvas.getContext("2d");
     this.wideWaveStarted = null;
+    this.wideWaveOriginX = null;
     this.get = getState;
     this.cursor = null;
     this.reach = 0;
@@ -185,11 +186,19 @@ export class Fluid {
     const justCollapsed = hiddenNow && !this.wasHidden;
     this.wasHidden = hiddenNow;
     const reducedMotion = waves.respect_reduced_motion !== false && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (waves.full_width_enabled === false || reducedMotion) this.wideWaveStarted = null;
-    if (justCollapsed && st.playing && waves.full_width_enabled !== false && !reducedMotion) this.wideWaveStarted = now;
-    const duration = Math.max(0.8, Math.min(8, Number(waves.full_width_duration_s ?? 3))) * 1000;
-    if (!hiddenNow || this.wideWaveStarted === null || now - this.wideWaveStarted >= duration) {
+    if (waves.full_width_enabled === false || reducedMotion) {
       this.wideWaveStarted = null;
+      this.wideWaveOriginX = null;
+    }
+    if (justCollapsed && st.playing && waves.full_width_enabled !== false && !reducedMotion) {
+      this.wideWaveStarted = now;
+      this.wideWaveOriginX = null;
+    }
+    const duration = Math.max(0.8, Math.min(8, Number(waves.full_width_duration_s ?? 3))) * 1000;
+    if (this.wideWaveStarted === null || now - this.wideWaveStarted >= duration) {
+      this.wideWaveStarted = null;
+      this.wideWaveOriginX = null;
+      cv.classList.remove("active");
       ctx.clearRect(0, 0, cv.width, cv.height);
       return;
     }
@@ -203,15 +212,19 @@ export class Fluid {
       cv.style.width = width + "px";
       cv.style.height = height + "px";
     }
+    cv.classList.add("active");
 
     const count = Math.round(Math.max(8, Math.min(64, Number(waves.full_width_density ?? 32))));
     const elapsed = now - this.wideWaveStarted;
     const travel = Math.max(0, Math.min(1, elapsed / duration));
-    const canvasRect = cv.getBoundingClientRect();
-    const islandRect = this.isl.getBoundingClientRect();
-    const viewScale = canvasRect.width / width || 1;
-    const originX = Math.max(0, Math.min(width,
-      (islandRect.left + islandRect.width / 2 - canvasRect.left) / viewScale));
+    if (this.wideWaveOriginX === null) {
+      const canvasRect = cv.getBoundingClientRect();
+      const islandRect = this.isl.getBoundingClientRect();
+      const viewScale = canvasRect.width / width || 1;
+      this.wideWaveOriginX = Math.max(0, Math.min(width,
+        (islandRect.left + islandRect.width / 2 - canvasRect.left) / viewScale));
+    }
+    const originX = this.wideWaveOriginX;
     const waveWidth = Math.max(8, width / count * Math.max(0.5, Math.min(3.5, Number(waves.full_width_front_width ?? 1.8))));
     const pulseHz = Math.max(0.2, Math.min(3, Number(waves.full_width_pulse_hz ?? 1)));
     const amplitude = Math.max(0.2, Math.min(1.8, Number(waves.full_width_amplitude ?? 1)));
