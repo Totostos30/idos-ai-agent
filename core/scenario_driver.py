@@ -220,6 +220,7 @@ def resolve_in(auto: Any, root: Any, target: dict, allow_coords: bool = True) ->
     """Находит выбранный пипеткой элемент внутри окна root.
 
     Порядок: ref (тот же элемент по RuntimeId) → путь в дереве окна → №N среди одинаковых → координаты.
+    При восстановлении по пути изменяемое Name не считается обязательным идентификатором.
     Так при нескольких одинаковых кнопках нажимается именно выбранная, а не первая попавшаяся.
     """
     wl, wt, wr, wb = _rect(root)
@@ -250,7 +251,15 @@ def resolve_in(auto: Any, root: Any, target: dict, allow_coords: bool = True) ->
             node = _follow_path(root, target["path"])
         except Exception:  # noqa: BLE001
             node = None
-        if node is not None and (not keyed or _matches(node, target)):
+        if node is not None:
+            try:
+                if target.get("type") and node.ControlTypeName != target["type"]:
+                    node = None
+                elif target.get("id") and node.AutomationId != target["id"]:
+                    node = None
+            except Exception:  # noqa: BLE001 - the UI may replace controls during lookup
+                node = None
+        if node is not None:
             chosen, how = node, "ref: путь в окне"
     if chosen is None and found:
         n, k = int(ref.get("twins") or 0), int(ref.get("ordinal") or 0)
