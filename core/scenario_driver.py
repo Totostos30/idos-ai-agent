@@ -77,7 +77,7 @@ def _clickable(auto: Any, control: Any) -> Any:
     return control
 
 
-def capture_point(x: int, y: int, with_path: bool = True) -> dict:
+def capture_point(x: int, y: int, with_path: bool = True, include_text: bool = False) -> dict:
     """Описание элемента под точкой экрана. Вызывать на потоке UIA."""
     from .win import uia
     from . import win
@@ -128,6 +128,8 @@ def capture_point(x: int, y: int, with_path: bool = True) -> dict:
         info["ref"] = {"runtime": _runtime(control), "ordinal": ordinal, "twins": len(same)}
         if len(same) > 1 and ordinal:
             info["label"] += f" · №{ordinal} из {len(same)} одинаковых"
+    if include_text:
+        info["extracted_text"] = read_element(control, "all_text")
     return info
 
 
@@ -592,7 +594,7 @@ class WinDriver:
             await tts.say(text, interrupt=True, wait=wait)
         return text
 
-    async def pick(self, timeout: float = 60.0) -> dict | None:
+    async def pick(self, timeout: float = 60.0, include_text: bool = False) -> dict | None:
         """Пипетка: наведите курсор на элемент и нажмите Ctrl; Esc — отмена."""
         from . import win
         hl = Highlighter()
@@ -617,7 +619,9 @@ class WinDriver:
                         hl.show(None)
                         log.debug("hover: %s", exc)
                 if info and key_down(self.VK_CTRL):
-                    full = await self._uia(capture_point, pos[0], pos[1], True, timeout=10.0)
+                    full = await self._uia(capture_point, pos[0], pos[1], True, include_text, timeout=15.0)
+                    hl.show(full["rect"], full["label"] + " · выбрано")
+                    await asyncio.sleep(0.9)
                     hl.show(None)
                     await asyncio.sleep(0.08)
                     full["preview"] = await asyncio.to_thread(preview_png, full["rect"])
@@ -632,13 +636,19 @@ class WinDriver:
         found = await self.find(target, 2.0, lambda: None)
         if not found:
             return {"found": False, "text": f"не нашёл {target_label(target)}"}
+        extracted = ""
+        if found.get("control") is not None:
+            try:
+                extracted = str(await self._uia(read_element, found["control"], "all_text", timeout=15.0) or "")
+            except Exception as exc:  # noqa: BLE001 - keep highlight useful even if text patterns fail
+                extracted = f"Не удалось прочитать текст: {exc}"
         hl = Highlighter()
         hl.start()
         hl.show(found["rect"], f"нашёл: {target_label(target)} ({found['how']})")
         await asyncio.sleep(1.6)
         hl.close()
         return {"found": True, "how": found["how"], "x": found["x"], "y": found["y"],
-                "text": f"нашёл {target_label(target)} — {found['how']}"}
+                "text": f"нашёл {target_label(target)} — {found['how']}", "extracted_text": extracted}
 
 
 class NoDriver:
@@ -658,7 +668,7 @@ class NoDriver:
     async def find(self, *_: Any) -> None:
         return None
 
-    async def pick(self, timeout: float = 60.0) -> None:
+    async def pick(self, timeout: float = 60.0, include_text: bool = False) -> None:
         raise StepError("пипетка работает только в Windows")
 
     async def probe(self, target: dict) -> dict:
