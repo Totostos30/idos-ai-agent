@@ -407,7 +407,7 @@ async function renderSettings() {
   const draw = () => {
     const q = filter.value.trim().toLowerCase();
     body.replaceChildren(...Object.entries(cfg).filter(([, v]) => v && typeof v === "object" && !Array.isArray(v)).map(([sec, vals]) => {
-      const rows = Object.entries(vals).filter(([k]) => !(sec === "island" && PARTS_KEYS.has(k))).filter(([k]) => !q || (sec + "." + k).toLowerCase().includes(q)).map(([k, v]) =>
+      const rows = Object.entries(vals).filter(([k]) => !(sec === "island" && (PARTS_KEYS.has(k) || k === "waves"))).filter(([k]) => !q || (sec + "." + k).toLowerCase().includes(q)).map(([k, v]) =>
         el("div", { class: "setrow" }, el("span", { class: "k mono" }, k), field(sec + "." + k, v)));
       if (!rows.length) return el("span");
       return el("section", { class: "box" }, el("h3", {}, SECTION_NAMES[sec] || sec, el("span", { class: "mut small" }, "  " + sec)), rows,
@@ -420,10 +420,87 @@ async function renderSettings() {
     el("h1", {}, "Настройки"),
     el("div", { class: "row2" }, filter,
       el("button", { class: "btn", onclick: async () => { const r = await core.try("core.selftest"); showSelftest(r); } }, "Самопроверка"),
-      inTauri ? el("button", { class: "btn ghost", onclick: () => invoke("restart_core") }, "Перезапустить ядро") : null),
+    inTauri ? el("button", { class: "btn ghost", onclick: () => invoke("restart_core") }, "Перезапустить ядро") : null),
     voiceBox(),
     islandPartsBox(cfg),
+    waveSettingsBox(cfg),
     body));
+}
+
+function waveSettingsBox(cfg) {
+  const values = Object.assign({
+    full_width_enabled: true, full_width_duration_s: 3, full_width_amplitude: 1,
+    full_width_density: 32, full_width_offset_percent: -3, full_width_front_width: 1.8, full_width_pulse_hz: 1,
+    full_width_glow: 10, color: "", music_enabled: true, music_gain: 1, music_glow: 10,
+    music_peak_count: 32, music_peak_width: 0.3, music_attack: 0.55, music_release: 0.18,
+    ambient_amplitude: 1, ambient_speed: 1,
+    cursor_enabled: true, cursor_strength: 11, away_sag_enabled: true,
+    away_sag_strength: 7, rain_enabled: true, rain_interval_s: 4, rain_drop_size: 1.9, success_drop_size: 3.4,
+    lip_breath_enabled: true, lip_breath_period_s: 2.4, respect_reduced_motion: false,
+  }, cfg.island && cfg.island.waves || {});
+  const box = el("section", { class: "box wave-settings" });
+  const save = async (key, value) => {
+    values[key] = value;
+    if (!cfg.island) cfg.island = {};
+    cfg.island.waves = values;
+    const r = await core.try("settings.set", { key: "island.waves." + key, value });
+    if (r && r.error) toast(r.error, "error");
+  };
+  const row = (label, control, hint = "") => el("div", { class: "setrow wave-setting" },
+    el("span", { class: "k" }, label), control,
+    hint ? el("span", { class: "mut small wave-hint" }, hint) : null);
+  const toggle = (label, key, hint) => row(label,
+    el("label", { class: "switch" }, el("input", { type: "checkbox", checked: !!values[key], onchange: (e) => save(key, e.target.checked) }), el("i")), hint);
+  const range = (label, key, min, max, step, unit = "", hint = "") => {
+    const input = el("input", { class: "wave-range", type: "range", min: String(min), max: String(max), step: String(step), value: String(values[key]) });
+    const digits = (String(step).split(".")[1] || "").length;
+    const output = el("span", { class: "mono small wave-value" }, Number(values[key]).toFixed(digits) + unit);
+    input.addEventListener("input", () => { output.textContent = Number(input.value).toFixed(digits) + unit; });
+    input.addEventListener("change", () => save(key, Number(input.value)));
+    return row(label, el("div", { class: "wave-range-wrap" }, input, output), hint);
+  };
+  const subhead = (text) => el("h4", { class: "wave-subhead" }, text);
+  const colorInput = el("input", { class: "wave-color", type: "color", value: /^#[0-9a-f]{6}$/i.test(values.color) ? values.color : "#7c8cff", title: "Переопределить цвет волн" });
+  colorInput.addEventListener("change", () => save("color", colorInput.value));
+  const resetColor = el("button", { class: "btn ghost wave-color-reset", onclick: () => { colorInput.value = "#7c8cff"; save("color", ""); } }, "Цвет обложки");
+  box.append(
+    el("h3", {}, "Эффекты волн"),
+    el("div", { class: "mut small wave-intro" }, "Эти параметры настраивают полноэкранную волну, музыкальные пики и вспомогательные жидкие эффекты. Изменения применяются сразу."),
+    subhead("Полноширинная волна при сворачивании"),
+    toggle("Включить волну при сворачивании", "full_width_enabled", "Запускать только если в момент сворачивания играет музыка."),
+    range("Время распространения", "full_width_duration_s", 0.8, 8, 0.2, " с"),
+    range("Высота пиков", "full_width_amplitude", 0.2, 1.8, 0.1, "×"),
+    range("Количество пиков", "full_width_density", 8, 64, 1),
+    range("Смещение волнового фронта", "full_width_offset_percent", -50, 50, 1, " %", "От центра островка: − влево, + вправо; значение — процент ширины экрана."),
+    range("Ширина фронта", "full_width_front_width", 0.5, 3.5, 0.1, "×"),
+    range("Пульсация пиков", "full_width_pulse_hz", 0.2, 3, 0.1, " Гц"),
+    range("Свечение", "full_width_glow", 0, 24, 1),
+    row("Цвет волн", el("div", { class: "wave-color-wrap" }, colorInput, resetColor), "Пустое значение использует цвет обложки."),
+    subhead("Музыкальная волна островка"),
+    toggle("Включить волну музыкального эквалайзера", "music_enabled"),
+    range("Чувствительность музыкальных пиков", "music_gain", 0, 2, 0.1, "×"),
+    range("Количество музыкальных пиков", "music_peak_count", 4, 32, 1),
+    range("Ширина музыкальных пиков", "music_peak_width", 0.1, 0.8, 0.05, "×"),
+    range("Свечение музыкальной волны", "music_glow", 0, 24, 1),
+    range("Скорость реакции на усиление", "music_attack", 0.05, 1, 0.05, "×"),
+    range("Скорость затухания музыкальных пиков", "music_release", 0.05, 1, 0.05, "×"),
+    range("Амплитуда фоновой волны", "ambient_amplitude", 0, 3, 0.1, "×"),
+    range("Скорость фонового колебания", "ambient_speed", 0.2, 3, 0.1, "×"),
+    subhead("Жидкие реакции"),
+    toggle("Реакция на курсор", "cursor_enabled"),
+    range("Высота реакции на курсор", "cursor_strength", 0, 24, 1),
+    toggle("Провисание, когда пользователя нет", "away_sag_enabled"),
+    range("Сила провисания", "away_sag_strength", 0, 18, 1),
+    toggle("Дождевые капли", "rain_enabled"),
+    range("Средний интервал дождевых капель", "rain_interval_s", 1, 12, 0.5, " с"),
+    range("Размер дождевых капель", "rain_drop_size", 0.8, 4, 0.1, " px"),
+    range("Размер капли успешного действия", "success_drop_size", 1, 8, 0.1, " px"),
+    subhead("Анимация полоски"),
+    toggle("Пульсация полоски при музыке", "lip_breath_enabled"),
+    range("Период пульсации полоски", "lip_breath_period_s", 0.5, 6, 0.1, " с"),
+    toggle("Отключать эффекты при системном «уменьшении движения»", "respect_reduced_motion"),
+    el("div", { class: "row2 end" }, el("button", { class: "btn ghost", onclick: async () => { await core.try("settings.reset", { key: "island.waves" }); renderSettings(); } }, "Сбросить параметры волн")));
+  return box;
 }
 
 // «Островок: что показывать» — те же переключатели, что и в режиме ✎ в самом островке.

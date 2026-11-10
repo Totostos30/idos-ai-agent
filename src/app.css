@@ -66,6 +66,15 @@ body.view-app .empty { color: var(--mut); text-align: center; padding: 26px; }
 .setrow:first-of-type { border-top: 0; }
 .setrow .k { width: clamp(150px, 32%, 240px); flex: none; font-size: 12.5px; color: var(--mut); overflow: hidden; text-overflow: ellipsis; }
 .setrow > .field:not(.small) { flex: 1; }
+.wave-intro { margin: 0 0 10px; }
+.wave-subhead { margin: 14px 0 4px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--mut); text-transform: uppercase; letter-spacing: .04em; }
+.wave-range-wrap { flex: 1; min-width: 150px; display: flex; align-items: center; gap: 10px; }
+.wave-range { flex: 1; min-width: 80px; accent-color: var(--accent); }
+.wave-value { min-width: 46px; text-align: right; }
+.wave-color-wrap { flex: 1; display: flex; align-items: center; gap: 8px; }
+.wave-color { width: 42px; height: 32px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
+.wave-color-reset { padding: 5px 9px; font-size: 11px; }
+.wave-hint { flex: 1 1 100%; margin-left: calc(clamp(150px, 32%, 240px) + 12px); }
 .toolgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 14px; }
 .tool { padding: 12px 14px; border-radius: 18px; background: #111114; box-shadow: inset 0 0 0 1px var(--line); }
 .tool.off { opacity: 0.55; }
