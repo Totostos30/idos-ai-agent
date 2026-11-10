@@ -13,7 +13,7 @@ export class Fluid {
     this.wideDropsCv = wideDropsCanvas;
     this.wideDropsCtx = wideDropsCanvas.getContext("2d");
     this.wideWaveStarted = null;
-    this.wideWaveOriginX = null;
+    this.wideWaveOriginRatio = null;
     this.musicVisibility = 0;
     this.get = getState;
     this.cursor = null;
@@ -191,16 +191,16 @@ export class Fluid {
     const reducedMotion = waves.respect_reduced_motion !== false && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (waves.full_width_enabled === false || reducedMotion) {
       this.wideWaveStarted = null;
-      this.wideWaveOriginX = null;
+      this.wideWaveOriginRatio = null;
     }
     if (justCollapsed && st.playing && waves.full_width_enabled !== false && !reducedMotion) {
       this.wideWaveStarted = now;
-      this.wideWaveOriginX = null;
+      this.wideWaveOriginRatio = null;
     }
     const duration = Math.max(0.8, Math.min(8, Number(waves.full_width_duration_s ?? 3))) * 1000;
     if (this.wideWaveStarted === null || now - this.wideWaveStarted >= duration) {
       this.wideWaveStarted = null;
-      this.wideWaveOriginX = null;
+      this.wideWaveOriginRatio = null;
       cv.classList.remove("active");
       ctx.clearRect(0, 0, cv.width, cv.height);
       return;
@@ -220,14 +220,16 @@ export class Fluid {
     const count = Math.round(Math.max(8, Math.min(64, Number(waves.full_width_density ?? 32))));
     const elapsed = now - this.wideWaveStarted;
     const travel = Math.max(0, Math.min(1, elapsed / duration));
-    if (this.wideWaveOriginX === null) {
+    if (this.wideWaveOriginRatio === null) {
       const canvasRect = cv.getBoundingClientRect();
       const islandRect = this.isl.getBoundingClientRect();
-      const viewScale = canvasRect.width / width || 1;
-      this.wideWaveOriginX = Math.max(0, Math.min(width,
-        (islandRect.left + islandRect.width / 2 - canvasRect.left) / viewScale));
+      const origin = canvasRect.width > 0
+        ? (islandRect.left + islandRect.width / 2 - canvasRect.left) / canvasRect.width
+        : 0.5;
+      this.wideWaveOriginRatio = Math.max(0, Math.min(1, origin));
     }
-    const originX = this.wideWaveOriginX;
+    const originX = width * this.wideWaveOriginRatio;
+    const maxTravel = Math.max(originX, width - originX);
     const waveWidth = Math.max(8, width / count * Math.max(0.5, Math.min(3.5, Number(waves.full_width_front_width ?? 1.8))));
     const pulseHz = Math.max(0.2, Math.min(3, Number(waves.full_width_pulse_hz ?? 1)));
     const amplitude = Math.max(0.2, Math.min(1.8, Number(waves.full_width_amplitude ?? 1)));
@@ -237,9 +239,7 @@ export class Fluid {
     const span = Math.max(1, width);
     const spikes = Array.from({ length: count }, (_, i) => {
       const x = ((i + 0.5) / count) * span;
-      const distance = x < originX
-        ? Math.abs(x - originX) - originX * travel
-        : Math.abs(x - originX) - (width - originX) * travel;
+      const distance = Math.abs(x - originX) - maxTravel * travel;
       const envelope = Math.exp(-(distance ** 2) / (2 * waveWidth ** 2));
       const fade = 1 - travel;
       return (0.5 + 0.5 * Math.sin(second + i * 0.55)) * envelope * fade * amplitude;
