@@ -272,27 +272,32 @@ def build_methods(app) -> dict[str, Callable[..., Any]]:
     # ------------------------------------------------------------------ settings
     @method("settings.get")
     async def settings_get(key: str = "") -> Any:
-        return settings.get(key) if key else settings.snapshot()
+        snapshot = settings.public_snapshot()
+        value: Any = snapshot
+        for part in key.split(".") if key else ():
+            if not isinstance(value, dict) or part not in value:
+                return None
+            value = value[part]
+        return value
 
     @method("settings.set")
     async def settings_set(key: str, value: Any = None) -> dict:
         settings.set(key, value)
-        bus.emit("settings.changed", {"key": key, "value": value})
+        bus.emit("settings.changed", {"key": key})
         return {"ok": True}
 
     @method("settings.update")
     async def settings_update(values: dict) -> dict:
         settings.update(values)
-        for key, value in values.items():
-            bus.emit("settings.changed", {"key": key, "value": value})
+        for key in values:
+            bus.emit("settings.changed", {"key": key})
         return {"ok": True}
 
     @method("settings.reset")
     async def settings_reset(key: str) -> dict:
         settings.reset(key)
-        value = settings.get(key)
-        bus.emit("settings.changed", {"key": key, "value": value})
-        return {"value": value}
+        bus.emit("settings.changed", {"key": key})
+        return {"value": await settings_get(key)}
 
     # ------------------------------------------------------------------ memory, skills, tools, MCP
     @method("memory.list")

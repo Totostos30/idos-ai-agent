@@ -367,6 +367,26 @@ class Settings:
         with self._lock:
             return copy.deepcopy(self.data)
 
+    def public_snapshot(self) -> dict:
+        """Return UI-safe settings without exposing stored credentials."""
+        secret_names = ("key", "password", "secret", "token")
+
+        def redact(value: Any) -> Any:
+            if isinstance(value, dict):
+                out = {}
+                for name, item in value.items():
+                    if any(part in str(name).lower() for part in secret_names):
+                        out[name] = "__IDOS_SECRET_SET__" if item else ""
+                    else:
+                        out[name] = redact(item)
+                return out
+            if isinstance(value, list):
+                return [redact(item) for item in value]
+            return copy.deepcopy(value)
+
+        with self._lock:
+            return redact(self.data)
+
 
 _settings: Settings | None = None
 

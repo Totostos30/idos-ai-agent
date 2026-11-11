@@ -366,6 +366,18 @@ function field(path, value) {
     const r = await core.try("settings.set", { key: path, value: v });
     if (r && r.error) toast(r.error, "error"); else toast("Сохранено: " + path, "ok");
   };
+  const keyName = path.split(".").pop();
+  if (/(?:key|password|secret|token)$/i.test(keyName) && (typeof value === "string" || value === "__IDOS_SECRET_SET__")) {
+    const exists = value === "__IDOS_SECRET_SET__" || !!value;
+    const input = el("input", { class: "field", type: "password", autocomplete: "new-password",
+      placeholder: exists ? "Секрет сохранён — пустое поле оставит его без изменений" : "Введите секрет" });
+    input.addEventListener("change", () => { if (input.value) save(input.value); });
+    const reveal = el("button", { class: "btn ghost", type: "button", "aria-label": "Показать или скрыть введённый секрет",
+      onclick: () => { const showing = input.type === "text"; input.type = showing ? "password" : "text"; reveal.textContent = showing ? "Показать" : "Скрыть"; } }, "Показать");
+    const controls = [reveal];
+    if (exists) controls.push(el("button", { class: "btn ghost", type: "button", onclick: (e) => confirmClick(e.currentTarget, () => save("")) }, "Очистить"));
+    return el("div", { class: "secret-field" }, input, ...controls);
+  }
   if (typeof value === "boolean")
     return el("label", { class: "switch" }, el("input", { type: "checkbox", checked: value, onchange: (e) => save(e.target.checked) }), el("i"));
   if (typeof value === "number") {
