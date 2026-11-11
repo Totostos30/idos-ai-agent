@@ -25,6 +25,8 @@ from .wsproto import WebSocket, WSClosed, handshake_response, pack_binary, unpac
 
 log = logging.getLogger("server")
 BINARY_BACKLOG = 64
+MAX_RPC_INFLIGHT = 64
+MAX_RPC_TEXT_BYTES = 2 * 1024 * 1024
 LOSSY_EVENTS = {"cursor", "media.levels", "mic.level", "media.position"}
 REASONS = {200: "OK", 204: "No Content", 400: "Bad Request", 401: "Unauthorized", 404: "Not Found",
            413: "Payload Too Large", 500: "Internal Server Error", 503: "Service Unavailable"}
@@ -41,12 +43,36 @@ class Session:
         self.id = secrets.token_hex(4)
         self.window = ""
         self.queue: asyncio.Queue = asyncio.Queue(maxsize=5000)
+        self.inflight = 0
 
-    def push(self, kind: str, payload: Any) -> None:
+    def push(self, kind: str, payload: Any, *, critical: bool = False) -> None:
         try:
             self.queue.put_nowait((kind, payload))
         except asyncio.QueueFull:
-            log.warning("session %s queue full, dropping message", self.id)
+            if not critical:
+                log.warning("session %s queue full, dropping event", self.id)
+                return
+            # Never discard an RPC reply just because a client stopped reading
+            # high-frequency events. Prefer removing an older event first.
+            kept: list[tuple[str, Any]] = []
+            removed = False
+            while True:
+                try:
+                    item = self.queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
+                if not removed and item[0] == "event":
+                    removed = True
+                    continue
+                kept.append(item)
+            for item in kept:
+                self.queue.put_nowait(item)
+            try:
+                self.queue.put_nowait((kind, payload))
+            except asyncio.QueueFull:
+                log.error("session %s queue full of critical messages", self.id)
+            if not removed:
+                log.warning("session %s queue full, could not evict an event", self.id)
 
     async def sender(self) -> None:
         while True:
@@ -54,7 +80,7 @@ class Session:
             if kind == "close":
                 return
             try:
-                if kind == "text":
+                if kind in {"text", "event"}:
                     await self.ws.send_text(payload)
                 else:
                     await self.ws.send_binary(payload)
@@ -77,6 +103,7 @@ class CoreServer:
         self.routes: dict[str, Callable[..., Awaitable[tuple[int, Any]]]] = {}
         self.server: asyncio.base_events.Server | None = None
         self.started = time.time()
+        self._stopping = False
         bus.subscribe(self._on_event)
 
     # ------------------------------------------------------------ registry
@@ -106,11 +133,18 @@ class CoreServer:
         log.info("core listening on %s:%s", self.host, self.port)
 
     async def stop(self) -> None:
+        self._stopping = True
         for session in list(self.sessions):
             await session.ws.close()
         if self.server:
             self.server.close()
             await self.server.wait_closed()
+        tasks = list(self._tasks)
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        self._tasks.clear()
         bus.unsubscribe(self._on_event)
         if self.write_runtime_file:
             config.clear_runtime(os.getpid())
@@ -127,12 +161,16 @@ class CoreServer:
                     continue
                 session.push("binary", frame)
             return
-        text = json.dumps({"event": event, "data": data}, ensure_ascii=False, default=str)
+        try:
+            text = json.dumps({"event": event, "data": data}, ensure_ascii=False, default=str)
+        except (TypeError, ValueError, RecursionError):
+            log.warning("dropping unserialisable event %s", event, exc_info=True)
+            return
         lossy = event in LOSSY_EVENTS
         for session in list(self.sessions):
             if lossy and session.queue.qsize() > 100:
                 continue
-            session.push("text", text)
+            session.push("event", text)
 
     # ------------------------------------------------------------ http
     async def _respond(self, writer: asyncio.StreamWriter, status: int, payload: Any,
@@ -234,6 +272,9 @@ class CoreServer:
                 kind, payload = await ws.recv()
                 binary: bytes | None = None
                 if kind == "text":
+                    if len(payload.encode("utf-8")) > MAX_RPC_TEXT_BYTES:
+                        log.warning("session %s sent oversized RPC text frame", session.id)
+                        continue
                     try:
                         message = json.loads(payload)
                     except ValueError:
@@ -244,9 +285,20 @@ class CoreServer:
                     except ValueError:
                         continue
                 if isinstance(message, dict):
+                    if session.inflight >= MAX_RPC_INFLIGHT:
+                        call_id = message.get("id")
+                        if call_id is not None:
+                            session.push("text", json.dumps({"id": call_id,
+                                                               "error": {"message": "Слишком много одновременных запросов"}},
+                                                              ensure_ascii=False), critical=True)
+                        continue
+                    session.inflight += 1
                     task = asyncio.create_task(self._dispatch(session, message, binary))
                     self._tasks.add(task)
-                    task.add_done_callback(self._tasks.discard)
+                    def done(completed: asyncio.Task, current: Session = session) -> None:
+                        current.inflight = max(0, current.inflight - 1)
+                        self._tasks.discard(completed)
+                    task.add_done_callback(done)
         except WSClosed:
             pass
         except Exception:  # noqa: BLE001
@@ -291,7 +343,7 @@ class CoreServer:
             text = json.dumps(reply, ensure_ascii=False, default=str)
         except (TypeError, ValueError) as exc:
             text = json.dumps({"id": call_id, "error": {"message": f"bad result: {exc}"}})
-        session.push("text", text)
+        session.push("text", text, critical=True)
 
     async def invoke(self, handler: Callable[..., Any], params: dict, session: Session | None = None) -> Any:
         kwargs = dict(params)
