@@ -359,6 +359,7 @@ const SECTION_NAMES = {
   island: "Остров", hotkeys: "Горячие клавиши", voice: "Голос", audio: "Звук и микрофон", agent: "Агент",
   models: "Модели", web: "Интернет", capture: "Скриншоты и запись", integrations: "Интеграции", weather: "Погода",
   clipboard: "Буфер обмена", memory: "Память", mcp: "MCP", obs: "OBS", media: "Музыка", security: "Безопасность",
+  browser: "Браузер", alice: "Алиса (Яндекс)",
 };
 
 function field(path, value) {

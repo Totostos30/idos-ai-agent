@@ -32,7 +32,7 @@ Frontend (Vite/JavaScript) ── WebSocket RPC/events ── Python CoreServer
 | `core/app.py`, `core/__main__.py` | Создание компонентов, запуск ядра и управление его жизненным циклом |
 | `core/agent.py`, `core/agent_text.py`, `core/prompts.py` | Цикл агента, история, вызов инструментов, текстовые политики |
 | `core/router.py`, `core/providers.py`, `core/llm.py` | Выбор модели, провайдеры, HTTP-запросы и разбор ответов/лимитов |
-| `core/tools/` | Инструменты для Windows, приложений, мыши/экрана, файлов, документов, браузера, веба, shell, модели, памяти, навыков, сценариев и MCP |
+| `core/tools/` | Инструменты для Windows, приложений, мыши/экрана, файлов, документов, браузера, Алисы Яндекса, веба, shell, модели, памяти, навыков, сценариев и MCP |
 | `core/scenarios.py`, `core/scenario_driver.py` | Блок-сценарии автоматизации, селекторы UI Automation и взаимодействие с окнами |
 | `core/features/` | Подключаемые функции острова: буфер обмена, заметки, медиа, погода, статус, командная строка, захват/OCR, запись, загрузки и интеграции |
 | `core/api.py`, `core/server.py`, `core/bus.py`, `core/wsproto.py` | Методы API, HTTP/WebSocket-сервер, события и бинарный протокол |
