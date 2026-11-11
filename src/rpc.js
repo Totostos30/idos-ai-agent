@@ -2,6 +2,18 @@
 // Двоичные кадры: 4 байта длины заголовка (big-endian) + JSON-заголовок + данные.
 import { invoke, sleep, view } from "./shell.js";
 
+function decodeFrame(raw) {
+  if (typeof raw === "string") {
+    try { return { message: JSON.parse(raw), binary: null }; } catch (e) { return null; }
+  }
+  const view8 = new DataView(raw);
+  const headerSize = view8.getUint32(0, false);
+  return {
+    message: JSON.parse(new TextDecoder().decode(new Uint8Array(raw, 4, headerSize))),
+    binary: new Uint8Array(raw, 4 + headerSize),
+  };
+}
+
 class Core {
   constructor() {
     this.ws = null;
@@ -85,16 +97,9 @@ class Core {
   }
 
   receive(raw) {
-    let msg;
-    let binary = null;
-    if (typeof raw === "string") {
-      try { msg = JSON.parse(raw); } catch (e) { return; }
-    } else {
-      const view8 = new DataView(raw);
-      const n = view8.getUint32(0, false);
-      msg = JSON.parse(new TextDecoder().decode(new Uint8Array(raw, 4, n)));
-      binary = new Uint8Array(raw, 4 + n);
-    }
+    const frame = decodeFrame(raw);
+    if (!frame) return;
+    const { message: msg, binary } = frame;
     if (msg.id !== undefined && msg.id !== null && this.pending.has(msg.id)) {
       const p = this.pending.get(msg.id);
       this.pending.delete(msg.id);
