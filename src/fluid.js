@@ -5,6 +5,16 @@ const H = 64;
 const BEAD_R = 3.4;
 const gauss = (d, s) => Math.exp(-(d * d) / (2 * s * s));
 
+function resizeCanvas(canvas, width, height, dpr) {
+  const pixelWidth = Math.round(width * dpr);
+  const pixelHeight = Math.round(height * dpr);
+  if (canvas.width === pixelWidth && canvas.height === pixelHeight) return;
+  canvas.width = pixelWidth;
+  canvas.height = pixelHeight;
+  canvas.style.width = width + "px";
+  canvas.style.height = height + "px";
+}
+
 export class Fluid {
   constructor(island, canvas, getState, wideDropsCanvas) {
     this.isl = island;
@@ -89,12 +99,7 @@ export class Fluid {
     const musicResizing = this.musicWidthChangedAt > 0 && now - this.musicWidthChangedAt < 100;
     if (musicResizing) this.musicVisibility = 0;
     const dpr = window.devicePixelRatio || 1;
-    if (this.cv.width !== Math.round(W * dpr) || this.cv.height !== Math.round(H * dpr)) {
-      this.cv.width = Math.round(W * dpr);
-      this.cv.height = Math.round(H * dpr);
-      this.cv.style.width = W + "px";
-      this.cv.style.height = H + "px";
-    }
+    resizeCanvas(this.cv, W, H, dpr);
     const cs = getComputedStyle(this.isl);
     const R = Math.min(parseFloat(cs.borderBottomLeftRadius) || 18, this.isl.offsetHeight / 2);
     const a = R * 0.75, b = W - R * 0.75, span = Math.max(1, b - a);
@@ -226,12 +231,7 @@ export class Fluid {
     const width = Math.max(1, window.innerWidth);
     const height = H;
     const dpr = window.devicePixelRatio || 1;
-    if (cv.width !== Math.round(width * dpr) || cv.height !== Math.round(height * dpr)) {
-      cv.width = Math.round(width * dpr);
-      cv.height = Math.round(height * dpr);
-      cv.style.width = width + "px";
-      cv.style.height = height + "px";
-    }
+    resizeCanvas(cv, width, height, dpr);
     cv.classList.add("active");
 
     const count = Math.round(Math.max(8, Math.min(64, Number(waves.full_width_density ?? 32))));
