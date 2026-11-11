@@ -7,9 +7,10 @@ const LANE_H = 54;
 const GAP_X = 46;
 const PAD_X = 44;
 const PAD_TOP = 78;
-const PAD_BOTTOM = 44;
+const PAD_BOTTOM = 78;
 const NODE_R = 6;
-const COLORS = ["#69e4d1", "#a897ff", "#ffba72", "#7fd1ff", "#f78fb3", "#a8e063", "#ffd166", "#c792ea"];
+const MAIN_COLOR = "#3ddc84";
+const COLORS = ["#a897ff", "#ffba72", "#7fd1ff", "#f78fb3", "#ffd166", "#c792ea", "#ff8a80", "#8ab4ff"];
 
 function escape(value) {
   return String(value ?? "").replace(/[&<>\"']/g, (char) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[char]));
@@ -72,12 +73,34 @@ function layout() {
     }
   });
   const laneCount = Math.max(1, lanes.length);
-  commits.forEach((commit) => { commit._y = PAD_TOP + commit._lane * LANE_H; });
+  const mainTip = branchTip("main") || branchTip("origin/main");
+  const mainCommit = byHash.get(mainTip);
+  const mainLane = mainCommit ? mainCommit._lane : 0;
+  /* main — центральная линия. Остальные дорожки по очереди уходят вниз и вверх от неё,
+     поэтому каждая новая ветка визуально ответвляется от главной линии. */
+  const offsets = new Map([[mainLane, 0]]);
+  let branch = 0;
+  for (let lane = 0; lane < laneCount; lane += 1) {
+    if (lane === mainLane) continue;
+    offsets.set(lane, branch % 2 === 0 ? branch / 2 + 1 : -(branch + 1) / 2);
+    branch += 1;
+  }
+  const values = [...offsets.values()];
+  const spread = Math.max(1, ...values.map((value) => Math.abs(value)));
+  commits.forEach((commit) => {
+    commit._visual = spread + offsets.get(commit._lane);
+    commit._main = commit._lane === mainLane;
+    commit._y = PAD_TOP + commit._visual * LANE_H;
+  });
   return {
     byHash,
     width: PAD_X * 2 + Math.max(0, total - 1) * GAP_X,
-    height: PAD_TOP + Math.max(0, laneCount - 1) * LANE_H + PAD_BOTTOM,
+    height: PAD_TOP + spread * 2 * LANE_H + PAD_BOTTOM,
   };
+}
+
+function colorOf(commit) {
+  return commit._main ? MAIN_COLOR : COLORS[commit._visual % COLORS.length];
 }
 
 function edgePath(child, parent) {
@@ -131,12 +154,12 @@ function render() {
   const nodes = [];
   commits.forEach((commit, index) => {
     const dim = visible(commit) ? "" : " off";
-    const color = COLORS[commit._lane % COLORS.length];
+    const color = colorOf(commit);
     const parents = parentsOf(commit);
     for (const hash of parents) {
       const parent = byHash.get(hash);
       if (!parent) continue;
-      edges.push(`<path class="edge${dim}" d="${edgePath(commit, parent)}" stroke="${color}"></path>`);
+      edges.push(`<path class="edge${dim}" d="${edgePath(commit, parent)}" stroke="${colorOf(parent)}"></path>`);
     }
     const isMerge = parents.length > 1;
     const refs = refsOf(commit);
