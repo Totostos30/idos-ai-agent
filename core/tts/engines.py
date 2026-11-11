@@ -3,19 +3,13 @@ because Silero itself has no speed parameter."""
 from __future__ import annotations
 
 import array
-import asyncio
-import io
 import logging
 import os
 import pathlib
-import tempfile
 import threading
 import urllib.request
-import uuid
-import wave
 
 from .. import config
-from ..util import powershell
 from .player import Audio, pcm_to_wav
 
 log = logging.getLogger("idos.tts")
