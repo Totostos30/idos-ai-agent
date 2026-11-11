@@ -2,6 +2,16 @@
 // После распознавания текст сразу уходит агенту (не нужно нажимать «Отправить») или печатается (диктовка).
 import { core } from "./rpc.js";
 
+function toPcm16(chunks) {
+  const total = chunks.reduce((size, chunk) => size + chunk.length, 0);
+  const pcm = new Int16Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    for (let i = 0; i < chunk.length; i++) pcm[offset++] = Math.max(-32768, Math.min(32767, chunk[i] * 32767));
+  }
+  return { pcm, total };
+}
+
 export class Mic {
   constructor(onState) {
     this.onState = onState || (() => {});
@@ -74,12 +84,7 @@ export class Mic {
   async stop() {
     if (!this.active) return;
     const rate = this.release();
-    const total = this.chunks.reduce((n, c) => n + c.length, 0);
-    const pcm = new Int16Array(total);
-    let off = 0;
-    for (const c of this.chunks) {
-      for (let i = 0; i < c.length; i++) pcm[off++] = Math.max(-32768, Math.min(32767, c[i] * 32767));
-    }
+    const { pcm, total } = toPcm16(this.chunks);
     this.chunks = [];
     if (total < rate * 0.3) { this.onState({ state: "idle" }); return; }
     this.onState({ state: "transcribing" });
