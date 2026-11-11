@@ -44,16 +44,20 @@ def process_alive(pid: int) -> bool:
     except ImportError:
         pass
     if os.name == "nt":
-        import ctypes
+        try:
+            import ctypes
 
-        kernel = ctypes.windll.kernel32
-        handle = kernel.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
-        if not handle:
-            return False
-        code = ctypes.c_ulong()
-        kernel.GetExitCodeProcess(handle, ctypes.byref(code))
-        kernel.CloseHandle(handle)
-        return code.value == 259  # STILL_ACTIVE
+            kernel = ctypes.windll.kernel32
+            handle = kernel.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+            if not handle:
+                return False
+            code = ctypes.c_ulong()
+            kernel.GetExitCodeProcess(handle, ctypes.byref(code))
+            kernel.CloseHandle(handle)
+            return code.value == 259  # STILL_ACTIVE
+        except (AttributeError, OSError):
+            log.warning("could not inspect parent process %s", pid, exc_info=True)
+            return True
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -103,6 +107,8 @@ class App:
         self.server: CoreServer | None = None
         self.stopping = asyncio.Event()
         self._tasks: set[asyncio.Task] = set()
+        self._close_lock = asyncio.Lock()
+        self._closed = False
 
     def background(self, coro, name: str) -> asyncio.Task:
         task = asyncio.create_task(coro, name=name)
@@ -141,7 +147,11 @@ class App:
         bus.emit("core.ready", {"port": self.server.port, "version": config.VERSION, "demo": self.demo})
 
     async def _start_stt(self) -> None:
-        status = await self.stt.ensure()
+        try:
+            status = await self.stt.ensure()
+        except Exception:  # noqa: BLE001 - optional speech must not kill the core
+            log.warning("GigaSTT startup failed", exc_info=True)
+            status = {"ok": False, "reason": "startup failed"}
         bus.emit("voice.stt", status)
         if not status.get("ok"):
             log.info("GigaSTT: %s", status.get("reason"))
@@ -151,7 +161,12 @@ class App:
         misses = 0
         while not self.stopping.is_set():
             await asyncio.sleep(3)
-            misses = 0 if process_alive(pid) else misses + 1
+            try:
+                alive = process_alive(pid)
+            except Exception:  # noqa: BLE001 - parent monitoring is best effort
+                log.warning("parent process check failed", exc_info=True)
+                alive = True
+            misses = 0 if alive else misses + 1
             if misses >= 3:
                 log.info("parent process %s is gone, shutting down", pid)
                 self.stopping.set()
@@ -160,23 +175,31 @@ class App:
         self.stopping.set()
 
     async def close(self) -> None:
-        self.stopping.set()
-        steps = [("agent", self.agent.stop), ("tts", self.tts.close), ("stt", self.stt.stop),
-                 ("browser", self.browser.close), ("mcp", self.mcp.close)]
-        steps += [(type(f).__name__, f.close) for f in self.features if hasattr(f, "close")]
-        if self.server is not None:
-            steps.append(("server", self.server.stop))
-        steps.append(("db", self.db.close))
-        for name, step in steps:
-            try:
-                result = step()
-                if asyncio.iscoroutine(result):
-                    await asyncio.wait_for(result, 10)
-            except Exception:  # noqa: BLE001 - keep closing the rest
-                log.warning("closing %s failed", name, exc_info=True)
-        for task in list(self._tasks):
-            task.cancel()
-        bus.attach(None)
+        async with self._close_lock:
+            if self._closed:
+                return
+            self._closed = True
+            self.stopping.set()
+            steps = [("agent", self.agent.stop), ("tts", self.tts.close), ("stt", self.stt.stop),
+                     ("browser", self.browser.close), ("mcp", self.mcp.close)]
+            steps += [(type(f).__name__, f.close) for f in self.features if hasattr(f, "close")]
+            if self.server is not None:
+                steps.append(("server", self.server.stop))
+            steps.append(("db", self.db.close))
+            for name, step in steps:
+                try:
+                    result = step()
+                    if asyncio.iscoroutine(result):
+                        await asyncio.wait_for(result, 10)
+                except Exception:  # noqa: BLE001 - keep closing the rest
+                    log.warning("closing %s failed", name, exc_info=True)
+            tasks = list(self._tasks)
+            for task in tasks:
+                task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            self._tasks.clear()
+            bus.attach(None)
 
 
 async def run(port: int = 9877, demo: bool = False) -> None:
