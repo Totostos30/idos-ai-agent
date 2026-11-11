@@ -439,7 +439,7 @@ function draw() {
     const row = el("button", { class: "scn-node-item", title: blockTitle(t), "data-search": blockTitle(t).toLocaleLowerCase() },
       el("span", { class: "scn-node-icon" }, ICONS[t]), el("span", { class: "scn-node-label" }, blockTitle(t)));
     row.addEventListener("pointerdown", (e) => startPaletteDrag(t, row, e));
-    row.addEventListener("click", (e) => { if (e.detail === 0) addBlock(t); });
+    row.addEventListener("click", (e) => { if (e.detail === 0) { addBlock(t); requestAnimationFrame(() => plane && plane.querySelector(".scn-node.sel")?.focus()); } });
     return row;
   });
   const nodeList = el("div", { class: "scn-list scn-node-list" }, nodeRows);
@@ -506,7 +506,7 @@ function draw() {
       const rect = plane.getBoundingClientRect();
       addBlock(type, { x: e.clientX - rect.left, y: e.clientY - rect.top });
     },
-    onpointerdown: (e) => { if (e.target === canvas || e.target === plane || e.target === svg) { S.sel = null; drawInspector(); plane.querySelectorAll(".scn-node.sel").forEach((x) => x.classList.remove("sel")); } } }, plane);
+    onpointerdown: (e) => { if (e.target === canvas || e.target === plane || e.target === svg) { S.sel = null; drawInspector(); plane.querySelectorAll(".scn-node").forEach((x) => { x.classList.remove("sel"); x.setAttribute("aria-pressed", "false"); }); } } }, plane);
   inspector = el("aside", { class: "scn-inspector" });
   page.replaceChildren(el("div", { class: "scn-wrap" + (S.sidebarCollapsed ? " scn-sidebar-collapsed" : "") }, side,
     el("div", { class: "scn-editor" }, head, el("div", { class: "scn-work" }, canvas, inspector))));
@@ -823,6 +823,7 @@ function connectionEditor(n) {
           if (select.value && nodeById(select.value)) n.links[out] = select.value;
           else delete n.links[out];
           markDirty(); draw();
+          requestAnimationFrame(() => plane && plane.querySelector(`.scn-node[data-id="${n.id}"]`)?.focus());
         } }, "Применить «" + outLabel(out) + "»"));
     }));
 }
