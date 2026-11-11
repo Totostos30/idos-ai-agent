@@ -556,6 +556,18 @@ async function refreshVoices(box, note) {
   drawVoices(box, info, note);
 }
 
+function parseLexicon(text) {
+  const entries = {};
+  text.split("\n").forEach((line) => {
+    const separator = line.indexOf("=");
+    if (separator <= 0) return;
+    const key = line.slice(0, separator).trim();
+    const value = line.slice(separator + 1).trim();
+    if (key && value) entries[key] = value;
+  });
+  return entries;
+}
+
 function drawVoices(box, info, note) {
   const title = el("h3", {}, "Голос Эйдоса");
   if (!info || info.error || !Array.isArray(info.engines)) {
@@ -613,21 +625,13 @@ function drawVoices(box, info, note) {
   lexText.value = Object.entries(info.lexicon || {}).map(([k, v]) => k + " = " + v).join("\n");
   const probe = el("input", { class: "vprobe", value: "Давление 760 мм рт. ст., ветер 5 м/с, NVIDIA RTX 4050, т.е. всё ок." });
   const heard = el("div", { class: "mut small vheard" });
-  const parseLex = () => {
-    const d = {};
-    lexText.value.split("\n").forEach((line) => {
-      const i = line.indexOf("=");
-      if (i > 0) { const k = line.slice(0, i).trim(), v = line.slice(i + 1).trim(); if (k && v) d[k] = v; }
-    });
-    return d;
-  };
   const lexBox = el("div", { class: "vlexbox" },
     el("h4", {}, "Словарь произношения"),
     el("div", { class: "mut small" }, "Каждая строка: слово = как читать. Сокращения, единицы и английские слова уже читаются сами — сюда только то, что звучит неверно."),
     lexText,
     el("div", { class: "row2" },
       el("button", { class: "btn", onclick: async () => {
-        const d = parseLex();
+        const d = parseLexicon(lexText.value);
         const r = await core.try("settings.set", { key: "voice.lexicon", value: d });
         heard.textContent = r === undefined || r === null ? "Не удалось сохранить словарь" : "Словарь сохранён: " + Object.keys(d).length + " зап.";
       } }, "Сохранить словарь")),
