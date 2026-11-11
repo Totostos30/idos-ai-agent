@@ -26,6 +26,10 @@ tools/gigastt/
 *.pt
 *.exe
 
+# Локальные данные дерева коммитов
+/commit-tree/commits.json
+/commit-tree/translations.json
+
 # Среда
 .idea/
 .vscode/
