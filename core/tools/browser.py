@@ -3,7 +3,10 @@ click/type by ref or visible label, tabs, scrolling, screenshots for the vision 
 
 Modes: browser.cdp_url -> attach to the user's running Edge/Chrome (started with --remote-debugging-port=9222,
 keeps every login); otherwise a persistent IDOS profile (logins survive restarts) in system Edge/Chrome,
-falling back to Playwright's own Chromium.
+falling back to Playwright's own Chromium. Edge first is deliberate: it ships with Windows, so Alice and every
+other page open on any machine; a different browser (for example Yandex with the user's Alice Pro profile) is
+opt-in through browser.executable. A browser the user already has open does not conflict: IDOS uses its own
+profile directory.
 """
 from __future__ import annotations
 
@@ -222,6 +225,8 @@ class BrowserManager:
         exe = str(self.get("browser.executable", ""))
         if exe:
             attempts.append(("executable", {"executable_path": exe}))
+        # Edge — первый из явных каналов: он стоит на любой Windows, поэтому Алиса и сайты открываются везде.
+        # Браузер, который пользователь уже запустил, не мешает: у IDOS отдельный каталог профиля.
         for name in dict.fromkeys([str(self.get("browser.channel", "")), "msedge", "chrome"]):
             if name:
                 attempts.append((name, {"channel": name}))
