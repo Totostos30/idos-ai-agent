@@ -43,6 +43,37 @@ def _span(rest: str) -> float | None:
     return parse_duration(rest)
 
 
+def _calendar_date(text: str, now: datetime.datetime) -> tuple[datetime.date, bool, int | None, str]:
+    day, explicit, weekday = now.date(), False, None
+    if "послезавтра" in text:
+        day, explicit = day + timedelta(days=2), True
+    elif "завтра" in text:
+        day, explicit = day + timedelta(days=1), True
+    elif "сегодня" in text:
+        explicit = True
+    for prefix, number in WEEKDAYS:
+        if re.search(r"(?:^|\b(?:в|во)\s+)" + prefix, text):
+            weekday, explicit = number, True
+            break
+    for regex in (DATE_RE, MONTH_RE):
+        match = regex.search(text)
+        if not match or (regex is DATE_RE and text[max(0, match.start() - 2):match.start()] in ("в ", "к ")):
+            continue
+        month = int(match.group(2)) if regex is DATE_RE else MONTHS[match.group(2)]
+        year = int(match.group(3)) if match.group(3) else now.year
+        year += 2000 if year < 100 else 0
+        try:
+            found = datetime.date(year, month, int(match.group(1)))
+            if not match.group(3) and found < now.date():
+                found = found.replace(year=year + 1)
+        except ValueError:
+            continue
+        day, explicit, weekday = found, True, None
+        text = text[:match.start()] + " " + text[match.end():]
+        break
+    return day, explicit, weekday, text
+
+
 def parse_when(text: str, now: datetime.datetime | None = None) -> float | None:
     """Russian time phrases → timestamp: «через 20 минут», «завтра в 9», «в пятницу в 18:30», «25.12 в 10:00»,
     «3 декабря», «сегодня вечером», ISO «2026-11-09 10:00». None when nothing matches."""
@@ -59,33 +90,7 @@ def parse_when(text: str, now: datetime.datetime | None = None) -> float | None:
     if m:
         seconds = _span(m.group(1))
         return now.timestamp() + seconds if seconds else None
-    day, explicit, weekday = now.date(), False, None
-    if "послезавтра" in t:
-        day, explicit = day + timedelta(days=2), True
-    elif "завтра" in t:
-        day, explicit = day + timedelta(days=1), True
-    elif "сегодня" in t:
-        explicit = True
-    for prefix, number in WEEKDAYS:
-        if re.search(r"(?:^|\b(?:в|во)\s+)" + prefix, t):
-            weekday, explicit = number, True
-            break
-    for regex in (DATE_RE, MONTH_RE):
-        m = regex.search(t)
-        if not m or (regex is DATE_RE and t[max(0, m.start() - 2):m.start()] in ("в ", "к ")):
-            continue
-        month = int(m.group(2)) if regex is DATE_RE else MONTHS[m.group(2)]
-        year = int(m.group(3)) if m.group(3) else now.year
-        year += 2000 if year < 100 else 0
-        try:
-            found = datetime.date(year, month, int(m.group(1)))
-            if not m.group(3) and found < now.date():
-                found = found.replace(year=year + 1)
-        except ValueError:
-            continue
-        day, explicit, weekday = found, True, None
-        t = t[:m.start()] + " " + t[m.end():]
-        break
+    day, explicit, weekday, t = _calendar_date(t, now)
     hour = minute = None
     m = CLOCK_RE.search(t)
     if m and int(m.group(1)) < 24 and int(m.group(2)) < 60:
