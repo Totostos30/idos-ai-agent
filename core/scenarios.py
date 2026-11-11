@@ -362,32 +362,33 @@ def _normalize_variables(raw: Any) -> list[dict]:
     return normalized
 
 
-def _normalize_nodes(raw: Any) -> list[dict]:
-    nodes: list[dict] = []
-    seen: set[str] = set()
-    for item in raw or []:
-        if not isinstance(item, dict) or item.get("type") not in BLOCKS:
-            continue
-        node_id = str(item.get("id") or new_id())[:40]
-        if node_id in seen:
-            node_id = new_id()
-        seen.add(node_id)
-        spec = BLOCKS[item["type"]]
-        params = copy.deepcopy(spec["params"])
-        raw_params = item.get("params") if isinstance(item.get("params"), dict) else {}
-        params.update({key: value for key, value in raw_params.items() if key in spec["params"]})
-        if item["type"] == "click" and not params.get("targets") and isinstance(params.get("target"), dict):
+def _normalize_node(item: dict, seen: set[str]) -> dict:
+    node_id = str(item.get("id") or new_id())[:40]
+    if node_id in seen:
+        node_id = new_id()
+    seen.add(node_id)
+    node_type = item["type"]
+    spec = BLOCKS[node_type]
+    params = copy.deepcopy(spec["params"])
+    raw_params = item.get("params") if isinstance(item.get("params"), dict) else {}
+    params.update({key: value for key, value in raw_params.items() if key in spec["params"]})
+    if node_type == "click":
+        if not params.get("targets") and isinstance(params.get("target"), dict):
             params["targets"] = [copy.deepcopy(params["target"])]
-        if item["type"] == "click":
-            configured = params.get("targets")
-            params["targets"] = ([copy.deepcopy(target) for target in configured if isinstance(target, dict)][:20]
-                                  if isinstance(configured, list) else [])
-        links = {key: str(value) for key, value in (item.get("links") or {}).items()
-                 if key in spec["outs"] and value}
-        nodes.append({"id": node_id, "type": item["type"], "params": params, "links": links,
-                      "x": float(item.get("x") or 0), "y": float(item.get("y") or 0),
-                      "note": str(item.get("note") or "")[:200]})
-    return nodes
+        configured = params.get("targets")
+        params["targets"] = ([copy.deepcopy(target) for target in configured if isinstance(target, dict)][:20]
+                              if isinstance(configured, list) else [])
+    links = {key: str(value) for key, value in (item.get("links") or {}).items()
+             if key in spec["outs"] and value}
+    return {"id": node_id, "type": node_type, "params": params, "links": links,
+            "x": float(item.get("x") or 0), "y": float(item.get("y") or 0),
+            "note": str(item.get("note") or "")[:200]}
+
+
+def _normalize_nodes(raw: Any) -> list[dict]:
+    seen: set[str] = set()
+    return [_normalize_node(item, seen) for item in raw or []
+            if isinstance(item, dict) and item.get("type") in BLOCKS]
 
 
 def validate(data: dict) -> dict:
