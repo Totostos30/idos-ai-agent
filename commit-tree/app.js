@@ -5,7 +5,10 @@ function escape(value) {
   return String(value ?? "").replace(/[&<>\"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[char]));
 }
 function list(value) {
-  return Array.isArray(value) ? value : value == null ? [] : [value];
+  if (Array.isArray(value)) return value;
+  if (value == null) return [];
+  if (typeof value === "object") return Object.keys(value).length ? Object.values(value) : [];
+  return [value];
 }
 function refsOf(commit) {
   return list(commit && commit.refs);
