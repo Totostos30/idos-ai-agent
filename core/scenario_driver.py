@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import gc
 import io
 import logging
 import os
@@ -361,7 +362,7 @@ class Highlighter:
                     while True:
                         cmd, rect, text = self.q.get_nowait()
                         if cmd == "stop":
-                            root.destroy()
+                            root.quit()  # выходим из mainloop, а destroy — там же, ниже
                             return
                         canvas.delete("all")
                         if rect:
@@ -381,6 +382,11 @@ class Highlighter:
 
             root.after(30, poll)
             root.mainloop()
+            # destroy и сборка мусора строго в этом же потоке: иначе Tcl-интерпретатор удаляется
+            # из чужого потока и процесс падает с "Tcl_AsyncDelete: async handler deleted by the wrong thread".
+            root.destroy()
+            poll = canvas = root = None  # type: ignore[assignment]
+            gc.collect()
         except Exception:  # noqa: BLE001 - без подсветки пипетка всё равно работает
             log.debug("highlighter failed", exc_info=True)
 
