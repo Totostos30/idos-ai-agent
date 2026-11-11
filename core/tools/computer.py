@@ -96,6 +96,11 @@ async def locate(ctx: Any, args: dict) -> tuple[int, int, str]:
     return int(match.group(1)), int(match.group(2)), clip(text, 160)
 
 
+async def point(ctx: Any, args: dict) -> tuple[int, int, str]:
+    x, y = get_int(args, "x", None), get_int(args, "y", None)
+    return (x, y, "") if x is not None and y is not None else await locate(ctx, args)
+
+
 async def run(action: str, args: dict, ctx: Any) -> Any:  # noqa: C901 - one branch per action
     if action == "screenshot":
         image, offset, label = await capture(args)
@@ -120,9 +125,7 @@ async def run(action: str, args: dict, ctx: Any) -> Any:  # noqa: C901 - one bra
         x, y, note = await locate(ctx, args)
         return f"({x}, {y}) — {note}"
     if action in ("click", "move"):
-        x, y, note = get_int(args, "x", None), get_int(args, "y", None), ""
-        if x is None or y is None:
-            x, y, note = await locate(ctx, args)
+        x, y, note = await point(ctx, args)
         suffix = f" — {note}" if note else ""
         if action == "move":
             await asyncio.to_thread(win.move, x, y)
