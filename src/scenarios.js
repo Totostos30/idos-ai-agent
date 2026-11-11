@@ -676,23 +676,29 @@ function field(label, input, hint) {
   return el("label", { class: "scn-f" }, el("span", { class: "k" }, label), input, hint ? el("span", { class: "mut small" }, hint) : null);
 }
 
+function setNodeParam(n, key, value) {
+  n.params[key] = value;
+  markDirty();
+  refreshNode(n);
+}
+
 function textInput(n, key, placeholder = "", type = "text") {
   const input = el("input", { class: "field", type, value: n.params[key] ?? "", placeholder, step: type === "number" ? "0.1" : null });
-  input.addEventListener("input", () => { n.params[key] = type === "number" ? Number(input.value || 0) : input.value; markDirty(); refreshNode(n); });
+  input.addEventListener("input", () => setNodeParam(n, key, type === "number" ? Number(input.value || 0) : input.value));
   return input;
 }
 
 function selectInput(n, key, options) {
   const s = el("select", { class: "field" }, Object.entries(options).map(([v, label]) => el("option", { value: v }, label)));
   s.value = n.params[key] ?? Object.keys(options)[0];
-  s.addEventListener("change", () => { n.params[key] = s.value; markDirty(); refreshNode(n); });
+  s.addEventListener("change", () => setNodeParam(n, key, s.value));
   return s;
 }
 
 function checkInput(n, key, label) {
   const c = el("input", { type: "checkbox" });
   c.checked = !!n.params[key];
-  c.addEventListener("change", () => { n.params[key] = c.checked; markDirty(); refreshNode(n); });
+  c.addEventListener("change", () => setNodeParam(n, key, c.checked));
   return el("label", { class: "scn-check" }, c, label);
 }
 
