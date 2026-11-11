@@ -151,13 +151,6 @@ def get_bool(args: dict, key: str, default: bool = False) -> bool:
     return str(value).strip().lower() in ("1", "true", "yes", "on", "да", "вкл", "включить")
 
 
-def need_xy(args: dict) -> tuple[int, int]:
-    x, y = get_int(args, "x"), get_int(args, "y")
-    if x is None or y is None:
-        raise ToolError("нужны координаты x и y (или ref)")
-    return x, y
-
-
 def short_value(value: Any, limit: int = 48) -> str:
     """Pill-friendly value: file name instead of a full path, host instead of a long URL."""
     text = " ".join(str(value).split())
