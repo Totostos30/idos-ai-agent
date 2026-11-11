@@ -185,8 +185,7 @@ def feels_like(temp: float | None, wind: float | None) -> int | None:
     return round(temp)
 
 
-def parse_forecast(data: dict, now: float | None = None) -> dict:
-    now = time.time() if now is None else now
+def _forecast_points(data: dict) -> list[dict]:
     points = []
     for entry in ((data or {}).get("properties") or {}).get("timeseries") or []:
         try:
@@ -201,6 +200,12 @@ def parse_forecast(data: dict, now: float | None = None) -> dict:
                        "symbol": (ahead.get("summary") or {}).get("symbol_code", ""),
                        "precip": float((ahead.get("details") or {}).get("precipitation_amount") or 0.0),
                        "hourly": "next_1_hours" in body})
+    return points
+
+
+def parse_forecast(data: dict, now: float | None = None) -> dict:
+    now = time.time() if now is None else now
+    points = _forecast_points(data)
     if not points:
         raise ValueError("пустой прогноз")
     current = next((p for p in points if p["time"] + 3600 > now), points[-1])
