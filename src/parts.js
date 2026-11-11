@@ -81,12 +81,21 @@ export const RESET_VALUES = {
   "island.show_battery": true, "island.show_weather": true, "island.lyrics": true,
 };
 
+function copyValue(value) {
+  return Array.isArray(value) ? value.slice() : value && typeof value === "object" ? Object.assign({}, value) : value;
+}
+
+function setPath(target, path, value) {
+  const parts = path.split(".");
+  let node = target;
+  for (const part of parts.slice(0, -1)) {
+    if (!node[part] || typeof node[part] !== "object") node[part] = {};
+    node = node[part];
+  }
+  node[parts[parts.length - 1]] = copyValue(value);
+}
+
 // применить изменение к локальной копии настроек (чтобы интерфейс обновился сразу)
 export function applyValues(cfg, values) {
-  for (const [path, val] of Object.entries(values)) {
-    const parts = path.split(".");
-    let node = cfg;
-    for (const p of parts.slice(0, -1)) { if (!node[p] || typeof node[p] !== "object") node[p] = {}; node = node[p]; }
-    node[parts[parts.length - 1]] = Array.isArray(val) ? val.slice() : val && typeof val === "object" ? Object.assign({}, val) : val;
-  }
+  for (const [path, value] of Object.entries(values)) setPath(cfg, path, value);
 }
