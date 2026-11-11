@@ -108,4 +108,3 @@ export function setMicState(button, st) {
   button.classList.toggle("on", state === "listening" || state === "transcribing");
   button.style.setProperty("--lvl", String(Math.max(0, Math.min(1, Number(st && st.level) || 0)).toFixed(3)));
 }
-
