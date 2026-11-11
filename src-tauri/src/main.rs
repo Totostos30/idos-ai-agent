@@ -243,6 +243,13 @@ fn create_island(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+fn cursor_in_window(app: &AppHandle, window: &WebviewWindow) -> Option<(f64, f64)> {
+    let cursor = app.cursor_position().ok()?;
+    let position = window.outer_position().ok()?;
+    let scale = window.scale_factor().ok()?;
+    Some(((cursor.x - position.x as f64) / scale, (cursor.y - position.y as f64) / scale))
+}
+
 /// Следим за курсором: над формой острова окно принимает мышь, вне её — пропускает клики насквозь.
 fn hit_loop(app: AppHandle) {
     let mut previous: Option<bool> = None;
@@ -258,14 +265,8 @@ fn hit_loop(app: AppHandle) {
         } else if focused {
             true
         } else {
-            match (app.cursor_position(), window.outer_position(), window.scale_factor()) {
-                (Ok(cursor), Ok(pos), Ok(scale)) => {
-                    let x = (cursor.x - pos.x as f64) / scale;
-                    let y = (cursor.y - pos.y as f64) / scale;
-                    x >= hit.0 && y >= hit.1 && x <= hit.0 + hit.2 && y <= hit.1 + hit.3
-                }
-                _ => false,
-            }
+            cursor_in_window(&app, &window)
+                .is_some_and(|(x, y)| x >= hit.0 && y >= hit.1 && x <= hit.0 + hit.2 && y <= hit.1 + hit.3)
         };
         // The collapsed strip is a 12px hit region. Keep the transparent window
         // click-through until the cursor has stayed on that strip for 1 second;
@@ -288,9 +289,7 @@ fn hit_loop(app: AppHandle) {
         };
         // Координаты курсора нужны жидкому краю (тянется к курсору) и персонажам (глаза следят).
         if !hidden {
-            if let (Ok(cursor), Ok(pos), Ok(scale)) = (app.cursor_position(), window.outer_position(), window.scale_factor()) {
-                let x = (cursor.x - pos.x as f64) / scale;
-                let y = (cursor.y - pos.y as f64) / scale;
+            if let Some((x, y)) = cursor_in_window(&app, &window) {
                 if (x - last_cursor.0).abs() > 1.0 || (y - last_cursor.1).abs() > 1.0 {
                     last_cursor = (x, y);
                     if y < 420.0 {
