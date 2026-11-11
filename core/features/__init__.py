@@ -36,7 +36,7 @@ class Feature:
         return {}
 
     def spawn(self, coro, label: str) -> None:
-        self._tasks = [t for t in self._tasks if t is not None and not t.done()]
+        self._tasks = [task for task in self._tasks if not task.done()]
         self._tasks.append(self.app.background(coro, f"{self.name}-{label}"))
 
     async def say(self, text: str) -> None:
