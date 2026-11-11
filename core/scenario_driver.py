@@ -29,6 +29,8 @@ WINDOW_ACTIONS = {"minimize": "Свернуть", "maximize": "Разверну�
                   "close": "Закрыть", "kill": "Завершить принудительно"}
 MEDIA_ACTIONS = {"play_pause": "media_play_pause", "next": "media_next", "previous": "media_prev",
                  "stop": "media_stop", "volume_up": "volume_up", "volume_down": "volume_down", "mute": "volume_mute"}
+INVOKE_PATTERNS = (("InvokePattern", "Invoke"), ("TogglePattern", "Toggle"),
+                   ("SelectionItemPattern", "Select"))
 
 
 def target_label(target: Any) -> str:
@@ -451,8 +453,7 @@ class WinDriver:
         if method == "invoke" and found["control"] is not None:
             def invoke() -> bool:
                 from .win import uia
-                for pattern, call in (("InvokePattern", "Invoke"), ("TogglePattern", "Toggle"),
-                                      ("SelectionItemPattern", "Select")):
+                for pattern, call in INVOKE_PATTERNS:
                     p = uia._pattern(found["control"], pattern)  # noqa: SLF001
                     if p is not None:
                         getattr(p, call)()
