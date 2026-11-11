@@ -359,15 +359,6 @@ button:disabled { opacity: 0.35; cursor: default; }
 /* режим «сквозь»: виден, но не мешает и не раскрывается */
 .stage.through > .island, .stage.through > .fluid { pointer-events: none; opacity: calc(var(--op-closed) * 0.75); }
 
-.gdots { display: none; align-items: center; gap: 2px; height: 18px; }
-.gdots i { width: 4px; height: 4px; border-radius: 50%; display: block; animation: gdot 1s ease-in-out infinite; }
-.gdots i:nth-child(1) { background: #7c8cff; animation-delay: 0s; }
-.gdots i:nth-child(2) { background: #b46cff; animation-delay: 0.12s; }
-.gdots i:nth-child(3) { background: #FBBC05; animation-delay: 0.24s; }
-.gdots i:nth-child(4) { background: #e07cff; animation-delay: 0.36s; }
-.gdots.live { display: inline-flex; }
-@keyframes gdot { 0%, 100% { transform: translateY(0) scaleY(1); } 40% { transform: translateY(-4px) scaleY(1.6); } }
-
 /* Микрофон Эйдоса в фирменных цветах */
 .gmic-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; }
 .gmic { position: relative; z-index: 2; display: inline-flex; width: 21px; height: 21px; transition: transform .35s cubic-bezier(.34,1.56,.64,1); }

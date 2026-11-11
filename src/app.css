@@ -144,15 +144,6 @@ button.icon.mic .gmic-wrap { flex: none; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: rgba(127, 127, 127, 0.25); border-radius: 5px; border: 3px solid transparent; background-clip: padding-box; }
 
-.gdots { display: none; align-items: center; gap: 2px; height: 18px; }
-.gdots i { width: 4px; height: 4px; border-radius: 50%; display: block; animation: gdot 1s ease-in-out infinite; }
-.gdots i:nth-child(1) { background: #7c8cff; animation-delay: 0s; }
-.gdots i:nth-child(2) { background: #b46cff; animation-delay: 0.12s; }
-.gdots i:nth-child(3) { background: #FBBC05; animation-delay: 0.24s; }
-.gdots i:nth-child(4) { background: #e07cff; animation-delay: 0.36s; }
-.gdots.live { display: inline-flex; }
-@keyframes gdot { 0%, 100% { transform: translateY(0) scaleY(1); } 40% { transform: translateY(-4px) scaleY(1.6); } }
-
 /* ---------- voice picker ---------- */
 .voicebox .vcontrols { align-items: center; gap: 10px; flex-wrap: wrap; }
 .voicebox .vspeed { width: 180px; accent-color: var(--accent, #0a84ff); }
