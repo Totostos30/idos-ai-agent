@@ -162,10 +162,15 @@ button:disabled { opacity: 0.35; cursor: default; }
 .tile:hover { background: var(--soft2); color: var(--fg); }
 .obs { flex-wrap: wrap; }
 .clip-list { display: flex; flex-direction: column; gap: 4px; }
-.clip { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 12px; background: var(--soft); cursor: pointer; min-height: 30px; }
+.clip { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 12px; background: var(--soft); min-height: 34px; }
 .clip:hover { background: var(--soft2); }
 .clip .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
 .clip img { max-height: 48px; border-radius: 6px; }
+.clip-open { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; min-height: 32px; padding: 2px; border-radius: 8px; text-align: left; }
+.clip-open .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.clip-open img { max-height: 48px; border-radius: 6px; }
+.clip:focus-within { background: var(--soft2); }
+.clip-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .clip.pinned { box-shadow: inset 2px 0 0 var(--warn); }
 .empty { color: var(--mut); text-align: center; padding: 18px; }
 

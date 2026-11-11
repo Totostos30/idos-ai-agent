@@ -430,11 +430,11 @@ async function loadClip() {
 function panelClip() {
   if (!S.clip.length) return [el("div", { class: "empty" }, "История буфера пуста")];
   return [el("div", { class: "clip-list" }, S.clip.map((c) =>
-    el("div", { class: "clip" + (c.pinned ? " pinned" : ""), title: "Вставить", onclick: () => core.try("clipboard.paste", { item_id: c.id }) },
-      c.kind === "image" && c.preview ? el("img", { src: c.preview }) : el("span", { class: "t" }, (c.text || c.preview || "").slice(0, 160)),
-      el("span", { class: "grow" }),
-      el("button", { class: "icon", title: c.pinned ? "Открепить" : "Закрепить", onclick: async (e) => { e.stopPropagation(); await core.try("clipboard.pin", { item_id: c.id, pinned: !c.pinned }); loadClip(); } }, c.pinned ? "★" : "☆"),
-      el("button", { class: "icon", title: "Удалить", onclick: async (e) => { e.stopPropagation(); await core.try("clipboard.delete", { item_id: c.id }); loadClip(); } }, "✕"))))];
+    el("div", { class: "clip" + (c.pinned ? " pinned" : "") },
+      el("button", { class: "clip-open", "aria-label": "Вставить запись из буфера обмена", onclick: () => core.try("clipboard.paste", { item_id: c.id }) },
+        c.kind === "image" && c.preview ? el("img", { src: c.preview, alt: "Изображение из истории буфера" }) : el("span", { class: "t" }, (c.text || c.preview || "").slice(0, 160))),
+      el("button", { class: "icon", title: c.pinned ? "Открепить" : "Закрепить", "aria-label": c.pinned ? "Открепить запись" : "Закрепить запись", onclick: async () => { await core.try("clipboard.pin", { item_id: c.id, pinned: !c.pinned }); loadClip(); } }, c.pinned ? "★" : "☆"),
+      el("button", { class: "icon", title: "Удалить", "aria-label": "Удалить запись буфера", onclick: async () => { await core.try("clipboard.delete", { item_id: c.id }); loadClip(); } }, "✕"))))];
 }
 
 function panelAgent() {

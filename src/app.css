@@ -59,6 +59,7 @@ body.view-app .empty { color: var(--mut); text-align: center; padding: 26px; }
 .switch { position: relative; width: 38px; height: 22px; flex: none; display: inline-block; }
 .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
 .switch i { position: absolute; inset: 0; border-radius: 11px; background: var(--soft2); cursor: pointer; transition: background 0.2s; }
+.switch input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 3px; }
 .switch i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.3s var(--spring); }
 .switch input:checked + i { background: var(--ok); }
 .switch input:checked + i::after { transform: translateX(16px); }
@@ -89,11 +90,14 @@ body.view-app .empty { color: var(--mut); text-align: center; padding: 26px; }
 .chatpage { flex: 1; display: flex; min-width: 0; }
 .chatlist { width: 230px; flex: none; padding: 14px 10px; display: flex; flex-direction: column; gap: 3px; overflow: auto; border-right: 1px solid var(--line); }
 .btn.wide { width: 100%; margin-bottom: 8px; padding: 9px; }
-.chatitem { display: flex; align-items: center; gap: 2px; padding: 7px 6px 7px 12px; border-radius: 12px; cursor: pointer; color: var(--mut); }
+.chatitem { display: flex; align-items: center; gap: 2px; padding: 3px 6px 3px 4px; border-radius: 12px; color: var(--mut); }
+.chatitem-open { display: flex; flex: 1; min-width: 0; padding: 4px 8px; border-radius: 9px; color: inherit; text-align: left; }
 .chatitem .t { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .chatitem .icon { width: 22px; height: 22px; opacity: 0; }
-.chatitem:hover { background: var(--soft); color: var(--fg); }
+.chatitem:hover, .chatitem:focus-within { background: var(--soft); color: var(--fg); }
 .chatitem:hover .icon { opacity: 0.7; }
+.chatitem:focus-within .icon { opacity: 0.8; }
+.chatitem .icon:focus-visible, .chatitem-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .chatitem.on { background: var(--soft2); color: var(--fg); }
 .chatmain { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .log { flex: 1; overflow: auto; padding: 22px 28px 10px; display: flex; flex-direction: column; gap: 10px; }

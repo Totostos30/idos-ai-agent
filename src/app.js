@@ -119,10 +119,12 @@ async function renderChat() {
   if (A.tab !== "chat") return;
   const list = el("div", { class: "chatlist" },
     el("button", { class: "btn primary wide", onclick: async () => { const c = await core.try("agent.new_chat"); if (c && c.chat_id) { A.chat = c.chat_id; A.messages = []; } renderChat(); } }, "+ Новый диалог"),
-    A.chats.map((c) => el("div", { class: "chatitem" + (c.id === A.chat ? " on" : ""), onclick: async () => { A.chat = c.id; await core.try("agent.select_chat", { chat_id: c.id }); renderChat(); } },
-      el("span", { class: "t" }, c.title || "Без названия"),
-      el("button", { class: "icon", title: "Переименовать", onclick: async (e) => { e.stopPropagation(); const t = prompt("Название диалога", c.title || ""); if (t !== null) { await core.try("agent.rename_chat", { chat_id: c.id, title: t }); renderChat(); } } }, "✎"),
-      el("button", { class: "icon", title: "Удалить", onclick: (e) => { e.stopPropagation(); confirmClick(e.currentTarget, async () => { await core.try("agent.delete_chat", { chat_id: c.id }); if (A.chat === c.id) A.chat = null; renderChat(); }); } }, "✕"))));
+    A.chats.map((c) => el("div", { class: "chatitem" + (c.id === A.chat ? " on" : "") },
+      el("button", { class: "chatitem-open", "aria-current": c.id === A.chat ? "true" : null,
+        onclick: async () => { A.chat = c.id; await core.try("agent.select_chat", { chat_id: c.id }); renderChat(); } },
+        el("span", { class: "t" }, c.title || "Без названия")),
+      el("button", { class: "icon", title: "Переименовать", "aria-label": "Переименовать диалог: " + (c.title || "Без названия"), onclick: async () => { const t = prompt("Название диалога", c.title || ""); if (t !== null) { await core.try("agent.rename_chat", { chat_id: c.id, title: t }); renderChat(); } } }, "✎"),
+      el("button", { class: "icon", title: "Удалить", "aria-label": "Удалить диалог: " + (c.title || "Без названия"), onclick: (e) => confirmClick(e.currentTarget, async () => { await core.try("agent.delete_chat", { chat_id: c.id }); if (A.chat === c.id) A.chat = null; renderChat(); }) }, "✕"))));
   const log = el("div", { class: "log" },
     A.messages.length ? A.messages.filter((m) => m.role === "user" || m.role === "assistant").map(msgView)
       : el("div", { class: "hello" }, el("div", { class: "logo big" }), el("h2", {}, "Привет! Я Эйдос."),
