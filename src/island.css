@@ -162,10 +162,17 @@ button:disabled { opacity: 0.35; cursor: default; }
 .tile:hover { background: var(--soft2); color: var(--fg); }
 .obs { flex-wrap: wrap; }
 .clip-list { display: flex; flex-direction: column; gap: 4px; }
-.clip { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 12px; background: var(--soft); cursor: pointer; min-height: 30px; }
+.clip { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 12px; background: var(--soft); min-height: 30px; }
 .clip:hover { background: var(--soft2); }
+.clip-content { display: flex; align-items: center; flex: 1; min-width: 0; padding: 0; border-radius: 8px; background: transparent; color: inherit; text-align: left; user-select: text; }
+.clip-content:hover { background: transparent; }
 .clip .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
+.clip.expanded { align-items: flex-start; }
+.clip.expanded .clip-content { align-items: flex-start; }
+.clip.expanded .t { white-space: pre-wrap; overflow: visible; overflow-wrap: anywhere; word-break: break-word; text-overflow: clip; }
 .clip img { max-height: 48px; border-radius: 6px; }
+.clip-paste { flex: none; }
+.clip.expanded > .clip-paste, .clip.expanded > .icon { align-self: flex-start; }
 .clip.pinned { box-shadow: inset 2px 0 0 var(--warn); }
 .empty { color: var(--mut); text-align: center; padding: 18px; }
 

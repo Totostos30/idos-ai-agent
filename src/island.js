@@ -33,6 +33,7 @@ const S = {
   pinned: false,
   tab: "now",
   clip: [],
+  clipExpanded: null,
   status: {},
   weather: {},
   online: false,
@@ -44,6 +45,7 @@ const S = {
 };
 
 let root, isl, cardsBox, fluid, lip, leaveTimer = null, barTimer = null;
+let clipLoadRequest = 0, clipOpenRequest = 0;
 // автоскрытие: полоска → (навели) капсула → (держишь курсор) большая панель
 let quietSince = Date.now(), tuckTimer = null, peeked = false, lastSig = "";
 const mic = new Mic((st) => { S.mic = st; document.querySelectorAll("button.mic").forEach((b) => setMicState(b, st)); if (st.state === "error") pushCard({ title: "Микрофон", text: st.text, kind: "error" }); render(); });
@@ -421,19 +423,85 @@ function panelTools() {
 }
 
 async function loadClip() {
+  const request = ++clipLoadRequest;
   const res = await core.try("clipboard.list", { limit: 20 });
-  if (Array.isArray(res)) { S.clip = res; render(); }
-  else if (res && Array.isArray(res.items)) { S.clip = res.items; render(); }
+  if (request !== clipLoadRequest) return;
+  const items = Array.isArray(res) ? res : res && Array.isArray(res.items) ? res.items : null;
+  if (!items) {
+    if (res && res.error) toastCard("Буфер обмена", res.error);
+    return;
+  }
+  S.clip = items;
+  if (S.clipExpanded && !items.some((item) => item.id === S.clipExpanded.id)) {
+    clipOpenRequest++;
+    S.clipExpanded = null;
+  }
+  render();
+}
+
+async function toggleClip(itemId) {
+  if (S.clipExpanded && S.clipExpanded.id === itemId) {
+    clipOpenRequest++;
+    S.clipExpanded = null;
+    render();
+    return;
+  }
+  const request = ++clipOpenRequest;
+  S.clipExpanded = { id: itemId, loading: true, text: "" };
+  render();
+  const item = await core.try("clipboard.get", { item_id: itemId });
+  if (request !== clipOpenRequest || !S.clipExpanded || S.clipExpanded.id !== itemId) return;
+  if (!item || item.error || typeof item.text !== "string") {
+    S.clipExpanded = null;
+    toastCard("Буфер обмена", item && item.error || "Не удалось загрузить полный текст записи");
+  } else {
+    S.clipExpanded = { id: itemId, loading: false, text: item.text };
+  }
+  render();
+}
+
+async function pasteClip(itemId) {
+  const result = await core.try("clipboard.paste", { item_id: itemId });
+  if (!result || result.error || result.ok === false) {
+    toastCard("Буфер обмена", result && result.error || "Не удалось вставить запись");
+    return;
+  }
+  await loadClip();
+}
+
+async function setClipPinned(itemId, pinned) {
+  const result = await core.try("clipboard.pin", { item_id: itemId, pinned });
+  if (!result || result.error || !result.ok) {
+    toastCard("Буфер обмена", result && result.error || "Не удалось изменить закрепление записи");
+    return;
+  }
+  await loadClip();
+}
+
+async function deleteClip(itemId) {
+  const result = await core.try("clipboard.delete", { item_id: itemId });
+  if (!result || result.error || !result.ok) {
+    toastCard("Буфер обмена", result && result.error || "Не удалось удалить запись");
+    return;
+  }
+  await loadClip();
 }
 
 function panelClip() {
   if (!S.clip.length) return [el("div", { class: "empty" }, "История буфера пуста")];
-  return [el("div", { class: "clip-list" }, S.clip.map((c) =>
-    el("div", { class: "clip" + (c.pinned ? " pinned" : ""), title: "Вставить", onclick: () => core.try("clipboard.paste", { item_id: c.id }) },
-      c.kind === "image" && c.preview ? el("img", { src: c.preview }) : el("span", { class: "t" }, (c.text || c.preview || "").slice(0, 160)),
-      el("span", { class: "grow" }),
-      el("button", { class: "icon", title: c.pinned ? "Открепить" : "Закрепить", onclick: async (e) => { e.stopPropagation(); await core.try("clipboard.pin", { item_id: c.id, pinned: !c.pinned }); loadClip(); } }, c.pinned ? "★" : "☆"),
-      el("button", { class: "icon", title: "Удалить", onclick: async (e) => { e.stopPropagation(); await core.try("clipboard.delete", { item_id: c.id }); loadClip(); } }, "✕"))))];
+  return [el("div", { class: "clip-list" }, S.clip.map((c) => {
+    const expanded = S.clipExpanded && S.clipExpanded.id === c.id;
+    const preview = String(c.preview || c.text || "");
+    const text = expanded ? S.clipExpanded.loading ? "Загрузка полного текста…" : S.clipExpanded.text : preview.slice(0, 160);
+    return el("div", { class: "clip" + (c.pinned ? " pinned" : "") + (expanded ? " expanded" : "") },
+      el("button", { class: "clip-content", type: "button", "aria-expanded": !!expanded,
+        "aria-label": expanded ? "Свернуть запись буфера обмена" : `Раскрыть запись буфера обмена, ${c.length || preview.length} символов`,
+        title: expanded ? "Свернуть" : "Показать полностью", onclick: () => toggleClip(c.id) },
+        c.kind === "image" && c.preview && !expanded ? el("img", { src: c.preview, alt: "Предпросмотр изображения" }) : el("span", { class: "t" }, text)),
+      el("button", { class: "btn ghost clip-paste", type: "button", title: "Вставить запись", onclick: () => pasteClip(c.id) }, "Вставить"),
+      el("button", { class: "icon", type: "button", title: c.pinned ? "Открепить" : "Закрепить", "aria-label": c.pinned ? "Открепить запись" : "Закрепить запись", onclick: () => setClipPinned(c.id, !c.pinned) }, c.pinned ? "★" : "☆"),
+      el("button", { class: "icon", type: "button", title: "Удалить", "aria-label": "Удалить запись", onclick: () => deleteClip(c.id) }, "✕"));
+  }))];
 }
 
 function panelAgent() {
