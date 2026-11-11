@@ -381,7 +381,7 @@ function field(path, value) {
     return el("div", { class: "secret-field" }, input, ...controls);
   }
   if (typeof value === "boolean")
-    return el("label", { class: "switch" }, el("input", { type: "checkbox", checked: value, onchange: (e) => save(e.target.checked) }), el("i"));
+    return el("label", { class: "switch" }, el("input", { type: "checkbox", checked: value, "aria-label": path.replaceAll(".", " "), onchange: (e) => save(e.target.checked) }), el("i"));
   if (typeof value === "number") {
     const inp = el("input", { class: "field small", type: "number", step: "any", value: String(value) });
     inp.addEventListener("change", () => save(Number(inp.value)));
@@ -464,7 +464,7 @@ function waveSettingsBox(cfg) {
     el("span", { class: "k" }, label), control,
     hint ? el("span", { class: "mut small wave-hint" }, hint) : null);
   const toggle = (label, key, hint) => row(label,
-    el("label", { class: "switch" }, el("input", { type: "checkbox", checked: !!values[key], onchange: (e) => save(key, e.target.checked) }), el("i")), hint);
+    el("label", { class: "switch" }, el("input", { type: "checkbox", checked: !!values[key], "aria-label": label, onchange: (e) => save(key, e.target.checked) }), el("i")), hint);
   const range = (label, key, min, max, step, unit = "", hint = "") => {
     const input = el("input", { class: "wave-range", type: "range", min: String(min), max: String(max), step: String(step), value: String(values[key]) });
     const digits = (String(step).split(".")[1] || "").length;
@@ -528,8 +528,8 @@ function islandPartsBox(cfg) {
     const r = await core.try("settings.update", { values });
     if (r && r.error) toast(r.error, "error");
   };
-  const sw = (shown, values) => el("label", { class: "switch" }, el("input", { type: "checkbox", checked: shown, onchange: () => save(values) }), el("i"));
-  const row = (label, shown, values) => el("div", { class: "setrow" }, el("span", { class: "k" }, label), sw(shown, values));
+  const sw = (label, shown, values) => el("label", { class: "switch" }, el("input", { type: "checkbox", checked: shown, "aria-label": label, onchange: () => save(values) }), el("i"));
+  const row = (label, shown, values) => el("div", { class: "setrow" }, el("span", { class: "k" }, label), sw(label, shown, values));
   const hidden = (kind, id, show) => {
     const cur = new Set((cfg.island || {})["hidden_" + kind] || []);
     if (show) cur.delete(id); else cur.add(id);

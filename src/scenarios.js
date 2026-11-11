@@ -439,6 +439,7 @@ function draw() {
     const row = el("button", { class: "scn-node-item", title: blockTitle(t), "data-search": blockTitle(t).toLocaleLowerCase() },
       el("span", { class: "scn-node-icon" }, ICONS[t]), el("span", { class: "scn-node-label" }, blockTitle(t)));
     row.addEventListener("pointerdown", (e) => startPaletteDrag(t, row, e));
+    row.addEventListener("click", (e) => { if (e.detail === 0) addBlock(t); });
     return row;
   });
   const nodeList = el("div", { class: "scn-list scn-node-list" }, nodeRows);
@@ -553,14 +554,17 @@ function nodeView(n) {
   const outs = outsOf(n.type);
   const t = p.target && typeof p.target === "object" ? p.target
     : (Array.isArray(p.targets) && p.targets.length ? p.targets[0] : null);
-  const view = el("div", { class: "scn-node t-" + n.type + (S.sel === n.id ? " sel" : ""), "data-id": n.id, style: { left: n.x + "px", top: n.y + "px", width: NODE_W + "px" } },
+  const view = el("div", { class: "scn-node t-" + n.type + (S.sel === n.id ? " sel" : ""), "data-id": n.id,
+    role: "button", tabindex: "0", "aria-pressed": S.sel === n.id ? "true" : "false",
+    "aria-label": `${blockTitle(n.type)}: ${summary(n) || "блок"}${S.status[n.id] ? ", статус: " + S.status[n.id].status : ""}`,
+    style: { left: n.x + "px", top: n.y + "px", width: NODE_W + "px" } },
     n.type !== "start" ? el("span", { class: "scn-in", title: "вход" }) : null,
     el("div", { class: "scn-node-head" }, el("span", { class: "ic" }, ICONS[n.type] || "•"), el("span", { class: "tt" }, blockTitle(n.type))),
     n.type !== "start" && n.type !== "end" ? el("div", { class: "scn-sum" }, summary(n)) : null,
     t && t.preview ? el("img", { class: "scn-prev", src: t.preview, alt: "" }) : null,
     n.note ? el("div", { class: "mut small" }, n.note) : null,
-    el("div", { class: "scn-st small" }),
-    outs.length ? el("div", { class: "scn-outs" }, outs.map((o) => el("span", { class: "scn-port o-" + o + (n.links[o] ? " linked" : ""), "data-out": o, title: "Потяните к следующему блоку" }, outLabel(o)))) : null);
+    el("div", { class: "scn-st small", role: "status", "aria-live": "polite" }),
+    outs.length ? el("div", { class: "scn-outs", "aria-hidden": "true" }, outs.map((o) => el("span", { class: "scn-port o-" + o + (n.links[o] ? " linked" : ""), "data-out": o, title: "Потяните к следующему блоку" }, outLabel(o)))) : null);
   paintStatus(view, S.status[n.id]);
   view.addEventListener("pointerdown", (e) => {
     const port = e.target.closest(".scn-port");
@@ -569,6 +573,17 @@ function nodeView(n) {
     select(n.id);
     startMove(n, view, e);
   });
+  view.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(n.id); return; }
+    const delta = e.shiftKey ? 40 : 10;
+    const move = { ArrowLeft: [-delta, 0], ArrowRight: [delta, 0], ArrowUp: [0, -delta], ArrowDown: [0, delta] }[e.key];
+    if (!move) return;
+    e.preventDefault();
+    if (S.sel !== n.id) { select(n.id); return; }
+    n.x = Math.max(0, n.x + move[0]); n.y = Math.max(0, n.y + move[1]);
+    view.style.left = n.x + "px"; view.style.top = n.y + "px";
+    markDirty(); sizePlane(); drawEdges();
+  });
   view.addEventListener("dblclick", () => { if (n.type !== "start" && n.type !== "end") runScenario(n.id); });
   return view;
 }
@@ -576,7 +591,11 @@ function nodeView(n) {
 function select(id) {
   if (S.sel === id) return;
   S.sel = id;
-  plane.querySelectorAll(".scn-node").forEach((x) => x.classList.toggle("sel", x.dataset.id === id));
+  plane.querySelectorAll(".scn-node").forEach((x) => {
+    const selected = x.dataset.id === id;
+    x.classList.toggle("sel", selected);
+    x.setAttribute("aria-pressed", String(selected));
+  });
   drawInspector();
 }
 
@@ -788,6 +807,26 @@ async function probe(target) {
   toast(r && r.text ? r.text : (r && r.error) || "нет ответа", r && r.found ? "info" : "error");
 }
 
+function connectionEditor(n) {
+  const outs = outsOf(n.type);
+  if (!outs.length) return null;
+  return el("section", { class: "scn-connections", "aria-label": "Связи блока" },
+    el("h4", {}, "Выходы и связи"),
+    outs.map((out) => {
+      const select = el("select", { class: "field", "aria-label": "Целевой блок для выхода «" + outLabel(out) + "»" },
+        el("option", { value: "" }, "Не соединён"),
+        S.cur.nodes.filter((target) => target.id !== n.id && target.type !== "start").map((target) =>
+          el("option", { value: target.id }, blockTitle(target.type) + ": " + (summary(target) || "блок"))));
+      select.value = n.links[out] || "";
+      return el("div", { class: "scn-connect-row" }, select,
+        el("button", { class: "btn", onclick: () => {
+          if (select.value && nodeById(select.value)) n.links[out] = select.value;
+          else delete n.links[out];
+          markDirty(); draw();
+        } }, "Применить «" + outLabel(out) + "»"));
+    }));
+}
+
 function drawInspector() {
   if (!inspector) return;
   const n = nodeById(S.sel);
@@ -853,6 +892,7 @@ function drawInspector() {
   inspector.replaceChildren(
     el("h3", {}, (ICONS[n.type] || "") + " " + blockTitle(n.type)),
     ...parts,
+    connectionEditor(n),
     scenarioVariablesEditor(S.cur, true),
     n.type !== "start" ? field("Заметка", note) : el("p", { class: "mut small" }, "Отсюда начинается сценарий. Потяните «далее» к первому действию."),
     el("div", { class: "scn-row" },
