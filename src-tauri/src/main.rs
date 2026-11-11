@@ -486,9 +486,7 @@ fn close_selector(app: AppHandle) {
 /// Перерегистрировать глобальные клавиши из настроек (имя → сочетание, например "command_bar" → "Alt+Space").
 #[tauri::command]
 fn register_hotkeys(app: AppHandle, map: HashMap<String, String>) -> Value {
-    let shortcuts = app.global_shortcut();
-    let _ = shortcuts.unregister_all();
-    let mut ids: HashMap<u32, String> = HashMap::new();
+    let mut parsed = Vec::new();
     let mut errors = serde_json::Map::new();
     for (name, combo) in map {
         let combo = combo.trim().to_string();
@@ -496,19 +494,27 @@ fn register_hotkeys(app: AppHandle, map: HashMap<String, String>) -> Value {
             continue;
         }
         match combo.parse::<Shortcut>() {
-            Ok(shortcut) => {
-                let id = shortcut.id();
-                match shortcuts.register(shortcut) {
-                    Ok(()) => {
-                        ids.insert(id, name);
-                    }
-                    Err(e) => {
-                        errors.insert(name, json!(format!("{combo}: занято другой программой ({e})")));
-                    }
-                }
-            }
+            Ok(shortcut) => parsed.push((name, combo, shortcut)),
             Err(e) => {
                 errors.insert(name, json!(format!("{combo}: непонятное сочетание ({e})")));
+            }
+        }
+    }
+    let existing_count = with_state(&app, |s| s.hotkeys.len());
+    if !errors.is_empty() && existing_count > 0 {
+        return json!({"registered": existing_count, "errors": errors});
+    }
+    let shortcuts = app.global_shortcut();
+    let _ = shortcuts.unregister_all();
+    let mut ids: HashMap<u32, String> = HashMap::new();
+    for (name, combo, shortcut) in parsed {
+        let id = shortcut.id();
+        match shortcuts.register(shortcut) {
+            Ok(()) => {
+                ids.insert(id, name);
+            }
+            Err(e) => {
+                errors.insert(name, json!(format!("{combo}: занято другой программой ({e})")));
             }
         }
     }

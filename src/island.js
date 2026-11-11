@@ -669,10 +669,19 @@ async function applyConfig(cfg) {
   await invoke("island_place", { monitor: Number(isl0.monitor || 0), offsetX: Number(isl0.offset_x || 0) });
   await invoke("set_capture_visible", { visible: !!isl0.show_in_capture });
   const map = {};
-  for (const [k, v] of Object.entries(S.cfg.hotkeys || {})) if (v) map[k] = v;
+  const invalid = [];
+  for (const [k, v] of Object.entries(S.cfg.hotkeys || {})) {
+    if (!v) continue;
+    const parts = String(v).split("+").map((part) => part.trim().toLowerCase());
+    if (parts.includes("*") || parts.includes("numpadmultiply") || (parts.includes("shift") && parts.includes("8"))) {
+      invalid.push(`${k}: сочетание «${v}» не поддерживается (клавиша * недоступна). Выберите другое сочетание.`);
+      continue;
+    }
+    map[k] = String(v);
+  }
   const res = await invoke("register_hotkeys", { map });
-  if (res && res.errors && Object.keys(res.errors).length)
-    pushCard({ title: "Горячие клавиши", text: Object.values(res.errors).join("\n"), kind: "warn", timeout: 10 });
+  const errors = invalid.concat(res && res.errors ? Object.values(res.errors) : []);
+  if (errors.length) pushCard({ title: "Горячие клавиши", text: errors.join("\n"), kind: "warn", timeout: 10 });
   render();
 }
 

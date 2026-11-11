@@ -398,14 +398,17 @@ function field(path, value) {
       inp.placeholder = "нажмите сочетание";
       inp.addEventListener("keydown", (e) => {
         e.preventDefault();
+        e.stopPropagation();
         if (e.key === "Escape") { inp.blur(); return; }
-        if (e.key === "Backspace" || e.key === "Delete") { inp.value = ""; save(""); return; }
+        if (e.key === "Backspace" || e.key === "Delete") { inp.value = ""; save(""); inp.blur(); return; }
         if (["Control", "Alt", "Shift", "Meta"].includes(e.key)) return;
+        if (e.key === "*" || e.code === "NumpadMultiply") { inp.blur(); toast("Клавиша * не поддерживается как глобальное сочетание. Выберите другую клавишу.", "error"); return; }
         const mods = [e.ctrlKey && "Ctrl", e.altKey && "Alt", e.shiftKey && "Shift", e.metaKey && "Super"].filter(Boolean);
         let k = e.code.replace(/^Key/, "").replace(/^Digit/, "");
         if (k === " " || e.code === "Space") k = "Space";
         inp.value = mods.concat(k).join("+");
         save(inp.value);
+        inp.blur();
       });
     } else inp.addEventListener("change", () => save(inp.value));
     return inp;
