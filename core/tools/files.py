@@ -260,10 +260,15 @@ def _destination(src: pathlib.Path, to: str, overwrite: bool) -> pathlib.Path:
 
 
 def _existing(args: dict) -> pathlib.Path:
-    path = resolve(need(args, "path"))
+    path = _arg_path(args, required=True)
     if not path.exists():
         raise ToolError(f"не найдено: {path}")
     return path
+
+
+def _arg_path(args: dict, *, required: bool = False, default: str = "") -> pathlib.Path:
+    raw = need(args, "path") if required else get_str(args, "path") or default
+    return resolve(raw)
 
 
 def _guard_change(path: pathlib.Path) -> None:
@@ -336,13 +341,13 @@ def run_sync(action: str, args: dict) -> str:
                 text += "\nобщие ярлыки: " + ", ".join(shared[:40])
         return text
     if action == "list":
-        return listing(resolve(get_str(args, "path") or "desktop"), get_bool(args, "all"))
+        return listing(_arg_path(args, default="desktop"), get_bool(args, "all"))
     if action == "read":
-        return read(resolve(need(args, "path")), get_int(args, "start", 0) or 0)
+        return read(_arg_path(args, required=True), get_int(args, "start", 0) or 0)
     if action in ("write", "append"):
-        return write(resolve(need(args, "path")), get_str(args, "text"), append=action == "append")
+        return write(_arg_path(args, required=True), get_str(args, "text"), append=action == "append")
     if action == "mkdir":
-        path = resolve(need(args, "path"))
+        path = _arg_path(args, required=True)
         if is_protected(path):
             raise ToolError(f"сюда писать нельзя: {path}")
         path.mkdir(parents=True, exist_ok=True)
@@ -370,9 +375,9 @@ def run_sync(action: str, args: dict) -> str:
         dest = backup(path, move=True)
         return f"удалено: {path}\nрезервная копия: {dest} (вернуть: files restore)"
     if action == "restore":
-        return restore(resolve(need(args, "path")))
+        return restore(_arg_path(args, required=True))
     if action == "search":
-        base = resolve(get_str(args, "path") or "home")
+        base = _arg_path(args, default="home")
         return search(base, get_str(args, "pattern"), get_str(args, "text"))
     if action == "info":
         return info(_existing(args))
@@ -383,7 +388,7 @@ def run_sync(action: str, args: dict) -> str:
 
 async def handler(action: str, args: dict, ctx: Any) -> str:
     if action == "read":
-        path = resolve(need(args, "path"))
+        path = _arg_path(args, required=True)
         if path.suffix.lower() in IMAGE_SUFFIXES and path.exists():
             if is_secret(path):
                 raise ToolError("читать этот файл запрещено")
