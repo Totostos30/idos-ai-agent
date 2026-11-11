@@ -16,12 +16,15 @@ function refsOf(commit) {
 function parentsOf(commit) {
   return list(commit && commit.parents);
 }
+function subjectOf(commit) {
+  return (state.translations && state.translations[commit.short]) || commit.subject;
+}
 function branchClass(refs) {
   const text = refs.join(" ");
   return text.includes("main") ? "main" : text.includes("experiment") ? "experiment" : "other";
 }
 function matches(commit) {
-  const haystack = [commit.hash, commit.short, commit.subject, commit.author, ...refsOf(commit)].join(" ").toLowerCase();
+  const haystack = [commit.hash, commit.short, commit.subject, subjectOf(commit), commit.author, ...refsOf(commit)].join(" ").toLowerCase();
   return !state.query || haystack.includes(state.query.toLowerCase());
 }
 function renderBranches() {
@@ -40,13 +43,15 @@ function render() {
     const refs = refsOf(commit).map(escape).join(", ");
     const parents = parentsOf(commit).filter((parent) => visible.has(parent));
     const lines = parents.map(() => '<span class="line"></span>').join("");
-    return `<article class="commit ${branchClass(refsOf(commit))}" tabindex="0" title="${escape(commit.subject)}">
+    const subject = subjectOf(commit);
+    return `<article class="commit ${branchClass(refsOf(commit))}" tabindex="0" title="${escape(subject)}">
       <div class="graph"><span class="node"></span>${lines}</div>
-      <div class="commit-body"><div class="subject">${escape(commit.subject)}</div><div class="details"><code>${escape(commit.short)}</code><span>${escape(commit.author)}</span><time datetime="${escape(commit.date)}">${escape(new Date(commit.date).toLocaleString("ru-RU"))}</time>${refs ? `<span class="refs">${refs}</span>` : ""}</div></div>
-      <div class="tooltip"><strong>${escape(commit.subject)}</strong><span>${escape(commit.hash)}</span><span>${escape(commit.author)} · ${escape(new Date(commit.date).toLocaleString("ru-RU"))}</span>${refs ? `<span>Ветки: ${refs}</span>` : ""}</div>
+      <div class="commit-body"><div class="subject">${escape(subject)}</div><div class="details"><code>${escape(commit.short)}</code><span>${escape(commit.author)}</span><time datetime="${escape(commit.date)}">${escape(new Date(commit.date).toLocaleString("ru-RU"))}</time>${refs ? `<span class="refs">${refs}</span>` : ""}</div></div>
+      <div class="tooltip"><strong>${escape(subject)}</strong><span>${escape(commit.hash)}</span><span>${escape(commit.author)} · ${escape(new Date(commit.date).toLocaleString("ru-RU"))}</span>${refs ? `<span>Ветки: ${refs}</span>` : ""}</div>
     </article>`;
   }).join("");
 }
 
+fetch("translations.json", { cache: "no-store" }).then((response) => response.ok ? response.json() : {}).then((translations) => { if (!translations || Array.isArray(translations) || typeof translations !== "object") return; state.translations = translations; if (state.data) render(); }).catch(() => {});
 fetch("commits.json", { cache: "no-store" }).then((response) => { if (!response.ok) throw new Error("commits.json недоступен"); return response.json(); }).then((data) => { state.data = data; render(); }).catch((error) => { $("#tree").innerHTML = `<div class="empty">${escape(error.message)}<br><small>Запустите scripts\\Update-CommitTree.ps1.</small></div>`; });
 $("#search").addEventListener("input", (event) => { state.query = event.target.value.trim(); render(); });
