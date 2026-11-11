@@ -214,7 +214,9 @@ DEFAULTS: dict[str, Any] = {
     },
     "web": {"search_provider": "auto", "searxng_url": "", "region": "ru-ru", "tavily_key": "", "brave_key": ""},
     "browser": {"channel": "msedge", "cdp_url": "", "headless": False, "executable": "",
-                "search_url": "https://duckduckgo.com/?q="},
+                "search_url": "https://duckduckgo.com/?q=",
+                "user_data_dir": "",  # каталог с профилями (для Яндекс.Браузера — ...\\User Data); пусто — профиль IDOS
+                "profile_directory": "Default"},  # профиль при запуске браузера (логин и Алиса Про)
     # Алиса (Яндекс) в браузере: alice.yandex.ru в отдельной вкладке. Селекторы — в настройках, чтобы смену
     # вёрстки лечила правка без обновления кода.
     "alice": {"enabled": True, "url": "https://alice.yandex.ru/", "home_address": "",

@@ -79,6 +79,11 @@ class App:
 
 
 class HelpersTest(unittest.TestCase):
+    def test_expand_profile(self):
+        self.assertIsNone(browser._expand_profile(""))
+        self.assertIsNone(browser._expand_profile("C:\\definitely\\missing\\path"))
+        self.assertIsNotNone(browser._expand_profile(tempfile.gettempdir()))
+
     def test_to_url(self):
         search = "https://duckduckgo.com/?q="
         self.assertEqual(browser.to_url("example.com", search), "https://example.com")

@@ -57,6 +57,14 @@ SNAPSHOT_JS = r'''(max) => {
 }'''
 
 
+def _expand_profile(path: str) -> pathlib.Path | None:
+    text = os.path.expandvars(os.path.expanduser(path)) if path else ""
+    if not text:
+        return None
+    base = pathlib.Path(text)
+    return base if base.exists() else None
+
+
 def downloads_dir() -> pathlib.Path:
     from .files import resolve
     return resolve("downloads")
@@ -191,12 +199,20 @@ class BrowserManager:
         self.mode = "cdp"
 
     async def _launch(self) -> None:
+        profile_raw = str(self.get("browser.user_data_dir", "")).strip()
+        profile = _expand_profile(profile_raw)
+        if profile_raw and profile is None:
+            raise ToolError(f"browser.user_data_dir не найден: {profile_raw}")
         PROFILE.mkdir(parents=True, exist_ok=True)
+        user_data = str(profile or PROFILE)
         headless = bool(self.get("browser.headless", False))
         args = ["--disable-blink-features=AutomationControlled", "--no-first-run", "--no-default-browser-check"]
+        profile_directory = str(self.get("browser.profile_directory", "")).strip()
+        if profile_directory:
+            args.append(f"--profile-directory={profile_directory}")
         if not config.IS_WINDOWS:
             args.append("--no-sandbox")
-        common: dict[str, Any] = {"user_data_dir": str(PROFILE), "headless": headless, "args": args,
+        common: dict[str, Any] = {"user_data_dir": user_data, "headless": headless, "args": args,
                                   "locale": "ru-RU", "accept_downloads": True}
         if headless:
             common["viewport"] = {"width": 1280, "height": 900}
