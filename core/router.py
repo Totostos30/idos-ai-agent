@@ -541,18 +541,17 @@ class Router:
                               or headers.get("x-ratelimit-reset"), now)
         reset_t = parse_reset(headers.get("x-ratelimit-reset-tokens") or headers.get("x-ratelimit-reset-tokens-minute"),
                               now)
-        if limit_r is not None:
-            bucket.limit_requests = limit_r
-        if remain_r is not None:
-            bucket.remaining_requests = remain_r
-        if limit_t is not None:
-            bucket.limit_tokens = limit_t
-        if remain_t is not None:
-            bucket.remaining_tokens = remain_t
-        if reset_r is not None:
-            bucket.reset_requests_at = now + reset_r
-        if reset_t is not None:
-            bucket.reset_tokens_at = now + reset_t
+        updates = {
+            "limit_requests": limit_r,
+            "remaining_requests": remain_r,
+            "limit_tokens": limit_t,
+            "remaining_tokens": remain_t,
+            "reset_requests_at": now + reset_r if reset_r is not None else None,
+            "reset_tokens_at": now + reset_t if reset_t is not None else None,
+        }
+        for attr, value in updates.items():
+            if value is not None:
+                setattr(bucket, attr, value)
 
     def _disable(self, account: Account, seconds: float, reason: str) -> None:
         account.disabled_until = time.time() + seconds
