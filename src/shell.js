@@ -70,7 +70,7 @@ export function fmtTime(sec) {
 
 export function toast(text, kind = "info") {
   let box = document.querySelector(".toasts");
-  if (!box) { box = el("div", { class: "toasts" }); document.body.append(box); }
+  if (!box) { box = el("div", { class: "toasts", role: "status", "aria-live": "polite", "aria-atomic": "false" }); document.body.append(box); }
   const t = el("div", { class: "toast " + kind }, text);
   box.append(t);
   setTimeout(() => t.classList.add("out"), 3200);
@@ -106,6 +106,10 @@ export function setMicState(button, st) {
   const state = st && st.state ? st.state : "idle";
   button.dataset.state = state;
   button.classList.toggle("on", state === "listening" || state === "transcribing");
+  button.setAttribute("aria-label", state === "listening" ? "Остановить прослушивание"
+    : state === "transcribing" ? "Распознаётся речь"
+      : state === "error" ? "Ошибка микрофона — нажмите, чтобы повторить" : "Начать голосовой ввод");
+  button.setAttribute("aria-pressed", String(state === "listening" || state === "transcribing"));
   button.style.setProperty("--lvl", String(Math.max(0, Math.min(1, Number(st && st.level) || 0)).toFixed(3)));
 }
 

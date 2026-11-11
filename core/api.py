@@ -269,6 +269,34 @@ def build_methods(app) -> dict[str, Callable[..., Any]]:
     async def resolve(query: str) -> dict:
         return {"spec": await router.resolve_model(query)}
 
+    @method("ui.notify")
+    async def ui_notify(title: str = "", text: str = "", kind: str = "info") -> dict:
+        safe_kind = kind if kind in {"info", "ok", "error", "warn"} else "info"
+        secret_names = ("key", "password", "secret", "token", "authorization", "credential", "cookie")
+        secrets: list[str] = []
+
+        def collect_secrets(value: Any) -> None:
+            if isinstance(value, dict):
+                for name, item in value.items():
+                    if any(part in str(name).lower() for part in secret_names):
+                        if isinstance(item, str) and item:
+                            secrets.append(item)
+                    else:
+                        collect_secrets(item)
+            elif isinstance(value, list):
+                for item in value:
+                    collect_secrets(item)
+
+        collect_secrets(settings.snapshot())
+        def clean(message: Any, limit: int) -> str:
+            result = str(message)
+            for secret in sorted(set(secrets), key=len, reverse=True):
+                result = result.replace(secret, "[скрыто]")
+            return result[:limit]
+
+        bus.emit("island.card", {"title": clean(title, 120), "text": clean(text, 500), "kind": safe_kind, "timeout": 10})
+        return {"ok": True}
+
     # ------------------------------------------------------------------ settings
     @method("settings.get")
     async def settings_get(key: str = "") -> Any:
