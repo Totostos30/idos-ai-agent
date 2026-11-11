@@ -224,11 +224,6 @@ def _key(vk: int = 0, scan: int = 0, flags: int = 0) -> Any:
     return item
 
 
-def screen_size() -> tuple[int, int]:
-    require()
-    return _GetSystemMetrics(0), _GetSystemMetrics(1)
-
-
 def virtual_screen() -> dict[str, int]:
     require()
     return {"x": _GetSystemMetrics(76), "y": _GetSystemMetrics(77), "width": _GetSystemMetrics(78),
@@ -481,13 +476,6 @@ def is_window(hwnd: int) -> bool:
     return IS_WINDOWS and bool(_IsWindow(hwnd))
 
 
-def set_no_activate(hwnd: int, enabled: bool = True) -> None:
-    require()
-    style = _GetWindowLongW(hwnd, GWL_EXSTYLE)
-    style = (style | WS_EX_NOACTIVATE) if enabled else (style & ~WS_EX_NOACTIVATE)
-    _SetWindowLongW(hwnd, GWL_EXSTYLE, style)
-
-
 def monitors() -> list[dict[str, Any]]:
     require()
     out: list[dict[str, Any]] = []
@@ -503,22 +491,6 @@ def monitors() -> list[dict[str, Any]]:
 
     _EnumDisplayMonitors(None, None, MonitorEnumProc(callback), 0)
     return out
-
-
-def is_fullscreen() -> bool:
-    """True when the foreground window covers its whole monitor (games, video, presentations)."""
-    if not IS_WINDOWS:
-        return False
-    hwnd = _GetForegroundWindow()
-    if not hwnd or _text(_GetClassNameW, hwnd, 256) in ("Progman", "WorkerW"):
-        return False
-    info = MONITORINFO(cbSize=ctypes.sizeof(MONITORINFO))
-    if not _GetMonitorInfoW(_MonitorFromWindow(hwnd, 2), ctypes.byref(info)):
-        return False
-    rect = window_rect(hwnd)
-    m = info.rcMonitor
-    return rect["x"] <= m.left and rect["y"] <= m.top and rect["x"] + rect["width"] >= m.right \
-        and rect["y"] + rect["height"] >= m.bottom
 
 
 # --- keyboard layout -----------------------------------------------------------------------------------
