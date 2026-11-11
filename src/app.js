@@ -578,24 +578,35 @@ function drawVoices(box, info, note) {
   const status = el("div", { class: "vstatus small" + (note && note.error ? " warn" : " mut") }, (note && (note.error || note.text)) || "Нажмите на голос — он включится и скажет пример фразы.");
   let busy = false;
   const setStatus = (text, bad) => { status.textContent = text; status.className = "vstatus small " + (bad ? "warn" : "mut"); };
+  const runVoiceAction = async (message, action, resultNote) => {
+    if (busy) return;
+    busy = true;
+    setStatus(message);
+    try {
+      const result = await action();
+      refreshVoices(box, resultNote(result));
+    } finally {
+      busy = false;
+    }
+  };
   const pick = async (engine, voice, card) => {
     if (busy) return;
-    busy = true;
     box.querySelectorAll(".vcard").forEach((n) => n.classList.toggle("busy", n === card));
-    setStatus(engine === "off" ? "Выключаю голос…" : "Включаю голос… В первый раз модель скачивается — это может занять минуту.");
-    const r = await core.try("voice.apply", { engine, voice, sample: true }, 600000);
-    busy = false;
-    const ok = r && !r.error && r.ok !== false;
-    refreshVoices(box, ok ? { text: engine === "off" ? "Голосовые ответы выключены." : "Готово, голос сохранён." } : { error: "Не получилось: " + ((r && r.error) || "нет ответа от ядра") });
+    return runVoiceAction(
+      engine === "off" ? "Выключаю голос…" : "Включаю голос… В первый раз модель скачивается — это может занять минуту.",
+      () => core.try("voice.apply", { engine, voice, sample: true }, 600000),
+      (result) => {
+        const ok = result && !result.error && result.ok !== false;
+        return ok ? { text: engine === "off" ? "Голосовые ответы выключены." : "Готово, голос сохранён." }
+          : { error: "Не получилось: " + ((result && result.error) || "нет ответа от ядра") };
+      });
   };
-  const install = async (g) => {
-    if (busy) return;
-    busy = true;
-    setStatus("Устанавливаю " + g.title + "… Это занимает 1–3 минуты.");
-    const r = await core.try("voice.install", { engine: g.engine }, 960000);
-    busy = false;
-    refreshVoices(box, r && r.ok ? { text: g.title + " установлен — выберите голос." } : { error: "Установка не удалась: " + ((r && (r.error + (r.log ? " — " + r.log.slice(-300) : ""))) || "нет ответа") });
-  };
+  const install = (g) => runVoiceAction(
+    "Устанавливаю " + g.title + "… Это занимает 1–3 минуты.",
+    () => core.try("voice.install", { engine: g.engine }, 960000),
+    (result) => result && result.ok
+      ? { text: g.title + " установлен — выберите голос." }
+      : { error: "Установка не удалась: " + ((result && (result.error + (result.log ? " — " + result.log.slice(-300) : ""))) || "нет ответа") });
   const rate = Number(info.rate || 1);
   const speed = el("input", { type: "range", min: "0.5", max: "2", step: "0.05", value: String(rate), class: "vspeed" });
   const speedLabel = el("span", { class: "mono small" }, rate.toFixed(2) + "×");
