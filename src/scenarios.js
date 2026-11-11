@@ -732,6 +732,13 @@ function targetListEditor(n) {
   const targets = Array.isArray(n.params.targets) && n.params.targets.length
     ? n.params.targets : (n.params.target && typeof n.params.target === "object" ? [n.params.target] : []);
   const box = el("div", { class: "scn-target-list" });
+  const updateTargets = (next) => {
+    n.params.targets = next;
+    n.params.target = null;
+    markDirty();
+    refreshNode(n);
+    drawInspector();
+  };
   const items = targets.map((target, index) => el("div", { class: "scn-target-item" },
     target.preview ? el("img", { class: "scn-prev big", src: target.preview, alt: "" }) : null,
     el("div", { class: "scn-target-label" }, target.label || `«${target.name || target.id || "элемент"}»`),
@@ -740,15 +747,14 @@ function targetListEditor(n) {
       el("button", { class: "btn small", onclick: () => probe(target) }, "Проверить"),
       el("button", { class: "btn small", disabled: index === 0, title: "Переместить вверх", onclick: () => {
         const next = [...targets]; [next[index - 1], next[index]] = [next[index], next[index - 1]];
-        n.params.targets = next; n.params.target = null; markDirty(); refreshNode(n); drawInspector();
+        updateTargets(next);
       } }, "↑"),
       el("button", { class: "btn small", disabled: index === targets.length - 1, title: "Переместить вниз", onclick: () => {
         const next = [...targets]; [next[index + 1], next[index]] = [next[index], next[index + 1]];
-        n.params.targets = next; n.params.target = null; markDirty(); refreshNode(n); drawInspector();
+        updateTargets(next);
       } }, "↓"),
       el("button", { class: "btn small danger", title: "Убрать элемент", onclick: () => {
-        n.params.targets = targets.filter((_, i) => i !== index); n.params.target = null;
-        markDirty(); refreshNode(n); drawInspector();
+        updateTargets(targets.filter((_, i) => i !== index));
       } }, "Убрать"))));
   box.append(
     ...(targets.length ? items : [el("div", { class: "mut small" }, "Элементы ещё не выбраны.")]),
