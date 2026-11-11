@@ -195,13 +195,6 @@ async def _session(app: str = "") -> Any:
     return None
 
 
-async def sessions_async() -> list[str]:
-    from winrt.windows.media.control import GlobalSystemMediaTransportControlsSessionManager as Manager
-
-    manager = await Manager.request_async()
-    return [s.source_app_user_model_id or "" for s in list(manager.get_sessions() or [])]
-
-
 async def read_stream(reference: Any) -> bytes:
     from winrt.windows.storage.streams import Buffer, DataReader, InputStreamOptions
 
