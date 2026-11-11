@@ -5,7 +5,6 @@ import asyncio
 import inspect
 import json
 import logging
-import re
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -20,7 +19,7 @@ from .tools import META_TOOL
 from .util import clip
 
 from .agent_text import (CLAIM_RE, COMMAND_RE, FAKE_ACTIONS_RE, FAKE_CALL_RE, MODEL_SWITCH_RE,
-                         REMEMBER_RE, STOP_RE, TOOL_ALIASES, USER_MODEL_RE, VERIFY_TOOLS, clean_reply,
+                         REMEMBER_RE, STOP_RE, VERIFY_TOOLS, clean_reply,
                          missing_tool_name, public_args, real_actions, short_args, speech_part,
                          user_asked_model)
 
