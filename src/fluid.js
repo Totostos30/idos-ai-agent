@@ -102,9 +102,9 @@ export class Fluid {
     const ambientAmplitude = Math.max(0, Math.min(3, Number(waves.ambient_amplitude ?? 1)));
     const ambientSpeed = Math.max(0.2, Math.min(3, Number(waves.ambient_speed ?? 1)));
 
-    // Тянемся к курсору, если он под островом и недалеко.
+    // Тянемся к курсору, если он под островом и недалеко; при сворачивании отпускаем край быстрее.
     let reachTarget = 0;
-    if (!reducedMotion && waves.cursor_enabled !== false && this.cursor && now - this.cursor.at < 600 && st.pill) {
+    if (!st.hidden && !reducedMotion && waves.cursor_enabled !== false && this.cursor && now - this.cursor.at < 600 && st.pill) {
       const rect = this.cv.getBoundingClientRect();
       const k = rect.width / W || 1;
       const cx = (this.cursor.x - rect.left) / k, cy = (this.cursor.y - rect.top) / k;
@@ -114,7 +114,8 @@ export class Fluid {
         this.reachX = this.reachX < 0 ? tx : this.reachX + (tx - this.reachX) * 0.25 * dt;
       }
     }
-    this.reach += (reachTarget - this.reach) * 0.14 * dt;
+    const reachBlend = 1 - Math.exp(-dt / (st.hidden ? 2 : 6.8));
+    this.reach += (reachTarget - this.reach) * reachBlend;
     const sagTarget = !reducedMotion && st.away && st.pill && waves.away_sag_enabled !== false
       ? Math.max(0, Math.min(18, Number(waves.away_sag_strength ?? 7))) : 0;
     this.sag += (sagTarget - this.sag) * 0.03 * dt;
