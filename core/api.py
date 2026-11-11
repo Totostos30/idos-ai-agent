@@ -59,6 +59,9 @@ def build_methods(app) -> dict[str, Callable[..., Any]]:
         bus.emit("router.status", state)
         return state
 
+    def settings_changed(key: str, value: Any) -> None:
+        bus.emit("settings.changed", {"key": key, "value": value})
+
     # ------------------------------------------------------------------ core
     @method("core.ping")
     async def ping() -> dict:
@@ -277,21 +280,21 @@ def build_methods(app) -> dict[str, Callable[..., Any]]:
     @method("settings.set")
     async def settings_set(key: str, value: Any = None) -> dict:
         settings.set(key, value)
-        bus.emit("settings.changed", {"key": key, "value": value})
+        settings_changed(key, value)
         return {"ok": True}
 
     @method("settings.update")
     async def settings_update(values: dict) -> dict:
         settings.update(values)
         for key, value in values.items():
-            bus.emit("settings.changed", {"key": key, "value": value})
+            settings_changed(key, value)
         return {"ok": True}
 
     @method("settings.reset")
     async def settings_reset(key: str) -> dict:
         settings.reset(key)
         value = settings.get(key)
-        bus.emit("settings.changed", {"key": key, "value": value})
+        settings_changed(key, value)
         return {"value": value}
 
     # ------------------------------------------------------------------ memory, skills, tools, MCP
