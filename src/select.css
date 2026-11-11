@@ -1,5 +1,5 @@
 body.view-select { margin: 0; height: 100vh; overflow: hidden; background: transparent; cursor: crosshair; user-select: none; font: 13px "Segoe UI", system-ui, sans-serif; }
-.sel-shade { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.42); animation: fadein 0.18s ease both; touch-action: none; }
+.sel-shade { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.42); animation: fadein 0.18s ease both; }
 .sel-box { position: fixed; display: none; border-radius: 6px; box-shadow: 0 0 0 1.5px #fff, 0 0 0 4px rgba(124, 140, 255, 0.45), 0 0 40px rgba(124, 140, 255, 0.35); pointer-events: none; }
 .sel-size { position: fixed; display: none; background: #000; color: #fff; padding: 2px 8px; border-radius: 8px; font: 12px "Cascadia Mono", Consolas, monospace; pointer-events: none; }
 .sel-hint { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); background: #000; color: #f5f5f7; padding: 8px 16px; border-radius: 18px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); pointer-events: none; white-space: nowrap; animation: drop 0.5s cubic-bezier(0.34, 1.36, 0.5, 1) both; }

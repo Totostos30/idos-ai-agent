@@ -18,7 +18,6 @@ export class Fluid {
     this.musicCanvasWidth = 0;
     this.musicWidthChangedAt = 0;
     this.get = getState;
-    this.motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     this.cursor = null;
     this.reach = 0;
     this.reachX = -1;
@@ -36,7 +35,7 @@ export class Fluid {
 
   // Капля отрывается от середины края и падает (успешное действие, готовый ответ, скриншот).
   bead(strength = 1) {
-    if (this.motion.matches || this.beads.length > 6) return;
+    if (this.beads.length > 6) return;
     const waves = this.get().waves || {};
     const radius = Math.max(1, Math.min(8, Number(waves.success_drop_size ?? BEAD_R)));
     this.beads.push({ x: 0.5, y: 0, vy: 0, r: radius * strength, age: 0, small: false });
@@ -54,7 +53,7 @@ export class Fluid {
     requestAnimationFrame(this.loop);
     const st = this.get();
     const waves = st.waves || {};
-    const reducedMotion = this.motion.matches;
+    const reducedMotion = waves.respect_reduced_motion !== false && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const dt = Math.min(48, now - this.last) / 16.7;
     const musicVisible = !reducedMotion && st.playing && st.edge && st.pill ? 1 : 0;
     if (musicVisible) {
@@ -63,7 +62,6 @@ export class Fluid {
       this.musicVisibility = Math.max(0, this.musicVisibility - dt * 16.7 / 70);
     }
     this.frame++;
-    if (reducedMotion) { this.beads.length = 0; this.reach = 0; this.reachX = -1; this.sag = 0; this.spikes.fill(0); }
     this.drawWideDrops(st, now);
     if (!st.liquid) {
       if (this.cv.style.opacity !== "0") this.cv.style.opacity = "0";
@@ -100,7 +98,7 @@ export class Fluid {
     const cs = getComputedStyle(this.isl);
     const R = Math.min(parseFloat(cs.borderBottomLeftRadius) || 18, this.isl.offsetHeight / 2);
     const a = R * 0.75, b = W - R * 0.75, span = Math.max(1, b - a);
-    const t = reducedMotion ? 0 : now / 1000;
+    const t = now / 1000;
     const ambientAmplitude = Math.max(0, Math.min(3, Number(waves.ambient_amplitude ?? 1)));
     const ambientSpeed = Math.max(0.2, Math.min(3, Number(waves.ambient_speed ?? 1)));
 
@@ -206,7 +204,7 @@ export class Fluid {
     const hiddenNow = !!st.hidden;
     const justCollapsed = hiddenNow && !this.wasHidden;
     this.wasHidden = hiddenNow;
-    const reducedMotion = this.motion.matches;
+    const reducedMotion = waves.respect_reduced_motion !== false && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (waves.full_width_enabled === false || reducedMotion) {
       this.wideWaveStarted = null;
       this.wideWaveOriginRatio = null;
