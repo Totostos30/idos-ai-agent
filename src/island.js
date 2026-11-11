@@ -39,7 +39,6 @@ const S = {
   flash: 0,
   away: false,
   hover: false,
-  near: false,
   kbd: {},
   privacy: {},
 };
@@ -473,9 +472,10 @@ function tucked(m) {
   if (sig !== lastSig) { lastSig = sig; quietSince = Date.now(); }
   // Обычные задачи не скрываем. Автоскрытие действует только для покоя и музыки.
   const transient = m === "idle" || m === "music";
-  const quiet = !!I.auto_hide && !S.hover && (m === "music" || !S.near) && !S.expanded && !S.pinned && transient && !S.cards.length && !S.bar.open;
+  const quiet = !!I.auto_hide && !S.hover && !S.expanded && !S.pinned && transient && !S.cards.length && !S.bar.open;
   if (!quiet) { quietSince = Date.now(); clearTimeout(tuckTimer); tuckTimer = null; return false; }
-  const wait = 1000;
+  const idleDelay = Number(I.auto_hide_delay);
+  const wait = m === "music" ? 3000 : (Number.isFinite(idleDelay) && idleDelay >= 0 ? idleDelay : 1) * 1000;
   const left = quietSince + wait - Date.now();
   if (left <= 0) { peeked = false; return true; }
   if (!tuckTimer) tuckTimer = setTimeout(() => { tuckTimer = null; render(); }, left + 30);
@@ -711,10 +711,6 @@ export function mountIsland() {
   const onCursor = (x, y) => {
     fluid.setCursor(x, y);
     const r = isl.getBoundingClientRect();
-    const dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
-    const dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0;
-    const near = !root.classList.contains("hidden") && dx <= 80 && dy <= 90;
-    if (near !== S.near) { S.near = near; render(); }
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     isl.style.setProperty("--px", Math.max(-1, Math.min(1, (x - cx) / 260)).toFixed(3));
     isl.style.setProperty("--py", Math.max(-1, Math.min(1, (y - cy) / 160)).toFixed(3));
