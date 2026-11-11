@@ -450,7 +450,7 @@ function panelAgent() {
       BUSY.has(S.agent.state) ? el("button", { class: "btn danger", onclick: stopAll }, "■ Стоп") : null),
     on("pa_steps") ? stepsMini() : null,
     on("pa_reply") && S.agent.lastReply ? el("div", { class: "reply-text" }, S.agent.lastReply) : null,
-    on("pa_input") ? el("div", { class: "row" }, input, micButton(() => mic.start("ask", micOpts()))) : null,
+    on("pa_input") ? el("div", { class: "row" }, input) : null,
   ];
 }
 
