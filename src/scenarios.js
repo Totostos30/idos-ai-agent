@@ -418,6 +418,16 @@ function refreshRuntimeVars() {
   if (body) body.replaceChildren(...runtimeVariableRows());
 }
 
+function bindListSearch(input, rows, updateQuery) {
+  const filter = () => {
+    updateQuery(input.value);
+    const query = input.value.trim().toLocaleLowerCase();
+    rows.forEach((row) => { row.style.display = !query || row.dataset.search.includes(query) ? "" : "none"; });
+  };
+  input.addEventListener("input", filter);
+  filter();
+}
+
 function draw() {
   if (!page || !active()) return;
   const scenarioRows = S.list.map((s) => el("button", { class: "scn-item" + (S.cur && S.cur.id === s.id ? " on" : ""), title: s.name,
@@ -426,13 +436,7 @@ function draw() {
       el("span", { class: "scn-item-name" }, (s.enabled ? "" : "⏸ ") + s.name))));
   const scenarioSearch = el("input", { class: "field scn-list-search scn-scenario-search", type: "search", placeholder: "Поиск сценария", value: S.scenarioQuery });
   const scenarioList = el("div", { class: "scn-list scn-scenario-list" }, scenarioRows.length ? scenarioRows : el("div", { class: "mut small scn-list-empty" }, "Пока нет сценариев"));
-  const filterScenarioRows = () => {
-    S.scenarioQuery = scenarioSearch.value;
-    const q = S.scenarioQuery.trim().toLocaleLowerCase();
-    scenarioRows.forEach((row) => { row.style.display = !q || row.dataset.search.includes(q) ? "" : "none"; });
-  };
-  scenarioSearch.addEventListener("input", filterScenarioRows);
-  filterScenarioRows();
+  bindListSearch(scenarioSearch, scenarioRows, (value) => { S.scenarioQuery = value; });
 
   const nodeSearch = el("input", { class: "field scn-list-search scn-node-search", type: "search", placeholder: "Поиск узла", value: S.nodeQuery });
   const nodeRows = PALETTE.map((t) => {
@@ -442,13 +446,7 @@ function draw() {
     return row;
   });
   const nodeList = el("div", { class: "scn-list scn-node-list" }, nodeRows);
-  const filterNodeRows = () => {
-    S.nodeQuery = nodeSearch.value;
-    const q = S.nodeQuery.trim().toLocaleLowerCase();
-    nodeRows.forEach((row) => { row.style.display = !q || row.dataset.search.includes(q) ? "" : "none"; });
-  };
-  nodeSearch.addEventListener("input", filterNodeRows);
-  filterNodeRows();
+  bindListSearch(nodeSearch, nodeRows, (value) => { S.nodeQuery = value; });
 
   const side = el("aside", { class: "scn-side" },
     el("section", { class: "scn-side-panel scn-scenario-panel" },
