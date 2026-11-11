@@ -320,6 +320,15 @@ async def _after(m: BrowserManager, before: int, prefix: str) -> str:
     return prefix + "\n\n" + await snapshot(page, 30, 600)
 
 
+async def _history(page: Any, action: str) -> str:
+    try:
+        await (page.go_back if action == "back" else page.go_forward)(wait_until="domcontentloaded", timeout=20000)
+    except Exception as exc:  # noqa: BLE001
+        raise ToolError(f"не получилось: {first_line(exc)}") from exc
+    await settle(page)
+    return await snapshot(page, 30, 600)
+
+
 async def run(m: BrowserManager, action: str, args: dict, ctx: Any) -> Any:  # noqa: C901 - one branch per action
     if action == "close":
         await m.close()
@@ -378,12 +387,7 @@ async def run(m: BrowserManager, action: str, args: dict, ctx: Any) -> Any:  # n
         await asyncio.sleep(0.4)
         return await snapshot(page, 30, 600)
     if action in ("back", "forward"):
-        try:
-            await (page.go_back if action == "back" else page.go_forward)(wait_until="domcontentloaded", timeout=20000)
-        except Exception as exc:  # noqa: BLE001
-            raise ToolError(f"не получилось: {first_line(exc)}") from exc
-        await settle(page)
-        return await snapshot(page, 30, 600)
+        return await _history(page, action)
     if action == "tabs":
         lines = [f"{i}. {clip(await _title(p), 60) or 'без заголовка'} — {p.url}" + (" ← текущая" if p is page else "")
                  for i, p in enumerate(m.pages(), 1)]
