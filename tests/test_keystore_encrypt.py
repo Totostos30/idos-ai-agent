@@ -62,6 +62,11 @@ class KeyEncryptionTest(unittest.TestCase):
         self.assertEqual(self.store.entries("groq")[0]["secret"], SECRET)
         self.assertEqual(self.store.migrate_plaintext(), 0)
 
+    def test_corrupted_container_is_tolerated(self) -> None:
+        self.path.write_text(json.dumps({"keys": [None, "junk", {"provider": "groq", "secret": SECRET}],
+                                         "env": None}), encoding="utf-8")
+        self.assertEqual([e["secret"] for e in self.store.entries("groq")], [SECRET])
+
     def test_unreadable_entry_is_skipped(self) -> None:
         self.path.write_text(json.dumps({"keys": [{"id": "kbad01", "provider": "groq",
                                                    "secret": ENC_PREFIX + "bm90LWEta2V5", "enabled": True}],

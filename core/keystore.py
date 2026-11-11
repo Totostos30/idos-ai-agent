@@ -160,8 +160,11 @@ class KeyStore:
             return {"keys": [], "env": {}}
         if not isinstance(data, dict):
             return {"keys": [], "env": {}}
-        data.setdefault("keys", [])
-        data.setdefault("env", {})
+        # Пользователь может править файл вручную: не падаем на "keys": null или мусоре в списке.
+        keys = data.get("keys")
+        data["keys"] = [item for item in keys if isinstance(item, dict)] if isinstance(keys, list) else []
+        if not isinstance(data.get("env"), dict):
+            data["env"] = {}
         for item in data["keys"]:
             if not isinstance(item, dict) or not item.get("secret"):
                 continue
