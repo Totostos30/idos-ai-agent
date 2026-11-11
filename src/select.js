@@ -4,6 +4,13 @@ import { invoke, listen, el, sleep } from "./shell.js";
 
 const HINTS = { shot: "Скриншот области", ocr: "Распознать текст", qr: "Сканировать QR-код", record: "Записать область" };
 
+function captureSelection(purpose, region) {
+  if (purpose === "ocr") return core.try("capture.ocr", region);
+  if (purpose === "qr") return core.try("capture.qr", region);
+  if (purpose === "record") return core.try("recorder.start", region);
+  return core.try("capture.screenshot", Object.assign({ mode: "area", copy: true }, region));
+}
+
 export function mountSelect() {
   document.body.classList.add("view-select");
   let info = { purpose: "shot", x: 0, y: 0, scale: 1 };
@@ -42,11 +49,7 @@ export function mountSelect() {
       : { x: info.x, y: info.y, width: Math.round(innerWidth * s), height: Math.round(innerHeight * s) };
     await invoke("close_selector");
     await sleep(120); // дать окну исчезнуть, чтобы оно не попало в кадр
-    const p = info.purpose;
-    const res = p === "ocr" ? await core.try("capture.ocr", region)
-      : p === "qr" ? await core.try("capture.qr", region)
-      : p === "record" ? await core.try("recorder.start", region)
-      : await core.try("capture.screenshot", Object.assign({ mode: "area", copy: true }, region));
+    const res = await captureSelection(info.purpose, region);
     if (res && res.error) console.warn("select:", res.error);
     reset(info);
   };
