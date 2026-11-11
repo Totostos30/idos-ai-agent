@@ -42,6 +42,7 @@ Frontend (Vite/JavaScript) ── WebSocket RPC/events ── Python CoreServer
 | `src-tauri/src/main.rs` | Rust/Tauri окна, запуск ядра, tray, хоткеи и Win32-интеграция |
 | `skills/*.md` | Встроенные Markdown-плейбуки, которые агент загружает по необходимости |
 | `tests/` | Модульные и интеграционные проверки ядра |
+| `commit-tree/`, `scripts/Update-CommitTree.ps1` | Локальный просмотрщик истории коммитов в браузере (`Start-CommitTree.bat`) |
 
 ## Жизненный цикл
 

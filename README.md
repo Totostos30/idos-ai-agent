@@ -78,6 +78,8 @@ powershell -ExecutionPolicy Bypass -File scripts\Build-Release.ps1
 
 Демо ядра без действий на компьютере можно запустить командой `.venv\Scripts\python -m core --demo`; для полного сценария откройте локальный интерфейс с параметрами, указанными в `data/runtime/core.json`. Самопроверка: `Selftest-IDOS.bat` или «Настройки → Самопроверка».
 
+Локальную карту коммитов можно открыть через `Start-CommitTree.bat`: скрипт собирает `git log` в `commit-tree/commits.json` и показывает дерево веток и переводы тем в браузере.
+
 В репозитории настроен CI для Python-тестов на Windows, сборки Vite и `cargo check`: `.github/workflows/ci.yml`.
 
 ## Документы
