@@ -3,10 +3,8 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
-import datetime as _dt
 import logging
 import logging.handlers
-import os
 import queue
 import re
 import subprocess
@@ -18,7 +16,6 @@ from . import config
 
 log = logging.getLogger("idos.util")
 CREATE_NO_WINDOW = 0x08000000
-WEEKDAYS = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"]
 
 _SECRET_RE = re.compile(
     r"(gsk_[A-Za-z0-9]{12,}|csk-[A-Za-z0-9]{12,}|sk-(?:or-|ant-|proj-)?[A-Za-z0-9_\-]{16,}|"
@@ -126,40 +123,6 @@ def powershell(script: str, timeout: float = 30) -> tuple[int, str, str]:
     return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
 
 
-def now_text(moment: _dt.datetime | None = None) -> str:
-    moment = moment or _dt.datetime.now()
-    return f"{moment:%Y-%m-%d %H:%M}, {WEEKDAYS[moment.weekday()]}"
-
-
-class Debouncer:
-    """Call ``fn`` once, ``delay`` seconds after the last ``trigger()``."""
-
-    def __init__(self, delay: float, fn: Callable[[], Any]) -> None:
-        self.delay, self.fn = delay, fn
-        self._timer: threading.Timer | None = None
-        self._lock = threading.Lock()
-
-    def trigger(self) -> None:
-        with self._lock:
-            if self._timer is not None:
-                self._timer.cancel()
-            self._timer = threading.Timer(self.delay, self._fire)
-            self._timer.daemon = True
-            self._timer.start()
-
-    def _fire(self) -> None:
-        try:
-            self.fn()
-        except Exception:  # noqa: BLE001
-            log.exception("debounced call failed")
-
-    def cancel(self) -> None:
-        with self._lock:
-            if self._timer is not None:
-                self._timer.cancel()
-                self._timer = None
-
-
 class Worker:
     """A dedicated daemon thread for objects that must stay on one thread (COM, UI Automation, Playwright)."""
 
@@ -212,10 +175,6 @@ class Worker:
         fut: concurrent.futures.Future = concurrent.futures.Future()
         self._queue.put((fn, None, fut))
         return fut.result(timeout)
-
-
-def env_flag(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 _NOISY_WINERRORS = {10038, 10053, 10054, 10058, 10061}
