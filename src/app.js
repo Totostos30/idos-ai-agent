@@ -568,6 +568,27 @@ function parseLexicon(text) {
   return entries;
 }
 
+function voiceGroup(info, group, current, pick, install) {
+  const active = info.engine === group.engine;
+  const chosen = current[String(group.setting || "").split(".")[1]] || "";
+  const voices = group.voices && group.voices.length
+    ? group.voices
+    : [{ id: "", name: "Голос по умолчанию", gender: "", note: "" }];
+  const cards = voices.map((voice) => {
+    const selected = active && (voice.id === chosen || (!chosen && voices.length === 1));
+    const card = el("button", { class: "vcard" + (selected ? " on" : ""), disabled: !group.available, title: voice.id || "" },
+      el("b", {}, voice.name),
+      el("span", { class: "mut small" }, [GENDER[voice.gender], voice.note].filter(Boolean).join(" · ") || " "));
+    card.addEventListener("click", () => pick(group.engine, voice.id, card));
+    return card;
+  });
+  return el("div", { class: "vgroup" + (active ? " active" : "") + (group.available ? "" : " off") },
+    el("div", { class: "vhead" }, el("b", {}, group.title), el("span", { class: "mut small" }, group.note), active ? el("span", { class: "tag ok" }, "сейчас") : null),
+    group.available ? null : el("div", { class: "vreason small" }, el("span", {}, group.reason || "недоступен"),
+      group.installable ? el("button", { class: "btn ghost", onclick: () => install(group) }, "Установить") : null),
+    el("div", { class: "vcards" }, cards));
+}
+
 function drawVoices(box, info, note) {
   const title = el("h3", {}, "Голос Эйдоса");
   if (!info || info.error || !Array.isArray(info.engines)) {
@@ -614,24 +635,7 @@ function drawVoices(box, info, note) {
   speed.addEventListener("change", async () => {
     await core.try("voice.apply", { rate: Number(speed.value), sample: true, text: "Так я говорю с новой скоростью." }, 600000);
   });
-  const groups = info.engines.map((g) => {
-    const active = info.engine === g.engine;
-    const chosen = cur[String(g.setting || "").split(".")[1]] || "";
-    const list = g.voices && g.voices.length ? g.voices : [{ id: "", name: "Голос по умолчанию", gender: "", note: "" }];
-    const cards = list.map((v) => {
-      const on = active && (v.id === chosen || (!chosen && list.length === 1));
-      const card = el("button", { class: "vcard" + (on ? " on" : ""), disabled: !g.available, title: v.id || "" },
-        el("b", {}, v.name),
-        el("span", { class: "mut small" }, [GENDER[v.gender], v.note].filter(Boolean).join(" · ") || " "));
-      card.addEventListener("click", () => pick(g.engine, v.id, card));
-      return card;
-    });
-    return el("div", { class: "vgroup" + (active ? " active" : "") + (g.available ? "" : " off") },
-      el("div", { class: "vhead" }, el("b", {}, g.title), el("span", { class: "mut small" }, g.note), active ? el("span", { class: "tag ok" }, "сейчас") : null),
-      g.available ? null : el("div", { class: "vreason small" }, el("span", {}, g.reason || "недоступен"),
-        g.installable ? el("button", { class: "btn ghost", onclick: () => install(g) }, "Установить") : null),
-      el("div", { class: "vcards" }, cards));
-  });
+  const groups = info.engines.map((group) => voiceGroup(info, group, cur, pick, install));
   const lexText = el("textarea", { class: "vlex", rows: 5, spellcheck: false, placeholder: "ГПУ = видеокарта\nKubernetes = кубернетес" });
   lexText.value = Object.entries(info.lexicon || {}).map(([k, v]) => k + " = " + v).join("\n");
   const probe = el("input", { class: "vprobe", value: "Давление 760 мм рт. ст., ветер 5 м/с, NVIDIA RTX 4050, т.е. всё ок." });
