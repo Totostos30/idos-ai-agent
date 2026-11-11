@@ -109,6 +109,3 @@ export function setMicState(button, st) {
   button.style.setProperty("--lvl", String(Math.max(0, Math.min(1, Number(st && st.level) || 0)).toFixed(3)));
 }
 
-export function gDots() {
-  return el("span", { class: "gdots live" }, el("i", {}), el("i", {}), el("i", {}), el("i", {}));
-}
