@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IDOS · дерево коммитов</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">IDOS / LOCAL REPOSITORY</p>
+      <h1>Дерево коммитов</h1>
+      <p id="meta" class="muted">Загрузка истории…</p>
+    </div>
+    <label class="search"><span>Поиск</span><input id="search" type="search" placeholder="hash, ветка, сообщение…"></label>
+  </header>
+  <main>
+    <section id="branches" class="branches" aria-label="Ветки"></section>
+    <section class="legend"><span><i class="dot main"></i>main</span><span><i class="dot experiment"></i>experiment</span><span><i class="dot other"></i>другие ветки</span></section>
+    <section id="tree" class="tree" aria-live="polite"></section>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

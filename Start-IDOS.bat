@@ -2,5 +2,6 @@
 chcp 65001 >nul
 cd /d "%~dp0"
 title IDOS
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Update-CommitTree.ps1"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Start-IDOS.ps1" %*
 if errorlevel 1 pause
