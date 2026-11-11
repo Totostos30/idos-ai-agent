@@ -29,6 +29,12 @@ TEXTUAL = {"TextControl", "HyperlinkControl", "ButtonControl", "ListItemControl"
            "TabItemControl", "TreeItemControl", "DataItemControl", "HeaderItemControl", "CheckBoxControl",
            "RadioButtonControl", "StatusBarControl"}
 POPUP_CLASSES = {"#32768", "Xaml_WindowedPopupClass", "Popup", "PopupHost", "Net UI Tool Window", "DropDown"}
+SIMPLE_ACTIONS = {"toggle": ("TogglePattern", "Toggle"), "select": ("SelectionItemPattern", "Select"),
+                  "expand": ("ExpandCollapsePattern", "Expand"), "collapse": ("ExpandCollapsePattern", "Collapse"),
+                  "scroll": ("ScrollItemPattern", "ScrollIntoView")}
+CLICK_PATTERNS = (("InvokePattern", "Invoke"), ("TogglePattern", "Toggle"),
+                  ("SelectionItemPattern", "Select"), ("ExpandCollapsePattern", "Expand"),
+                  ("LegacyIAccessiblePattern", "DoDefaultAction"))
 REFS: dict[int, dict] = {}
 _auto: Any = None
 _initializer: Any = None
@@ -307,11 +313,8 @@ def act(ref: int, action: str = "click", text: str = "", append: bool = False) -
             win.hotkey("ctrl+a")
         win.type_text(text)
         return f"введено с клавиатуры в «{name}»"
-    simple = {"toggle": ("TogglePattern", "Toggle"), "select": ("SelectionItemPattern", "Select"),
-              "expand": ("ExpandCollapsePattern", "Expand"), "collapse": ("ExpandCollapsePattern", "Collapse"),
-              "scroll": ("ScrollItemPattern", "ScrollIntoView")}
-    if action in simple:
-        pattern_name, method = simple[action]
+    if action in SIMPLE_ACTIONS:
+        pattern_name, method = SIMPLE_ACTIONS[action]
         pattern = _pattern(control, pattern_name)
         if pattern is None:
             if action in ("toggle", "select"):
@@ -321,9 +324,7 @@ def act(ref: int, action: str = "click", text: str = "", append: bool = False) -
         return f"{action}: «{name}»"
     if action != "click":
         raise UiaError(f"неизвестное действие {action}")
-    for pattern_name, method in (("InvokePattern", "Invoke"), ("TogglePattern", "Toggle"),
-                                 ("SelectionItemPattern", "Select"), ("ExpandCollapsePattern", "Expand"),
-                                 ("LegacyIAccessiblePattern", "DoDefaultAction")):
+    for pattern_name, method in CLICK_PATTERNS:
         pattern = _pattern(control, pattern_name)
         if pattern is None:
             continue
