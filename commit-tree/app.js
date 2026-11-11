@@ -1,8 +1,18 @@
-const state = { data: null, branch: "all", query: "" };
+/* Граф истории: коммиты идут слева направо, дорожки (ветки) — сверху вниз, слияния видны как ветвление.
+   При наведении или фокусе показывается русское описание коммита. */
+const state = { data: null, translations: {}, branch: "all", query: "", scrolled: false, generatedAt: "" };
 const $ = (selector) => document.querySelector(selector);
 
+const LANE_H = 54;
+const GAP_X = 46;
+const PAD_X = 44;
+const PAD_TOP = 78;
+const PAD_BOTTOM = 44;
+const NODE_R = 6;
+const COLORS = ["#69e4d1", "#a897ff", "#ffba72", "#7fd1ff", "#f78fb3", "#a8e063", "#ffd166", "#c792ea"];
+
 function escape(value) {
-  return String(value ?? "").replace(/[&<>\"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[char]));
+  return String(value ?? "").replace(/[&<>\"']/g, (char) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[char]));
 }
 function list(value) {
   if (Array.isArray(value)) return value;
@@ -19,39 +29,234 @@ function parentsOf(commit) {
 function subjectOf(commit) {
   return (state.translations && state.translations[commit.short]) || commit.subject;
 }
-function branchClass(refs) {
-  const text = refs.join(" ");
-  return text.includes("main") ? "main" : text.includes("experiment") ? "experiment" : "other";
+function matches(commit, query) {
+  if (!query) return true;
+  const haystack = [commit.hash, commit.short, commit.subject, subjectOf(commit), commit.author, ...refsOf(commit)]
+    .join(" ").toLowerCase();
+  return haystack.includes(query);
 }
-function matches(commit) {
-  const haystack = [commit.hash, commit.short, commit.subject, subjectOf(commit), commit.author, ...refsOf(commit)].join(" ").toLowerCase();
-  return !state.query || haystack.includes(state.query.toLowerCase());
+
+/* Дорожки: идём от новых коммитов к старым, каждый родитель продолжает дорожку ребёнка.
+   Второй родитель слияния получает отдельную дорожку — так ветвление и слияние видны на графике. */
+function layout() {
+  const commits = state.data.commits;
+  const byHash = new Map(commits.map((commit) => [commit.hash, commit]));
+  const lanes = [];
+  const total = commits.length;
+  commits.forEach((commit, index) => {
+    let lane = -1;
+    for (let i = 0; i < lanes.length; i += 1) {
+      if (lanes[i] === commit.hash) {
+        if (lane < 0) lane = i;
+        else lanes[i] = null;
+      }
+    }
+    if (lane < 0) {
+      lane = lanes.indexOf(null);
+      if (lane < 0) { lane = lanes.length; lanes.push(null); }
+    }
+    lanes[lane] = null;
+    commit._lane = lane;
+    commit._x = PAD_X + (total - 1 - index) * GAP_X;
+    const parents = parentsOf(commit).filter((hash) => byHash.has(hash));
+    if (parents.length) {
+      lanes[lane] = parents[0];
+      for (const parent of parents.slice(1)) {
+        let other = lanes.indexOf(parent);
+        if (other < 0) {
+          other = lanes.indexOf(null);
+          if (other < 0) { other = lanes.length; lanes.push(null); }
+        }
+        lanes[other] = parent;
+      }
+    }
+  });
+  const laneCount = Math.max(1, lanes.length);
+  commits.forEach((commit) => { commit._y = PAD_TOP + commit._lane * LANE_H; });
+  return {
+    byHash,
+    width: PAD_X * 2 + Math.max(0, total - 1) * GAP_X,
+    height: PAD_TOP + Math.max(0, laneCount - 1) * LANE_H + PAD_BOTTOM,
+  };
 }
+
+function edgePath(child, parent) {
+  if (child._y === parent._y) return `M${child._x} ${child._y} L${parent._x} ${parent._y}`;
+  const middle = (child._x + parent._x) / 2;
+  return `M${child._x} ${child._y} C${middle} ${child._y} ${middle} ${parent._y} ${parent._x} ${parent._y}`;
+}
+
+function reachable(tip, byHash) {
+  const seen = new Set();
+  const stack = tip ? [tip] : [];
+  while (stack.length) {
+    const hash = stack.pop();
+    if (!hash || seen.has(hash)) continue;
+    seen.add(hash);
+    const commit = byHash.get(hash);
+    if (commit) for (const parent of parentsOf(commit)) if (byHash.has(parent)) stack.push(parent);
+  }
+  return seen;
+}
+
+function branchTip(name) {
+  const found = list(state.data.branches).find((branch) => branch.name === name);
+  return found ? found.tip : "";
+}
+
 function renderBranches() {
   const names = ["all", ...list(state.data.branches).map((branch) => branch.name)];
-  $("#branches").innerHTML = names.map((name) => `<button class="branch ${state.branch === name ? "active" : ""}" data-branch="${escape(name)}">${name === "all" ? "Все ветки" : escape(name)}</button>`).join("");
-  $("#branches").querySelectorAll("button").forEach((button) => button.addEventListener("click", () => { state.branch = button.dataset.branch; render(); }));
+  $("#branches").innerHTML = names.map((name) =>
+    `<button class="branch ${state.branch === name ? "active" : ""}" data-branch="${escape(name)}">${name === "all" ? "все ветки" : escape(name)}</button>`
+  ).join("");
+  $("#branches").querySelectorAll("button").forEach((button) => button.addEventListener("click", () => {
+    state.branch = button.dataset.branch;
+    state.scrolled = false;
+    render();
+  }));
 }
+
 function render() {
   if (!state.data) return;
   renderBranches();
-  const commits = state.data.commits.filter((commit) => (state.branch === "all" || refsOf(commit).includes(state.branch)) && matches(commit));
-  $("#meta").textContent = `${commits.length} из ${state.data.commits.length} коммитов · обновлено ${new Date(state.data.generatedAt).toLocaleString("ru-RU")}`;
-  if (!commits.length) { $("#tree").innerHTML = '<div class="empty">Ничего не найдено</div>'; return; }
-  const visible = new Set(commits.map((commit) => commit.hash));
-  $("#tree").innerHTML = commits.map((commit) => {
-    const refs = refsOf(commit).map(escape).join(", ");
-    const parents = parentsOf(commit).filter((parent) => visible.has(parent));
-    const lines = parents.map(() => '<span class="line"></span>').join("");
-    const subject = subjectOf(commit);
-    return `<article class="commit ${branchClass(refsOf(commit))}" tabindex="0" title="${escape(subject)}">
-      <div class="graph"><span class="node"></span>${lines}</div>
-      <div class="commit-body"><div class="subject">${escape(subject)}</div><div class="details"><code>${escape(commit.short)}</code><span>${escape(commit.author)}</span><time datetime="${escape(commit.date)}">${escape(new Date(commit.date).toLocaleString("ru-RU"))}</time>${refs ? `<span class="refs">${refs}</span>` : ""}</div></div>
-      <div class="tooltip"><strong>${escape(subject)}</strong><span>${escape(commit.hash)}</span><span>${escape(commit.author)} · ${escape(new Date(commit.date).toLocaleString("ru-RU"))}</span>${refs ? `<span>Ветки: ${refs}</span>` : ""}</div>
-    </article>`;
-  }).join("");
+  const { byHash, width, height } = layout();
+  const commits = state.data.commits;
+  const query = state.query.toLowerCase();
+  const scope = state.branch === "all" ? null : reachable(branchTip(state.branch), byHash);
+  const visible = (commit) => (!scope || scope.has(commit.hash)) && matches(commit, query);
+  const shown = commits.filter(visible).length;
+  $("#meta").textContent = `${shown} из ${commits.length} коммитов · обновлено ${new Date(state.data.generatedAt).toLocaleString("ru-RU")}`;
+
+  const edges = [];
+  const nodes = [];
+  commits.forEach((commit, index) => {
+    const dim = visible(commit) ? "" : " off";
+    const color = COLORS[commit._lane % COLORS.length];
+    const parents = parentsOf(commit);
+    for (const hash of parents) {
+      const parent = byHash.get(hash);
+      if (!parent) continue;
+      edges.push(`<path class="edge${dim}" d="${edgePath(commit, parent)}" stroke="${color}"></path>`);
+    }
+    const isMerge = parents.length > 1;
+    const refs = refsOf(commit);
+    const label = `${subjectOf(commit)}; ${commit.short}`;
+    nodes.push(`<g class="node${dim}" data-i="${index}" tabindex="0" role="button" aria-label="${escape(label)}">
+      <circle class="halo" cx="${commit._x}" cy="${commit._y}" r="${isMerge ? NODE_R + 5 : NODE_R + 3}" fill="${color}" opacity=".18"></circle>
+      ${isMerge ? `<circle class="merge" cx="${commit._x}" cy="${commit._y}" r="${NODE_R + 2.5}"></circle>` : ""}
+      <circle class="core" cx="${commit._x}" cy="${commit._y}" r="${NODE_R}" fill="${color}"></circle>
+      <text class="hash" x="${commit._x}" y="${commit._y + 19}" text-anchor="middle">${escape(commit.short)}</text>
+      ${refs.map((ref, level) => {
+        const boxWidth = Math.max(26, [...ref].length * 6.1 + 12);
+        return `<g class="ref" transform="translate(${commit._x - boxWidth / 2},${commit._y - 31 - level * 17})">
+          <rect width="${boxWidth}" height="15" rx="7.5"></rect>
+          <text x="${boxWidth / 2}" y="10.8" text-anchor="middle">${escape(ref)}</text>
+        </g>`;
+      }).join("")}
+    </g>`);
+  });
+
+  $("#tree").innerHTML = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Граф коммитов: слева старые, справа новые">${edges.join("")}${nodes.join("")}</svg>`;
+  bindTips(commits);
+  if (!state.scrolled) { scrollToTip(commits); state.scrolled = true; }
 }
 
-fetch("translations.json", { cache: "no-store" }).then((response) => response.ok ? response.json() : {}).then((translations) => { if (!translations || Array.isArray(translations) || typeof translations !== "object") return; state.translations = translations; if (state.data) render(); }).catch(() => {});
-fetch("commits.json", { cache: "no-store" }).then((response) => { if (!response.ok) throw new Error("commits.json недоступен"); return response.json(); }).then((data) => { state.data = data; render(); }).catch((error) => { $("#tree").innerHTML = `<div class="empty">${escape(error.message)}<br><small>Запустите scripts\\Update-CommitTree.ps1.</small></div>`; });
-$("#search").addEventListener("input", (event) => { state.query = event.target.value.trim(); render(); });
+function bindTips(commits) {
+  const svg = $("#tree svg");
+  if (!svg) return;
+  svg.querySelectorAll(".node").forEach((node) => {
+    const commit = commits[Number(node.dataset.i)];
+    const show = () => showTip(commit, node);
+    node.addEventListener("mouseenter", show);
+    node.addEventListener("focus", show);
+    node.addEventListener("mouseleave", hideTip);
+    node.addEventListener("blur", hideTip);
+  });
+}
+
+function showTip(commit, node) {
+  const tip = $("#tooltip");
+  const refs = refsOf(commit);
+  tip.innerHTML = `<div class="tt-subject">${escape(subjectOf(commit))}</div>
+    <div class="tt-meta"><code>${escape(commit.short)}</code><span>${escape(commit.author)}</span><span>${escape(new Date(commit.date).toLocaleString("ru-RU"))}</span></div>
+    ${refs.length ? `<div class="tt-refs">${refs.map((ref) => `<span>${escape(ref)}</span>`).join("")}</div>` : ""}
+    <div class="tt-hash">${escape(commit.hash)}</div>`;
+  tip.hidden = false;
+  const box = node.getBoundingClientRect();
+  const size = tip.getBoundingClientRect();
+  tip.style.left = `${Math.min(Math.max(12, box.left), window.innerWidth - size.width - 12)}px`;
+  const below = box.bottom + 10;
+  tip.style.top = `${below + size.height > window.innerHeight - 12 ? Math.max(12, box.top - size.height - 10) : below}px`;
+}
+
+function hideTip() {
+  $("#tooltip").hidden = true;
+}
+
+/* При первом открытии показываем свежие коммиты (правый край графа), а не корень истории. */
+function scrollToTip(commits) {
+  const wrap = $("#tree-wrap");
+  if (!wrap) return;
+  const target = commits.find((commit) => refsOf(commit).includes("main")) || commits[0];
+  if (!target) return;
+  wrap.scrollLeft = Math.max(0, target._x - wrap.clientWidth * 0.7);
+}
+
+/* Насколько пользователь близок к правому краю (свежие коммиты) — чтобы при появлении новых
+   не дёргать прокрутку, если он рассматривает середину истории. */
+function pinnedRight() {
+  const wrap = $("#tree-wrap");
+  return wrap && wrap.scrollWidth - wrap.scrollLeft - wrap.clientWidth < 120;
+}
+
+function apply(data) {
+  const wrap = $("#tree-wrap");
+  const previous = wrap ? wrap.scrollLeft : 0;
+  const pin = pinnedRight();
+  state.data = data;
+  state.generatedAt = data.generatedAt || "";
+  render();
+  if (state.scrolled) {
+    wrap.scrollLeft = pin ? wrap.scrollWidth : previous; // удержать позицию или прилипнуть к новому
+  }
+}
+
+async function loadJson(name) {
+  const response = await fetch(name, { cache: "no-store" });
+  if (!response.ok) throw new Error(`${name} не обновлён`);
+  return response.json();
+}
+
+async function poll() {
+  if (!state.generatedAt) return; // ещё не загрузили в первый раз
+  try {
+    const data = await loadJson("commits.json");
+    if ((data.generatedAt || "") !== state.generatedAt) apply(data);
+  } catch { /* сервер ещё не поднялся — перезапросим на следующем тике */ }
+  try {
+    const translations = await loadJson("translations.json");
+    state.translations = translations && typeof translations === "object" ? translations : state.translations;
+  } catch { /* переводы опциональны */ }
+}
+
+loadJson("commits.json")
+  .then((data) => { apply(data); state.scrolled = true; })
+  .then(() => { scrollToTip(state.data.commits); state.scrolled = true; })
+  .catch((error) => {
+    $("#tree").innerHTML = `<div class="empty">${escape(error.message)}<br><small>Запустите py -3 commit-tree\\serve.py.</small></div>`;
+  });
+
+loadJson("translations.json")
+  .then((translations) => {
+    if (!translations || Array.isArray(translations) || typeof translations !== "object") return;
+    state.translations = translations;
+    if (state.data) render();
+  })
+  .catch(() => {});
+
+setInterval(poll, 2500);
+
+$("#search").addEventListener("input", (event) => {
+  state.query = event.target.value.trim();
+  render();
+});

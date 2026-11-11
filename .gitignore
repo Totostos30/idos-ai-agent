@@ -26,9 +26,8 @@ tools/gigastt/
 *.pt
 *.exe
 
-# Локальные данные дерева коммитов
+# Локальные данные дерева коммитов (переводы тем храним в репозитории)
 /commit-tree/commits.json
-/commit-tree/translations.json
 
 # Среда
 .idea/
