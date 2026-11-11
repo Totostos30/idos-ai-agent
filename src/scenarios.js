@@ -428,8 +428,7 @@ function bindListSearch(input, rows, updateQuery) {
   filter();
 }
 
-function draw() {
-  if (!page || !active()) return;
+function scenarioSidebar() {
   const scenarioRows = S.list.map((s) => el("button", { class: "scn-item" + (S.cur && S.cur.id === s.id ? " on" : ""), title: s.name,
     "data-search": [s.name || "", ...(s.triggers || [])].join(" ").toLocaleLowerCase(), onclick: () => openScenario(s.id) },
     el("div", { class: "t" }, el("span", { class: "scn-item-icon" }, [...String(s.name || "С")][0].toLocaleUpperCase()),
@@ -440,15 +439,16 @@ function draw() {
 
   const nodeSearch = el("input", { class: "field scn-list-search scn-node-search", type: "search", placeholder: "Поиск узла", value: S.nodeQuery });
   const nodeRows = PALETTE.map((t) => {
-    const row = el("button", { class: "scn-node-item", title: blockTitle(t), "data-search": blockTitle(t).toLocaleLowerCase() },
-      el("span", { class: "scn-node-icon" }, ICONS[t]), el("span", { class: "scn-node-label" }, blockTitle(t)));
+    const title = blockTitle(t);
+    const row = el("button", { class: "scn-node-item", title, "data-search": title.toLocaleLowerCase() },
+      el("span", { class: "scn-node-icon" }, ICONS[t]), el("span", { class: "scn-node-label" }, title));
     row.addEventListener("pointerdown", (e) => startPaletteDrag(t, row, e));
     return row;
   });
   const nodeList = el("div", { class: "scn-list scn-node-list" }, nodeRows);
   bindListSearch(nodeSearch, nodeRows, (value) => { S.nodeQuery = value; });
 
-  const side = el("aside", { class: "scn-side" },
+  return el("aside", { class: "scn-side" },
     el("section", { class: "scn-side-panel scn-scenario-panel" },
       el("div", { class: "scn-side-head" },
         el("button", { class: "icon scn-sidebar-toggle", title: S.sidebarCollapsed ? "Развернуть панель" : "Свернуть панель до иконок", onclick: toggleScenarioSidebar }, S.sidebarCollapsed ? "›" : "‹"),
@@ -461,6 +461,11 @@ function draw() {
       el("div", { class: "scn-node-head" }, el("b", {}, "Узлы"),
         el("button", { class: "icon scn-layout-btn", title: "Выровнять узлы", onclick: layout }, "⇅")),
       nodeSearch, nodeList));
+}
+
+function draw() {
+  if (!page || !active()) return;
+  const side = scenarioSidebar();
 
   if (!S.cur) {
     page.replaceChildren(el("div", { class: "scn-wrap" + (S.sidebarCollapsed ? " scn-sidebar-collapsed" : "") }, side, el("div", { class: "scn-empty" },
