@@ -17,7 +17,7 @@ import os
 import secrets
 import time
 import urllib.parse
-from typing import Any, Awaitable, Callable
+from typing import Any, Callable
 
 from . import config
 from .bus import bus
@@ -100,24 +100,14 @@ class CoreServer:
         # garbage-collected mid-flight (the UI then waits for an answer that never comes).
         self._tasks: set[asyncio.Task] = set()
         self.methods: dict[str, Callable[..., Any]] = {}
-        self.routes: dict[str, Callable[..., Awaitable[tuple[int, Any]]]] = {}
         self.server: asyncio.base_events.Server | None = None
         self.started = time.time()
         self._stopping = False
         bus.subscribe(self._on_event)
 
     # ------------------------------------------------------------ registry
-    def method(self, name: str):
-        def deco(fn):
-            self.methods[name] = fn
-            return fn
-        return deco
-
     def add_methods(self, mapping: dict[str, Callable[..., Any]]) -> None:
         self.methods.update(mapping)
-
-    def route(self, path: str, fn: Callable[..., Awaitable[tuple[int, Any]]]) -> None:
-        self.routes[path] = fn
 
     # ------------------------------------------------------------ lifecycle
     async def start(self) -> None:
@@ -195,7 +185,7 @@ class CoreServer:
             if not line:
                 return
             try:
-                method, target, _ = line.decode("latin-1").strip().split(" ", 2)
+                request_method, target, _ = line.decode("latin-1").strip().split(" ", 2)
             except ValueError:
                 return
             headers: dict[str, str] = {}
@@ -207,7 +197,7 @@ class CoreServer:
                 headers[name.strip().lower()] = value.strip()
             path, _, query = target.partition("?")
             params = {k: v[-1] for k, v in urllib.parse.parse_qs(query).items()}
-            if method == "OPTIONS":
+            if request_method == "OPTIONS":
                 await self._respond(writer, 204, None)
                 return
             if path == "/health":
@@ -228,23 +218,7 @@ class CoreServer:
                 upgraded = True
                 await self._ws_session(WebSocket(reader, writer), peer)
                 return
-            handler = self.routes.get(path)
-            if handler is None:
-                await self._respond(writer, 404, {"error": "not found"})
-                return
-            try:
-                length = int(headers.get("content-length") or 0)
-            except ValueError:
-                length = -1
-            if length < 0:
-                await self._respond(writer, 400, {"error": "bad content-length"})
-                return
-            if length > 50 * 1024 * 1024:
-                await self._respond(writer, 413, {"error": "too large"})
-                return
-            body = await asyncio.wait_for(reader.readexactly(length), 30) if length else b""
-            status, payload = await handler(method=method, params=params, headers=headers, body=body)
-            await self._respond(writer, status, payload)
+            await self._respond(writer, 404, {"error": "not found"})
         except (asyncio.TimeoutError, asyncio.IncompleteReadError, ConnectionError):
             pass
         except Exception:  # noqa: BLE001
