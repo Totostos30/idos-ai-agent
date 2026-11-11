@@ -178,19 +178,7 @@ class Registry:
     def names(self) -> list[str]:
         return list(self.tools)
 
-    def schemas(self) -> list[dict]:
-        out = []
-        for tool in self.tools.values():
-            try:
-                if tool.available():
-                    out.append(tool.schema())
-            except Exception:  # noqa: BLE001
-                log.debug("availability check failed for %s", tool.name, exc_info=True)
-        return out
-
-    def select(self, text: str, sticky: Any = (), limit_tokens: int = 2500) -> list[dict]:
-        """Schemas for one agent step. Tools from `sticky` and tools whose HINTS occur in `text` always go in; the rest
-        follow PRIORITY while they fit into `limit_tokens`; whatever is left is offered through the META_TOOL."""
+    def _available(self) -> dict[str, Tool]:
         available = {}
         for name, tool in self.tools.items():
             try:
@@ -198,6 +186,18 @@ class Registry:
                     available[name] = tool
             except Exception:  # noqa: BLE001
                 log.debug("availability check failed for %s", name, exc_info=True)
+        return available
+
+    def schemas(self) -> list[dict]:
+        out = []
+        for tool in self._available().values():
+            out.append(tool.schema())
+        return out
+
+    def select(self, text: str, sticky: Any = (), limit_tokens: int = 2500) -> list[dict]:
+        """Schemas for one agent step. Tools from `sticky` and tools whose HINTS occur in `text` always go in; the rest
+        follow PRIORITY while they fit into `limit_tokens`; whatever is left is offered through the META_TOOL."""
+        available = self._available()
         low = " " + " ".join(str(text).lower().replace("ё", "е").split()) + " "
         wanted = [n for n in sticky if n in available]
         wanted += [n for n, hints in HINTS.items() if n in available and any(hint_in(h, low) for h in hints)]
