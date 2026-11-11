@@ -76,11 +76,10 @@ def clip_middle(text: Any, limit: int = 2000) -> str:
 
 
 def human_bytes(size: float) -> str:
-    for unit in ("Б", "КБ", "МБ", "ГБ"):
-        if abs(size) < 1024 or unit == "ГБ":
+    for unit in ("Б", "КБ", "МБ", "ГБ", "ТБ"):
+        if abs(size) < 1024 or unit == "ТБ":
             return f"{size:.0f} {unit}" if unit == "Б" else f"{size:.1f} {unit}"
         size /= 1024
-    return f"{size:.1f} ТБ"
 
 
 def decode_output(raw: bytes | str | None) -> str:

@@ -14,6 +14,7 @@ from unittest import mock
 
 from core import bus, win
 from core.tools import Context, ToolError, apps, build_registry, island, system
+from core.util import human_bytes
 
 TG = r"C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Telegram.lnk"
 CODE = r"C:\Users\anton\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Visual Studio Code\Visual Studio Code.lnk"
@@ -29,6 +30,13 @@ ITEMS = [
 NEW = {TG: {"hwnd": 2001, "title": "Telegram", "process": "Telegram.exe"},
        CALC: {"hwnd": 2002, "title": "Калькулятор", "process": "ApplicationFrameHost.exe"},
        CODE: {"hwnd": 2003, "title": "Добро пожаловать - Visual Studio Code", "process": "Code.exe"}}
+
+
+class HumanBytesTest(unittest.TestCase):
+    def test_scales_up_to_terabytes(self):
+        self.assertEqual(human_bytes(0), "0 Б")
+        self.assertEqual(human_bytes(1536), "1.5 КБ")
+        self.assertEqual(human_bytes(2 * 1024 ** 4), "2.0 ТБ")
 
 
 class AppsTest(unittest.IsolatedAsyncioTestCase):
