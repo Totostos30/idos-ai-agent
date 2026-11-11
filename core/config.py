@@ -215,6 +215,10 @@ DEFAULTS: dict[str, Any] = {
     "web": {"search_provider": "auto", "searxng_url": "", "region": "ru-ru", "tavily_key": "", "brave_key": ""},
     "browser": {"channel": "msedge", "cdp_url": "", "headless": False, "executable": "",
                 "search_url": "https://duckduckgo.com/?q="},
+    # Алиса (Яндекс) в браузере: alice.yandex.ru в отдельной вкладке. Селекторы — в настройках, чтобы смену
+    # вёрстки лечила правка без обновления кода.
+    "alice": {"enabled": True, "url": "https://alice.yandex.ru/", "home_address": "",
+              "input_selector": "", "answer_selector": ""},
     "dictation": {"type_into_window": True},
     "audio": {"output_device": "", "input_device": ""},
     "mcp": {"servers": {}},

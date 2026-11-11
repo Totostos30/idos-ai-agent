@@ -21,7 +21,7 @@ from .util import clip
 from .agent_text import (CLAIM_RE, COMMAND_RE, FAKE_ACTIONS_RE, FAKE_CALL_RE, MODEL_SWITCH_RE,
                          REMEMBER_RE, STOP_RE, VERIFY_TOOLS, clean_reply,
                          missing_tool_name, public_args, real_actions, short_args, speech_part,
-                         user_asked_model)
+                         user_asked_model, wants_alice)
 
 log = logging.getLogger("agent")
 
@@ -479,6 +479,8 @@ class Agent:
         budget = int(self.app.router.budget_tokens("agent", max_out))
         share = float(self.settings.get("agent.tools_share", 0.4) or 0.4)
         sticky = list(run.enabled) + sorted(previous - run.enabled)
+        if wants_alice(run.text) and "alice" in registry.tools:
+            sticky.append("alice")
         return select(" ".join([run.text, *run.steer]), sticky, max(700, int(budget * share)))
 
     def _enable_tools(self, run: Run, args: dict) -> Result:

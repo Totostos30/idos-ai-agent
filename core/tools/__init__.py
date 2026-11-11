@@ -20,7 +20,7 @@ from ..util import clip
 
 log = logging.getLogger("tools")
 
-MODULES = ["computer", "windows", "apps", "files", "shell", "browser", "web", "memory_tool", "system", "island",
+MODULES = ["computer", "windows", "apps", "files", "shell", "browser", "alice", "web", "memory_tool", "system", "island",
            "model", "skill", "mcp_tool", "document", "voice_tool", "scenario"]
 
 
@@ -299,8 +299,8 @@ class Registry:
 
 
 META_TOOL = "tools"
-PRIORITY = ["computer", "apps", "windows", "web", "files", "system", "island", "voice", "memory", "browser", "shell", "document",
-            "model", "skill", "mcp"]
+PRIORITY = ["computer", "apps", "windows", "web", "files", "system", "island", "voice", "memory", "browser", "alice",
+            "shell", "document", "model", "skill", "mcp"]
 SUMMARY = {
     "computer": "мышь, клавиатура, снимок и распознавание экрана", "windows": "окна и их элементы: кнопки, поля, меню",
     "apps": "запуск и закрытие программ, открытие файлов и ссылок", "files": "файлы и папки",
@@ -309,6 +309,7 @@ SUMMARY = {
     "system": "громкость, яркость, питание, буфер обмена, Wi-Fi, Bluetooth, параметры Windows",
     "island": "карточки и таймеры на острове", "voice": "голос Эйдоса: выбор голоса и скорости речи", "model": "модели, ключи и лимиты API", "skill": "навыки-инструкции",
     "mcp": "внешние MCP-серверы",
+    "alice": "Алиса Яндекса: спросить и получить ответ",
 }
 # Lower-case stems (ё written as е) that make a tool part of the step even when it does not fit the budget.
 SHORT_HINT = 4
@@ -353,6 +354,7 @@ HINTS: dict[str, tuple[str, ...]] = {
     "model": ("модел", "gpt", "llama", "qwen", "платн", "groq", "cerebras", "openrouter", "ключ", "лимит", "model"),
     "skill": ("навык", "скилл", "skill", "научись"),
     "mcp": ("mcp", "интеграци"),
+    "alice": ("алис", "нейро", "яндекс", "alice"),
 }
 
 
