@@ -348,6 +348,8 @@ def _normalize_variables(raw: Any) -> list[dict]:
             item = {"name": item}
         if not isinstance(item, dict):
             continue
+        if not str(item.get("name") or "").strip():
+            continue
         name = var_name(item.get("name"))
         if not name or name in seen:
             continue
