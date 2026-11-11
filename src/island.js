@@ -2,7 +2,7 @@
 // покой, музыка, агент думает/действует/говорит, подтверждение, таймер, запись экрана, командная строка,
 // раскрытая панель с виджетами. Уведомления (карточки) выплывают под капсулой.
 import { core } from "./rpc.js";
-import { invoke, listen, el, fmtTime, inTauri, micIcon, gDots, setMicState } from "./shell.js";
+import { invoke, listen, el, fmtTime, inTauri, micIcon, setMicState } from "./shell.js";
 import { Mic } from "./voice.js";
 import { Fluid } from "./fluid.js";
 import { PARTS, TAB_LIST, TOOL_LIST, partOn, listOn, partValues, RESET_VALUES, applyValues } from "./parts.js";
@@ -102,16 +102,6 @@ function cover(size = "s") {
   const src = S.media.cover;
   return el("span", { class: "cover " + size, style: src ? { backgroundImage: "url(" + JSON.stringify(src) + ")" } : {} },
     src ? null : icon("music"));
-}
-
-function pillRight() {
-  const parts = [];
-  if (S.cfg.island.show_weather !== false && S.weather && S.weather.temp !== undefined)
-    parts.push(el("span", { class: "chip" }, (S.weather.icon || "") + " " + Math.round(S.weather.temp) + "°"));
-  if (S.cfg.island.show_battery !== false && batInfo())
-    parts.push(el("span", { class: "chip bat" + (batInfo().charging ? " charging" : "") + (batInfo().percent < 20 ? " low" : "") },
-      (batInfo().charging ? "⚡" : "") + Math.round(batInfo().percent) + "%"));
-  return parts;
 }
 
 // Ядро присылает батарею объектом { percent, charging, saver, no_battery }; старые версии — числом.
