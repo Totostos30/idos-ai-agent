@@ -13,7 +13,7 @@ from .util import clip
 
 TOOL_ALIASES = {
     "browser": "web", "browser_search": "web", "search": "web", "web_search": "web", "websearch": "web",
-    "internet": "web", "google": "web", "yandex": "web", "open_url": "web", "fetch": "web",
+    "internet": "web", "open_url": "web", "fetch": "web",
     "python": "shell", "code_interpreter": "shell", "terminal": "shell", "powershell": "shell", "cmd": "shell",
     "window": "windows", "app": "apps", "file": "files", "remember": "memory",
 }
@@ -33,6 +33,14 @@ def missing_tool_name(message: str, known: Any) -> str | None:
         if cand in known and cand != META_TOOL:
             return cand
     return None
+
+
+ALICE_RE = re.compile(r"\bалис\w*|\bнейро\b|нейросет|яндекс", re.I)
+
+
+def wants_alice(text: str) -> bool:
+    """The user asked for Yandex Alice/Alisa AI by name, so send the question there instead of web search."""
+    return bool(ALICE_RE.search(text or ""))
 
 
 STOP_RE = re.compile(r"^\s*(стоп|хватит|отмена|отмени|остановись|прекрати|stop|cancel)[\s.!]*$", re.I)
