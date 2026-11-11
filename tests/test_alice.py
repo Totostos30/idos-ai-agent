@@ -98,6 +98,7 @@ class FakePage:
         self.submitted = False
         self.polls = 0
         self.has_field = True
+        self.closed = False
         self.url = alice.DEFAULT_URL
         self.keyboard = FakeKeyboard(self)
 
@@ -111,7 +112,7 @@ class FakePage:
         return None
 
     def is_closed(self):
-        return False
+        return self.closed
 
     async def goto(self, url, **kwargs):
         self.url = url
@@ -241,6 +242,12 @@ class AskFlowTest(unittest.TestCase):
             self.assertEqual(run(state.ask("вопрос", timeout=6)), "")
         finally:
             alice.read_messages = saved
+
+    def test_wait_stops_when_the_browser_was_closed(self):
+        page = FakePage()
+        state = alice.Alice(FakeSettings(), FakeManager(page))
+        page.closed = True
+        self.assertEqual(run(state._wait_answer(page, "вопрос", 0, 30)), "")
 
 
 class HandlerTest(unittest.TestCase):

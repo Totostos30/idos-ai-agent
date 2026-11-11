@@ -68,13 +68,16 @@ def pick_answer(texts: list[str], query: str) -> str:
 
 
 async def read_messages(page: Any, selector: str) -> list[str]:
-    """Тексты блоков ответа; пусто, если разметка изменилась — тогда срабатывает фолбэк в ask()."""
-    roots = page.locator(selector)
+    """Тексты блоков ответа; пусто, если разметка изменилась или вкладку закрыли."""
     out: list[str] = []
-    for index in range(await roots.count()):
-        text = await roots.nth(index).inner_text()
-        if text and text.strip():
-            out.append(text)
+    try:
+        roots = page.locator(selector)
+        for index in range(await roots.count()):
+            text = await roots.nth(index).inner_text()
+            if text and text.strip():
+                out.append(text)
+    except Exception as exc:  # noqa: BLE001 - вкладку закрыли или страница ещё грузится
+        log.debug("alice: cannot read messages: %s", exc)
     return out
 
 
@@ -161,6 +164,8 @@ class Alice:
         deadline = loop.time() + max(5.0, timeout)
         last, stable = "", 0
         while loop.time() < deadline:
+            if page.is_closed():
+                return last
             await asyncio.sleep(POLL_SECONDS)
             texts = await read_messages(page, self.answer_selector())
             answer = pick_answer(texts[before:] or texts, query)
