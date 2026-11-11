@@ -293,7 +293,7 @@ function panel() {
   const editing = S.tab === "edit";
   const head = el("div", { class: "row tabs" }, on("h_orb") ? orb() : null,
     editing ? el("span", { class: "label" }, "Настройка островка")
-      : tabs.length > 1 ? tabs.map(([id, name]) => el("button", { class: "tab" + (S.tab === id ? " on" : ""), onclick: (e) => { e.stopPropagation(); S.tab = id; if (id === "clip") loadClip(); render(); } }, name))
+      : tabs.length > 1 ? tabs.map(([id, name]) => el("button", { class: "tab" + (S.tab === id ? " on" : ""), "aria-pressed": String(S.tab === id), onclick: (e) => { e.stopPropagation(); S.tab = id; if (id === "clip") loadClip(); render(); } }, name))
       : el("span", { class: "label" }, tabs[0][1]),
     el("span", { class: "grow" }),
     on("h_edit") || editing ? el("button", { class: "icon" + (editing ? " on" : ""), title: editing ? "Готово" : "Настроить: что показывать", onclick: (e) => { e.stopPropagation(); toggleEdit(); } }, editing ? "✓" : "✎") : null,
@@ -384,7 +384,7 @@ function panelNow() {
     widgets.append(el("div", { class: "widget" }, el("div", { class: "big" }, (batInfo().charging ? "⚡ " : "") + Math.round(batInfo().percent) + "%"),
       el("div", { class: "sub" }, batInfo().charging ? "Заряжается" : "Батарея")));
   for (const t of on("w_timers") ? S.timers.values() : []) {
-    const left = t.state === "running" && t.ends_at ? t.ends_at - Date.now() / 1000 : 0;
+    const left = t.state === "running" ? timerLeft(t) : 0;
     widgets.append(el("div", { class: "widget timer " + t.state },
       el("div", { class: "big mono" }, t.state === "done" ? "Готово" : fmtTime(left)),
       el("div", { class: "sub" }, t.label || "Таймер"),
@@ -434,7 +434,9 @@ function panelClip() {
       el("button", { class: "clip-open", "aria-label": "Вставить запись из буфера обмена", onclick: () => core.try("clipboard.paste", { item_id: c.id }) },
         c.kind === "image" && c.preview ? el("img", { src: c.preview, alt: "Изображение из истории буфера" }) : el("span", { class: "t" }, (c.text || c.preview || "").slice(0, 160))),
       el("button", { class: "icon", title: c.pinned ? "Открепить" : "Закрепить", "aria-label": c.pinned ? "Открепить запись" : "Закрепить запись", onclick: async () => { await core.try("clipboard.pin", { item_id: c.id, pinned: !c.pinned }); loadClip(); } }, c.pinned ? "★" : "☆"),
-      el("button", { class: "icon", title: "Удалить", "aria-label": "Удалить запись буфера", onclick: async () => { await core.try("clipboard.delete", { item_id: c.id }); loadClip(); } }, "✕"))))];
+      el("button", { class: "icon", title: "Удалить", "aria-label": "Удалить запись буфера", onclick: async () => { await core.try("clipboard.delete", { item_id: c.id }); loadClip(); } }, "✕"),
+      typeof c.text === "string" && c.text.length > 160 ? el("details", { class: "clip-full" },
+        el("summary", {}, "Показать полную запись"), el("pre", {}, c.text)) : null)))];
 }
 
 function panelAgent() {
@@ -656,7 +658,7 @@ async function applyConfig(cfg) {
   const isl0 = S.cfg.island;
   const waves = isl0.waves || {};
   const lipPeriod = Math.max(0.5, Math.min(6, Number(waves.lip_breath_period_s ?? 2.4)));
-  const reducedMotion = waves.respect_reduced_motion !== false && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   root.style.setProperty("--wave-lip-animation", waves.lip_breath_enabled === false || reducedMotion ? "none" : `lipbreath ${lipPeriod}s ease-in-out infinite`);
   if (/^#[0-9a-f]{6}$/i.test(waves.color || "")) root.style.setProperty("--wave-accent", waves.color);
   else root.style.removeProperty("--wave-accent");
@@ -680,7 +682,7 @@ export function mountIsland() {
   document.body.classList.add("view-island");
   root = el("div", { class: "stage" });
   isl = el("div", { class: "island", "data-mode": "idle" });
-  cardsBox = el("div", { class: "cards" });
+  cardsBox = el("div", { class: "cards", role: "status", "aria-live": "polite", "aria-atomic": "false" });
   const cv = el("canvas", { class: "fluid" });
   const wideDrops = el("canvas", { class: "wide-drops" });
   lip = el("div", { class: "lip" });
