@@ -474,15 +474,15 @@ function draw() {
   }
   const c = S.cur;
   const name = el("input", { class: "field scn-name", value: c.name, placeholder: "Название" });
-  name.addEventListener("input", () => { c.name = name.value; markDirty(); });
+  bindDirty(name, "input", () => { c.name = name.value; });
   const triggers = el("textarea", { class: "field scn-triggers", rows: 2, placeholder: "Фразы-триггеры, по одной в строке. «*» — любое слово: «включи трек *» → {arg}" });
   triggers.value = (c.triggers || []).join("\n");
-  triggers.addEventListener("input", () => { c.triggers = triggers.value.split("\n").map((t) => t.trim()).filter(Boolean); markDirty(); });
+  bindDirty(triggers, "input", () => { c.triggers = triggers.value.split("\n").map((t) => t.trim()).filter(Boolean); });
   const enabled = el("input", { type: "checkbox" });
   enabled.checked = c.enabled !== false;
-  enabled.addEventListener("change", () => { c.enabled = enabled.checked; markDirty(); });
+  bindDirty(enabled, "change", () => { c.enabled = enabled.checked; });
   const desc = el("input", { class: "field", value: c.description || "", placeholder: "Описание (видит агент)" });
-  desc.addEventListener("input", () => { c.description = desc.value; markDirty(); });
+  bindDirty(desc, "input", () => { c.description = desc.value; });
   const head = el("div", { class: "scn-head" },
     el("div", { class: "scn-head-row" }, name,
       el("label", { class: "scn-check", title: "Выключенный сценарий не запускается по фразе" }, enabled, "включён"),
@@ -679,6 +679,13 @@ function drawEdges() {
 
 function field(label, input, hint) {
   return el("label", { class: "scn-f" }, el("span", { class: "k" }, label), input, hint ? el("span", { class: "mut small" }, hint) : null);
+}
+
+function bindDirty(input, event, update) {
+  input.addEventListener(event, () => {
+    update();
+    markDirty();
+  });
 }
 
 function setNodeParam(n, key, value) {
