@@ -1,10 +1,10 @@
 {
-    "generatedAt":  "2026-11-11T09:40:27.9536394Z",
-    "repository":  "vjrqwjodombpmnnainijre",
+    "generatedAt":  "2026-11-11T09:46:09.3463774Z",
+    "repository":  "IDOS-AI-AGENT",
     "branches":  [
                      {
                          "name":  "main",
-                         "tip":  "a50c2ebdea4f42bfa6229a64af02ca96528974b7"
+                         "tip":  "ccaaa8b72b199ed7911b872bad80f7b783b39017"
                      },
                      {
                          "name":  "github-publication",
@@ -24,7 +24,7 @@
                      },
                      {
                          "name":  "experiment/design-audit-fixes",
-                         "tip":  "393422162718e182cc69198fd45c5fb9f3555449"
+                         "tip":  "ccaaa8b72b199ed7911b872bad80f7b783b39017"
                      },
                      {
                          "name":  "backup-before-github-merge",
@@ -45,6 +45,46 @@
                  ],
     "commits":  [
                     {
+                        "hash":  "ccaaa8b72b199ed7911b872bad80f7b783b39017",
+                        "short":  "ccaaa8b",
+                        "parents":  [
+                                        "b64a954ce2f7a43f545116b27ae39e225e9ca353"
+                                    ],
+                        "author":  "IDOS",
+                        "date":  "2026-11-11 12:45:53 +0300",
+                        "subject":  "fix(commit-tree): handle empty metadata objects",
+                        "refs":  [
+                                     "experiment/design-audit-fixes",
+                                     "main"
+                                 ]
+                    },
+                    {
+                        "hash":  "b64a954ce2f7a43f545116b27ae39e225e9ca353",
+                        "short":  "b64a954",
+                        "parents":  [
+                                        "36056a4d65c4b3da600f8051cd546b8d03109d7d"
+                                    ],
+                        "author":  "IDOS",
+                        "date":  "2026-11-11 12:45:02 +0300",
+                        "subject":  "fix(commit-tree): normalize scalar git metadata",
+                        "refs":  {
+
+                                 }
+                    },
+                    {
+                        "hash":  "36056a4d65c4b3da600f8051cd546b8d03109d7d",
+                        "short":  "36056a4",
+                        "parents":  [
+                                        "393422162718e182cc69198fd45c5fb9f3555449"
+                                    ],
+                        "author":  "IDOS",
+                        "date":  "2026-11-11 12:40:28 +0300",
+                        "subject":  "chore(dev): refresh commit tree data",
+                        "refs":  {
+
+                                 }
+                    },
+                    {
                         "hash":  "393422162718e182cc69198fd45c5fb9f3555449",
                         "short":  "3934221",
                         "parents":  [
@@ -53,7 +93,9 @@
                         "author":  "IDOS",
                         "date":  "2026-11-11 12:40:20 +0300",
                         "subject":  "feat(dev): separate commit tree launcher",
-                        "refs":  "experiment/design-audit-fixes"
+                        "refs":  {
+
+                                 }
                     },
                     {
                         "hash":  "507c4e8b3434a3c76b9a3ec4dc25508dd3aebbc9",
@@ -234,7 +276,6 @@
                         "date":  "2026-11-11 01:08:06 +0300",
                         "subject":  "Revert scenario element reader and pipette changes",
                         "refs":  [
-                                     "main",
                                      "origin",
                                      "origin/main"
                                  ]
