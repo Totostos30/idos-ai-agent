@@ -164,7 +164,6 @@ DEFAULTS: dict[str, Any] = {
             "success_drop_size": 3.4,
             "lip_breath_enabled": True,
             "lip_breath_period_s": 2.4,
-            "respect_reduced_motion": False,
         },
     },
     "hotkeys": {
@@ -369,7 +368,7 @@ class Settings:
 
     def public_snapshot(self) -> dict:
         """Return UI-safe settings without exposing stored credentials."""
-        secret_names = ("key", "password", "secret", "token")
+        secret_names = ("key", "password", "secret", "token", "authorization", "credential", "cookie")
 
         def redact(value: Any) -> Any:
             if isinstance(value, dict):

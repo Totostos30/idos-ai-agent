@@ -30,7 +30,11 @@ function setTab(tab) {
   const changed = A.tab !== tab || !main.firstChild;
   A.tab = tab;
   const tok = (A.tok = (A.tok || 0) + 1);
-  nav.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
+  nav.querySelectorAll("button").forEach((b) => {
+    const current = b.dataset.tab === tab;
+    b.classList.toggle("on", current);
+    if (current) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
   // Сразу показываем, что вкладка переключилась, даже если ядро отвечает долго.
   if (changed) main.replaceChildren(el("div", { class: "page" }, el("div", { class: "empty" }, "Загрузка…")));
   Promise.resolve().then(() => pages[tab]()).catch((e) => {
@@ -44,12 +48,12 @@ function setTab(tab) {
 function titlebar() {
   const bar = el("div", { class: "titlebar", "data-tauri-drag-region": true },
     el("span", { class: "brand", "data-tauri-drag-region": true }, el("span", { class: "logo" }), "Эйдос"),
-    statusEl = el("span", { class: "state", "data-tauri-drag-region": true }, "подключение…"),
+    statusEl = el("span", { class: "state", "data-tauri-drag-region": true, role: "status", "aria-live": "polite" }, "подключение…"),
     el("span", { class: "grow", "data-tauri-drag-region": true }),
-    el("button", { class: "wbtn danger-h", title: "Экстренная остановка (Ctrl+Alt+X)", onclick: stopAgent }, "■"),
-    el("button", { class: "wbtn", title: "Свернуть", onclick: () => win && win.minimize() }, "—"),
-    el("button", { class: "wbtn", title: "Развернуть", onclick: () => win && win.toggleMaximize() }, "▢"),
-    el("button", { class: "wbtn close", title: "Скрыть в трей", onclick: () => win && win.hide() }, "✕"));
+    el("button", { class: "wbtn danger-h", title: "Экстренная остановка (Ctrl+Alt+X)", "aria-label": "Экстренно остановить агента", onclick: stopAgent }, "■"),
+    el("button", { class: "wbtn", title: "Свернуть", "aria-label": "Свернуть окно", onclick: () => win && win.minimize() }, "—"),
+    el("button", { class: "wbtn", title: "Развернуть", "aria-label": "Развернуть или восстановить окно", onclick: () => win && win.toggleMaximize() }, "▢"),
+    el("button", { class: "wbtn close", title: "Скрыть в трей", "aria-label": "Скрыть окно в системный трей", onclick: () => win && win.hide() }, "✕"));
   return bar;
 }
 
@@ -318,8 +322,8 @@ async function renderModels() {
           el("button", { class: "btn ghost", title: "Проверить ключ коротким запросом", onclick: async () => { const r = await core.try("router.test", { account_id: a.id }); r && (r.error || r.ok === false) ? toast(r.error || r.message || "Ключ не отвечает", "error") : toast((r && r.message) || "Ключ работает", "ok"); renderModels(); } }, "Проверить"),
           a.source === "env" ? el("span", { class: "tag", title: "Ключ из .env или переменных окружения" }, ".env") : null,
           a.source !== "local" ? [
-            el("label", { class: "switch" }, el("input", { type: "checkbox", checked: a.enabled !== false, onchange: async (e) => { await core.try("keys.enable", { key_id: a.id, enabled: e.target.checked }); renderModels(); } }), el("i")),
-            el("button", { class: "icon del", title: "Удалить ключ", onclick: (e) => confirmClick(e.currentTarget, async () => {
+            el("label", { class: "switch" }, el("input", { type: "checkbox", checked: a.enabled !== false, "aria-label": "Использовать ключ " + a.provider + " " + (a.label || a.masked || ""), onchange: async (e) => { await core.try("keys.enable", { key_id: a.id, enabled: e.target.checked }); renderModels(); } }), el("i")),
+            el("button", { class: "icon del", title: "Удалить ключ", "aria-label": "Удалить ключ " + a.provider + " " + (a.label || a.masked || ""), onclick: (e) => confirmClick(e.currentTarget, async () => {
               const r = await core.try("keys.remove", { key_id: a.id });
               if (r && r.ok) toast(r.env ? "Ключ скрыт. Он записан в .env — уберите его оттуда, чтобы удалить совсем" : "Ключ удалён", "ok");
               else toast((r && r.error) || "Не удалось удалить ключ", "error");
@@ -371,7 +375,7 @@ function field(path, value) {
   const keyName = path.split(".").pop();
   if (/(?:key|password|secret|token)$/i.test(keyName) && (typeof value === "string" || value === "__IDOS_SECRET_SET__")) {
     const exists = value === "__IDOS_SECRET_SET__" || !!value;
-    const input = el("input", { class: "field", type: "password", autocomplete: "new-password",
+    const input = el("input", { class: "field", type: "password", autocomplete: "new-password", "aria-label": path.replaceAll(".", " "),
       placeholder: exists ? "Секрет сохранён — пустое поле оставит его без изменений" : "Введите секрет" });
     input.addEventListener("change", () => { if (input.value) save(input.value); });
     const reveal = el("button", { class: "btn ghost", type: "button", "aria-label": "Показать или скрыть введённый секрет",
@@ -450,7 +454,7 @@ function waveSettingsBox(cfg) {
     ambient_amplitude: 1, ambient_speed: 1,
     cursor_enabled: true, cursor_strength: 11, away_sag_enabled: true,
     away_sag_strength: 7, rain_enabled: true, rain_interval_s: 4, rain_drop_size: 1.9, success_drop_size: 3.4,
-    lip_breath_enabled: true, lip_breath_period_s: 2.4, respect_reduced_motion: false,
+    lip_breath_enabled: true, lip_breath_period_s: 2.4,
   }, cfg.island && cfg.island.waves || {});
   const box = el("section", { class: "box wave-settings" });
   const save = async (key, value) => {
@@ -512,7 +516,7 @@ function waveSettingsBox(cfg) {
     subhead("Анимация полоски"),
     toggle("Пульсация полоски при музыке", "lip_breath_enabled"),
     range("Период пульсации полоски", "lip_breath_period_s", 0.5, 6, 0.1, " с"),
-    toggle("Отключать эффекты при системном «уменьшении движения»", "respect_reduced_motion"),
+    el("div", { class: "mut small" }, "Системная настройка «уменьшение движения» всегда имеет приоритет; повторяющаяся анимация отключается, текстовые состояния остаются."),
     el("div", { class: "row2 end" }, el("button", { class: "btn ghost", onclick: async () => { await core.try("settings.reset", { key: "island.waves" }); renderSettings(); } }, "Сбросить параметры волн")));
   return box;
 }
@@ -699,7 +703,7 @@ function showAsk(d) {
 
 export function mountApp() {
   document.body.classList.add("view-app");
-  nav = el("nav", { class: "nav" }, TABS.map(([id, name, ic]) => el("button", { "data-tab": id, onclick: () => setTab(id) }, el("span", { class: "ic" }, ic), el("span", {}, name))));
+  nav = el("nav", { class: "nav", "aria-label": "Основная навигация" }, TABS.map(([id, name, ic]) => el("button", { "data-tab": id, "aria-label": name, onclick: () => setTab(id) }, el("span", { class: "ic", "aria-hidden": "true" }, ic), el("span", {}, name))));
   main = el("main", { class: "main" });
   document.body.append(el("div", { class: "frame" }, titlebar(), el("div", { class: "body" }, nav, main)));
   listen("main-tab", (tab) => setTab(tab || "chat"));
