@@ -193,6 +193,14 @@ def _partial_tag(data: str, tag: str) -> int:
     return 0
 
 
+def _content_parts(content: Any) -> list[str]:
+    if isinstance(content, str):
+        return [content]
+    if isinstance(content, list):
+        return [part.get("text", "") for part in content if isinstance(part, dict)]
+    return []
+
+
 class StreamAccumulator:
     def __init__(self) -> None:
         self.parts: list[str] = []
@@ -212,11 +220,7 @@ class StreamAccumulator:
         out: list[str] = []
         for choice in chunk.get("choices") or []:
             delta = choice.get("delta") or choice.get("message") or {}
-            content = delta.get("content")
-            if isinstance(content, str):
-                out.append(content)
-            elif isinstance(content, list):
-                out += [p.get("text", "") for p in content if isinstance(p, dict)]
+            out.extend(_content_parts(delta.get("content")))
             for call in delta.get("tool_calls") or []:
                 index = call.get("index")
                 index = len(self.calls) if not isinstance(index, int) else index
