@@ -23,6 +23,14 @@ class HintTest(unittest.TestCase):
 
 
 class MigrationTest(unittest.TestCase):
+    def test_non_numeric_revision_does_not_break_startup(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = pathlib.Path(tmp) / "settings.json"
+            path.write_text(json.dumps({"models": {"defaults_rev": "junk"}}), encoding="utf-8")
+            settings = config.Settings(path)
+            self.assertEqual(settings.get("models.defaults_rev"), 5)
+            self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["models"]["defaults_rev"], 5)
+
     def test_reasoning_format_dropped(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = pathlib.Path(tmp) / "settings.json"

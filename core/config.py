@@ -248,6 +248,14 @@ def atomic_write(path: pathlib.Path, text: str) -> None:
                 pass
 
 
+def _rev(models: dict) -> int:
+    """A user-edited settings.json may hold junk: treat it as revision 0 instead of failing startup."""
+    try:
+        return int(models.get("defaults_rev") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 class Settings:
     """JSON settings with defaults, dotted access and change listeners."""
 
@@ -279,12 +287,15 @@ class Settings:
     def _migrate(self) -> None:
         """v2.2.9: drop the old automatic fallback chain (cerebras/20b/openrouter) — the pair gpt-oss-120b + qwen."""
         models = self._user.get("models")
-        if not isinstance(models, dict) or int(models.get("defaults_rev") or 0) >= 5:
+        if not isinstance(models, dict):
             return
-        if int(models.get("defaults_rev") or 0) >= 4:
+        rev = _rev(models)
+        if rev >= 5:
+            return
+        if rev >= 4:
             self._migrate_v5(models)
             return
-        if int(models.get("defaults_rev") or 0) < 3:
+        if rev < 3:
             models.pop("chain", None)
             if models.get("fast") == "groq:openai/gpt-oss-20b":
                 models.pop("fast", None)
