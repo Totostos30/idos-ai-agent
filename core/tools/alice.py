@@ -35,11 +35,12 @@ def _first(get: Callable[[str], Any], key: str, default: str) -> str:
 
 
 def build_query(app: Any, question: str) -> str:
-    """Дописать адрес пользователя, если он задан: иначе Алиса не знает, где искать."""
+    """Дописать адрес пользователя (иначе Алиса не знает, где искать) и требование краткости."""
     settings = getattr(app, "settings", None)
     place = str(settings.get("alice.home_address", "") or "").strip() if settings is not None else ""
     question = " ".join(question.split())
-    return f"Пользователь живёт по адресу: {place}. {question}" if place else question
+    prefix = f"Пользователь живёт по адресу: {place}. " if place else ""
+    return prefix + question + " Отвечай максимально кратко и лаконично."
 
 
 def clean_answer(text: str) -> str:
@@ -192,12 +193,15 @@ async def handler(action: str, args: dict, ctx: Any) -> Any:
         ctx.check()
         if action == "open":
             return await state.open()
-        question = build_query(app, need(args, "question", "что спросить у Алисы"))[:MAX_QUERY]
-        answer = await state.ask(question, get_float(args, "timeout", 90.0) or 90.0)
-        head = clip(answer or "", MAX_ANSWER) or "(Алиса не дала ответа)"
-        if not get_bool(args, "screenshot"):
-            return head
-        return Result(head, image=await _preview(state.page))
+        try:
+            question = build_query(app, need(args, "question", "что спросить у Алисы"))[:MAX_QUERY]
+            answer = await state.ask(question, get_float(args, "timeout", 90.0) or 90.0)
+            head = clip(answer or "", MAX_ANSWER) or "(Алиса не дала ответа)"
+            if not get_bool(args, "screenshot"):
+                return head
+            return Result(head, image=await _preview(state.page))
+        finally:
+            await manager.close()
 
 
 async def _preview(page: Any) -> str:

@@ -18,6 +18,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from core.tools import Context, ToolError, build_registry  # noqa: E402
 from core.tools import alice  # noqa: E402
+from unittest import mock  # noqa: E402
 
 
 class FakeSettings:
@@ -151,10 +152,18 @@ def run(coro):
 class ComposeTest(unittest.TestCase):
     def test_home_address_is_used(self):
         question = "где ближайшая булочная?"
-        self.assertEqual(alice.build_query(App(), question), question)
+        plain = alice.build_query(App(), question)
+        self.assertTrue(plain.startswith(question))
+        self.assertIn("Отвечай максимально кратко и лаконично", plain)
         composed = alice.build_query(App(**{"alice.home_address": "Москва, Тверская 1"}), question)
         self.assertIn("Москва, Тверская 1", composed)
         self.assertIn(question, composed)
+        self.assertTrue(composed.endswith("Отвечай максимально кратко и лаконично."))
+
+    def test_brevity_suffix_is_always_appended(self):
+        out = alice.build_query(App(), "погода")
+        self.assertTrue(out.endswith("Отвечай максимально кратко и лаконично."))
+        self.assertFalse(out.startswith("Пользователь живёт"))
 
     def test_pick_answer_prefers_the_question_echo(self):
         texts = ["Привет! Чем помочь?", "Скопировать", "Ближайшая булочная на Тверской, 300 метров."]
@@ -241,6 +250,28 @@ class HandlerTest(unittest.TestCase):
 
         with self.assertRaises(ToolError):
             run(call())
+
+    def test_ask_closes_the_browser_afterwards(self):
+        closed = []
+
+        class Manager:
+            def __init__(self):
+                self.lock = asyncio.Lock()
+
+            async def close(self):
+                closed.append(True)
+
+        async def fake_ask(self, question, timeout):
+            return "ответ"
+
+        async def call():
+            with mock.patch.object(alice, "get_manager", return_value=Manager()), \
+                    mock.patch.object(alice.Alice, "ask", fake_ask):
+                return await alice.handler("ask", {"question": "где булочная?"},
+                                           Context(app=App(), cancel=asyncio.Event()))
+
+        self.assertEqual(run(call()), "ответ")
+        self.assertEqual(closed, [True])
 
 
 class RegistryTest(unittest.TestCase):
