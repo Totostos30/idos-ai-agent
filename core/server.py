@@ -27,6 +27,10 @@ log = logging.getLogger("server")
 BINARY_BACKLOG = 64
 MAX_RPC_INFLIGHT = 64
 MAX_RPC_TEXT_BYTES = 2 * 1024 * 1024
+RPC_TIMEOUT_DEFAULT = 120.0
+RPC_TIMEOUTS = {"agent.ask": 900.0, "agent.messages": 30.0, "scenarios.pick": 120.0,
+                "scenarios.probe": 30.0, "router.test": 180.0, "router.models": 180.0,
+                "router.selftest": 180.0, "core.selftest": 60.0}
 LOSSY_EVENTS = {"cursor", "media.levels", "mic.level", "media.position"}
 REASONS = {200: "OK", 204: "No Content", 400: "Bad Request", 401: "Unauthorized", 404: "Not Found",
            413: "Payload Too Large", 500: "Internal Server Error", 503: "Service Unavailable"}
@@ -304,8 +308,12 @@ class CoreServer:
                 handler = self.methods.get(name)
                 if handler is None:
                     raise RpcError(f"Неизвестный метод: {name}")
-                result = await self.invoke(handler, params, session)
+                timeout = RPC_TIMEOUTS.get(name, RPC_TIMEOUT_DEFAULT)
+                result = await asyncio.wait_for(self.invoke(handler, params, session), timeout=timeout)
             reply: dict[str, Any] = {"id": call_id, "result": result}
+        except asyncio.TimeoutError:
+            log.warning("rpc %s timed out after %.1fs", name, RPC_TIMEOUTS.get(name, RPC_TIMEOUT_DEFAULT))
+            reply = {"id": call_id, "error": {"message": f"Метод {name} не ответил за отведённое время"}}
         except RpcError as exc:
             reply = {"id": call_id, "error": {"message": str(exc)}}
         except Exception as exc:  # noqa: BLE001
