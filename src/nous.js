@@ -42,7 +42,11 @@ const lerpC = (a, b, k) => [0, 1, 2].map((i) => Math.round(lerp(a[i], b[i], k)))
 const strC = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
 const ease = (fr) => (fr < .5 ? 2 * fr * fr : 1 - Math.pow(-2 * fr + 2, 2) / 2);
 
-export function createNous({ size = 18, getLevel = null } = {}) {
+export function createNous({ size = 18, getLevel = null, zoom = null } = {}) {
+  // На малых размерах геометрия 96x64 превращает ядро в субпиксель —
+  // компенсируем зумом вокруг центра (кольца за краем обрезаются, читается ядро+кольца).
+  const z = zoom || Math.min(4, Math.max(1, 96 / size));
+  const tx = 48 * (1 - z), ty = 32 * (1 - z);
   const root = document.documentElement;
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", "0 0 96 64");
@@ -50,7 +54,7 @@ export function createNous({ size = 18, getLevel = null } = {}) {
   svg.style.width = size + "px";
   svg.style.height = (size * 64 / 96) + "px";
   svg.style.display = "block";
-  svg.innerHTML = `<circle class="nr3" cx="48" cy="32" fill="none"/>
+  svg.innerHTML = `<g transform="translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${z.toFixed(2)})"><circle class="nr3" cx="48" cy="32" fill="none"/>
     <circle class="nr2" cx="48" cy="32" fill="none"/>
     <circle class="nr1" cx="48" cy="32" fill="none"/>
     <g class="nx" data-x="comets" style="opacity:0">
@@ -80,7 +84,7 @@ export function createNous({ size = 18, getLevel = null } = {}) {
     </g>
     <path class="xtick" d="M45.4 32.2l1.9 2 3.5-3.9" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="opacity:0"/>
     <circle class="nglow" cx="48" cy="32" r="7" style="opacity:0"/>
-    <g class="ncore"><circle class="ndot" r="2.8"/><circle class="nhi" r="2.8" style="opacity:.9"/></g>`;
+    <g class="ncore"><circle class="ndot" r="2.8"/><circle class="nhi" r="2.8" style="opacity:.9"/></g></g>`;
 
   let C = readColors(root);
   let cur = JSON.parse(JSON.stringify(STATES(C).idle));

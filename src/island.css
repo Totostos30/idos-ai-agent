@@ -77,6 +77,7 @@ button:disabled { opacity: 0.35; cursor: default; }
 .icon.stop { color: var(--err); }
 .btn { padding: 6px 12px; border-radius: 14px; background: var(--soft2); font-weight: 600; white-space: nowrap; }
 .btn:hover { filter: brightness(1.25); }
+.btn:active, .icon:active, .tab:active, .tile:active { transform: scale(0.94); }
 .btn.primary { background: var(--fg); color: var(--bg); }
 .btn.danger { background: var(--err); color: #fff; }
 .btn.ghost { background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
@@ -236,7 +237,7 @@ button:disabled { opacity: 0.35; cursor: default; }
 @keyframes drop { 0% { opacity: 0; transform: translateY(-26px) scale(0.55, 0.4); border-radius: 30px; } 55% { opacity: 1; transform: translateY(2px) scale(1.02, 1.04); } 100% { opacity: 1; transform: none; } }
 /* режимы прозрачности поверх полноэкранных приложений */
 .island.through { opacity: 0.18; pointer-events: none; }
-@media (prefers-reduced-motion: reduce) { .island, .island *, .card { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { .island, .card { transition: none !important; } .island *, .card * { animation: none !important; } .island .icon, .island .btn, .island .tab { transition-duration: 0.01s !important; } }
 
 
 /* ---- сверка с Island (README exuupery/island) ---- */

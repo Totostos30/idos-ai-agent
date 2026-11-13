@@ -22,7 +22,7 @@ const grEyebrow = (meta) => el("p", { class: "gr-eyebrow", title: meta.myth }, m
 const A = { tab: "chat", chats: [], chat: null, messages: [], live: "", steps: [], state: "idle", label: "", online: false, cfg: {} };
 let main, nav, statusEl;
 // Знак Νοῦς для титлбара и hello-экрана (гайдбук §12.1)
-const titleMark = createNous({ size: 16 });
+const titleMark = createNous({ size: 20 });
 titleMark.set("idle");
 const helloMark = createNous({ size: 56 });
 helloMark.set("idle");
@@ -69,6 +69,8 @@ function updateStatus() {
   if (!statusEl) return;
   statusEl.className = "state " + (A.online ? A.state : "offline");
   statusEl.textContent = !A.online ? "ядро не подключено" : A.state === "idle" ? "готов" : (A.label || A.state);
+  // статус без чтения: знак в титлбаре краснеет и дышит, пока ядро недоступно (ревью U4)
+  titleMark.set(A.online ? "idle" : "error");
 }
 
 // ------------------------------------------------------------------ chat
@@ -467,7 +469,7 @@ function themeBox(cfg) {
       const hex = id ? (document.documentElement.dataset.theme === "light" ? a.light : a.dark) : "";
       const sw = el("button", {
         class: "swatch" + ((cur.accent || "") === id ? " on" : "") + (id ? "" : " auto"),
-        title: id ? a.label : "Акцент темы", style: id ? { background: hex } : {},
+        title: id ? a.label : "Акцент темы", "aria-label": id ? a.label : "Акцент темы", style: id ? { background: hex } : {},
         onclick: async () => {
           swatches.querySelectorAll(".swatch").forEach((b) => b.classList.toggle("on", b === sw));
           applyTheme({ preset: cur.preset, accent: id });
@@ -531,11 +533,30 @@ function customThemesUI(cur) {
     await refresh();
   } }, "Удалить");
   refresh();
+  // простой режим: пикеры ключевых переменных пишут прямо в JSON (ревью U3)
+  const PICKS = [
+    ["--surface-0", "Фон"], ["--surface-1", "Карточки"], ["--surface-2", "Панели"], ["--surface-3", "Тосты"],
+    ["--fg", "Текст"], ["--mut", "Вторичный"], ["--accent", "Акцент"], ["--accent-contrast", "На акценте"],
+    ["--ok", "Успех"], ["--warn", "Внимание"], ["--err", "Ошибка"],
+  ];
+  const setVar = (key, value) => {
+    let payload;
+    try { payload = JSON.parse(editor.value); } catch (e) { return; }
+    payload.vars = payload.vars || {};
+    if (value) payload.vars[key] = value; else delete payload.vars[key];
+    editor.value = JSON.stringify(payload, null, 2);
+  };
+  const pickers = el("div", { class: "var-pickers" }, PICKS.map(([key, label]) => {
+    const input = el("input", { class: "var-picker", type: "color", title: label, "aria-label": label });
+    input.addEventListener("input", () => setVar(key, input.value));
+    return el("label", { class: "var-pick" }, input, el("span", {}, label));
+  }));
   return el("div", { class: "custom-themes" },
     el("div", { class: "setrow" }, el("span", { class: "k" }, "Своя тема"), select, saveBtn, delBtn),
+    el("div", { class: "setrow" }, pickers),
     el("div", { class: "setrow" }, editor),
     status,
-    el("div", { class: "mut small" }, "JSON: name, base (dark/light) и vars — только семантические переменные. Ядро не сохранит тему с контрастом текста ниже 4.5:1."));
+    el("div", { class: "mut small" }, "Пикеры пишут в JSON ниже; можно править и вручную (name, base, vars — только семантические переменные). Ядро не сохранит тему с контрастом текста ниже 4.5:1."));
 }
 
 function waveSettingsBox(cfg) {

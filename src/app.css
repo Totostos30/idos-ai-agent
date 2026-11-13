@@ -74,7 +74,7 @@ body.view-app .empty { color: var(--mut); text-align: center; padding: 26px; }
 .tool { padding: 12px 14px; border-radius: 18px; background: var(--surface-1); box-shadow: inset 0 0 0 1px var(--line); }
 .tool.off { opacity: 0.55; }
 .acts { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
-.act { font: 11px "Cascadia Mono", Consolas, monospace; padding: 2px 7px; border-radius: 8px; background: var(--soft); color: var(--mut); }
+.act { font: 12px "Cascadia Mono", Consolas, monospace; padding: 2px 7px; border-radius: var(--r-s); background: var(--soft); color: var(--mut); }
 .act.danger, .act.write { color: var(--warn); }
 
 /* диалог */
@@ -413,7 +413,6 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .scn-vars .field, .scn-target-item .field { min-width: 0; }
 .scn-inspector .scn-f > .scn-target-list { width: 100%; }
 .scn-node.run-running { animation: scnPulse 1s ease-in-out infinite; }
-:focus-visible { outline: 2px solid var(--accent, #7c8cff); outline-offset: 2px; }
 
 @media (max-width: 1100px) {
   .scn-side { width: 190px; padding-inline: 8px; }
@@ -464,7 +463,11 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
   .scn-node.run-running, .scn-ask, .logo { animation: none !important; }
 }
 
-/* ---------- Γλῶτта: греческий слой (гайдбук §11) ---------- */
+/* тактильность: нажатие (ревью U2) */
+.btn:active, .seg-btn:active, .swatch:active, .chip:active, .chip-t:active { transform: scale(0.96); }
+.icon:active, .wbtn:active { transform: scale(0.9); }
+
+/* ---------- Γλῶтта: греческий слой (гайдбук §11) ---------- */
 .gr { color: var(--mut); margin-right: 8px; font-size: 0.86em; letter-spacing: 0.02em; }
 .gr-eyebrow { margin: 0 0 2px; color: var(--mut); font-size: 11px; letter-spacing: 0.14em; }
 .gr-eyebrow::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 7px;
@@ -487,5 +490,12 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
   box-shadow: inset 0 0 0 1px var(--line); display: grid; place-items: center;
   color: var(--mut); font: 600 10px ui-monospace, Consolas, monospace; transition: transform 0.15s var(--spring); }
 .swatch:hover { transform: scale(1.12); }
-.swatch.on { border-color: var(--fg); }
+.swatch.on { border-color: var(--surface-1); box-shadow: 0 0 0 2px var(--fg); transform: scale(1.15); }
 .swatch.auto { background: linear-gradient(135deg, var(--brand-3), var(--brand-1) 55%, var(--brand-2)); }
+
+/* простой режим редактора тем: пикеры ключевых переменных (ревью U3) */
+.var-pickers { display: flex; flex-wrap: wrap; gap: 10px; }
+.var-pick { display: inline-flex; flex-direction: column; align-items: center; gap: 4px;
+  font-size: 11px; color: var(--mut); }
+.var-picker { width: 34px; height: 26px; padding: 2px; border: 1px solid var(--line);
+  border-radius: var(--r-s); background: var(--fill-1); cursor: pointer; }
