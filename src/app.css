@@ -514,3 +514,9 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 /* найденная настройка подсвечивается (ревью U7) */
 .setrow.hl { background: color-mix(in srgb, var(--accent) 7%, transparent); box-shadow: inset 2px 0 0 var(--accent); }
 .setrow.hl .k { color: var(--fg); }
+
+/* карточки инструментов: иконка-плитка (гайдбук §8) */
+.tool .tool-ic { display: inline-grid; place-items: center; width: 26px; height: 26px; flex: none;
+  border-radius: var(--r-s); background: var(--fill-1); color: var(--accent); }
+.item .tag { margin-right: 6px; }
+.item .meta { display: flex; align-items: center; gap: 6px; }

@@ -242,8 +242,11 @@ async function renderMemory(query = "") {
     el("div", { class: "row2" }, search, add),
     el("div", { class: "cards-list" }, items.length ? items.map((m) => el("div", { class: "item" },
       el("div", { class: "t" }, m.text || m.content || ""),
-      el("div", { class: "meta" }, [m.kind, m.tags && [].concat(m.tags).join(", "), m.created && new Date((m.created > 1e12 ? m.created : m.created * 1000)).toLocaleString("ru-RU")].filter(Boolean).join(" · ")),
-      el("button", { class: "icon", title: "Удалить", onclick: async () => { await core.try("memory.delete", { mid: m.id }); renderMemory(query); } }, "✕")))
+      el("div", { class: "meta" },
+        m.kind ? el("span", { class: "tag" }, m.kind) : null,
+        [].concat(m.tags || []).filter(Boolean).map((t) => el("span", { class: "tag ok" }, t)),
+        m.created ? el("span", {}, new Date((m.created > 1e12 ? m.created : m.created * 1000)).toLocaleString("ru-RU")) : null),
+      el("button", { class: "icon", title: "Удалить", onclick: async () => { await core.try("memory.delete", { mid: m.id }); renderMemory(query); } }, iconNode("close", 13))))
       : el("div", { class: "empty" }, "Пока ничего не запомнено"))));
 }
 
@@ -339,14 +342,18 @@ async function renderModels() {
               if (r && r.ok) toast(r.env ? "Ключ скрыт. Он записан в .env — уберите его оттуда, чтобы удалить совсем" : "Ключ удалён", "ok");
               else toast((r && r.error) || "Не удалось удалить ключ", "error");
               renderModels();
-            }) }, "✕")] : null),
+            }) }, iconNode("close", 13))] : null),
         Object.entries(a.buckets || {}).map(([m, b]) => bucketLine(m, b))))
-        : el("div", { class: "empty" }, "Ключей пока нет. Добавьте хотя бы один ключ Groq — console.groq.com/keys")),
+        : el("div", { class: "empty" }, iconNode("key", 14), " Ключей пока нет. Добавьте хотя бы один ключ Groq — console.groq.com/keys")),
     Array.isArray(keys) && keys.length > accounts.length ? el("div", { class: "mut small" }, "В хранилище ключей: " + keys.length) : null));
 }
 
 // ------------------------------------------------------------------ tools
 
+const TOOL_ICONS = {
+  browser: "globe", computer: "app", weather: "sun", alice: "spark",
+  files: "file", notes: "note", screen: "shot", clipboard: "clip",
+};
 async function renderTools() {
   const [tools, skills, mcp] = await Promise.all([core.try("tools.list", {}, UI_TIMEOUT), core.try("skills.list", {}, UI_TIMEOUT), core.try("mcp.servers", {}, UI_TIMEOUT)]);
   if (A.tab !== "tools") return;
@@ -355,14 +362,14 @@ async function renderTools() {
     grEyebrow(TABS[3]), el("h1", {}, "Инструменты"),
     el("p", { class: "mut" }, "Всё, чем агент может пользоваться самостоятельно. Скиллы — инструкции в data/skills, MCP-серверы — в настройках."),
     el("div", { class: "toolgrid" }, (Array.isArray(tools) ? tools : []).map((t) => el("div", { class: "tool" + (t.available ? "" : " off") },
-      el("div", { class: "row2" }, el("b", {}, t.name), el("span", { class: "grow" }), el("span", { class: "tag " + (t.available ? "ok" : "warn") }, t.available ? "доступен" : "недоступен")),
+      el("div", { class: "row2" }, el("span", { class: "tool-ic" }, iconNode(TOOL_ICONS[t.name] || "spark", 15)), el("b", {}, t.name), el("span", { class: "grow" }), el("span", { class: "tag " + (t.available ? "ok" : "warn") }, t.available ? "доступен" : "недоступен")),
       el("div", { class: "mut small" }, t.description || ""),
       el("div", { class: "acts" }, Object.entries(t.actions || {}).map(([n, a]) => el("span", { class: "act " + (a.kind || ""), title: a.label || "" }, n)))))),
     el("h2", {}, "Скиллы"),
     el("div", { class: "cards-list" }, (Array.isArray(skills) && skills.length ? skills : []).map((s) => el("div", { class: "item" },
       el("div", { class: "t" }, el("b", {}, s.name || s), s.description ? " — " + s.description : ""),
       el("button", { class: "icon", title: "Удалить", onclick: (e) => confirmClick(e.currentTarget, async () => { await core.try("skills.delete", { name: s.name || s }); renderTools(); }) }, "✕"))),
-      Array.isArray(skills) && skills.length ? null : el("div", { class: "empty" }, "Скиллов пока нет — агент создаёт их сам, когда осваивает новое приложение")),
+      Array.isArray(skills) && skills.length ? null : el("div", { class: "empty" }, iconNode("spark", 14), " Скиллов пока нет — агент создаёт их сам, когда осваивает новое приложение")),
     el("h2", {}, "MCP-серверы"),
     el("div", { class: "cards-list" }, (Array.isArray(mcp) ? mcp : []).map((m) => el("div", { class: "item" },
       el("div", { class: "t" }, el("b", {}, m.name), " ", el("span", { class: "mono mut" }, m.command ? [m.command].concat(m.args || []).join(" ") : m.url || "")),

@@ -1,0 +1,340 @@
+"""Мок-ядро Эйдоса для превью дизайна без живого ядра.
+
+Говорит по тому же протоколу, что и настоящее ядро: WebSocket ws://127.0.0.1:9877/ws,
+запросы {id, method, params} → ответы {id, result}, события {event, data}.
+Запуск: py -3 tools/mock_core.py [порт]
+В браузере: index.html?view=app&port=9877&token=mock
+"""
+from __future__ import annotations
+
+import base64
+import hashlib
+import json
+import socket
+import struct
+import sys
+import threading
+import time
+
+HOST, PORT = "127.0.0.1", int(sys.argv[1]) if len(sys.argv) > 1 else 9877
+
+NOW = time.time()
+
+
+def cfg() -> dict:
+    return {
+        "theme": {"preset": "dark", "accent": ""},
+        "island": {"parts": {}, "hidden_tabs": [], "hidden_tools": [], "music_pill": "wide",
+                   "monitor": 0, "offset_x": 0, "offset_y": 0, "scale": 1,
+                   "opacity_collapsed": 1, "opacity_open": 1, "show_in_capture": True,
+                   "waves": {"full_width_enabled": True, "full_width_duration_s": 3, "lip_breath_enabled": True}},
+        "hotkeys": {"voice": "PageUp", "dictation": "Ctrl+Alt+D", "screenshot": "PrintScreen", "island": "Ctrl+Alt+I"},
+        "voice": {"engine": "sapi", "voice_sapi": "Ирина", "rate": 1.0, "stt_url": "ws://127.0.0.1:9876/v1/ws", "lexicon": ""},
+        "audio": {"silence_ms": 1300, "input_device": "Микрофон (USB Audio Device)"},
+        "agent": {"auto_memory": True, "confirm_tools": "ask", "max_steps": 25},
+        "models": {"stt": "groq:whisper-large-v3-turbo", "vision": ""},
+        "web": {"engine": "duckduckgo"},
+        "capture": {"fps": 30, "quality": 80},
+        "weather": {"city": "Казань", "units": "metric"},
+        "clipboard": {"max_items": 20},
+        "memory": {"auto_save": True},
+        "obs": {"host": "localhost", "port": 4455},
+        "media": {},
+        "security": {"allow_mic": True},
+        "browser": {"default": "edge"},
+        "alice": {"url": ""},
+        "integrations": {},
+        "mcp": {},
+    }
+
+
+CFG = cfg()
+CHATS = [
+    {"id": "c1", "title": "Сводка по заметкам"},
+    {"id": "c2", "title": "Скриншот с ошибкой"},
+    {"id": "c3", "title": "Курс рубля"},
+]
+MESSAGES = {
+    "c1": [
+        {"role": "user", "text": "Собери сводку по моим заметкам за неделю"},
+        {"role": "assistant", "text": "Готово. За неделю в памяти 12 записей: 6 про проект IDOS, 3 про план на отпуск, 2 про счета, 1 контакт. Главные темы — редизайн интерфейса и подготовка к отпуску в декабре.\n\nХотите развернуть какую-то тему подробнее?", "meta": {"model": "groq:openai/gpt-oss-120b", "ms": 4200}},
+        {"role": "user", "text": "Да, про IDOS"},
+        {"role": "assistant", "text": "Записи: 1) реorganize настроек — готово; 2) греческий слой — в работе; 3) голосовой ввод — тест на USB-микрофоне. Ближайший шаг — merge ветки редизайна.", "meta": {"model": "groq:openai/gpt-oss-120b", "ms": 3100}},
+    ],
+    "c2": [
+        {"role": "user", "text": "[скриншот] Что за ошибка?"},
+        {"role": "assistant", "text": "Это traceback Python: access violation в PortAudio. Советую общий бэкенд под блокировкой — у вас он уже стоит в core/audio_backend.py.", "meta": {"model": "groq:openai/gpt-oss-120b", "ms": 5200}},
+    ],
+    "c3": [
+        {"role": "user", "text": "Курс рубля к доллару сегодня"},
+        {"role": "assistant", "text": "Сегодня 92,4 ₽ за $. За неделю рубль укрепился на 0,8%.", "meta": {"model": "groq:openai/gpt-oss-120b", "ms": 2800}},
+    ],
+}
+MEM = [
+    {"id": "m1", "text": "Пользователь живёт в Казани", "kind": "факт", "tags": ["город"], "created": NOW - 86400 * 2},
+    {"id": "m2", "text": "Проект IDOS: редизайн интерфейса на ветке re-design-ui", "kind": "проект", "tags": ["idos"], "created": NOW - 86400},
+    {"id": "m3", "text": "Любит музыку во время работы — остров с плеером", "kind": "предпочтение", "tags": ["музыка"], "created": NOW - 3600 * 5},
+    {"id": "m4", "text": "Голосовой ввод тестируется на USB-микрофоне", "kind": "проект", "tags": ["голос"], "created": NOW - 7200},
+]
+TOOLS = [
+    {"name": "browser", "description": "Браузер Эйдоса: открывает сайты, читает страницы, ищет элементы", "available": True,
+     "actions": {"open": {"kind": "act", "label": "Открыть URL"}, "read": {"kind": "act", "label": "Читать"}, "click": {"kind": "write", "label": "Клик"}}},
+    {"name": "computer", "description": "Мышь, клавиатура, снимок и распознавание экрана", "available": True,
+     "actions": {"screenshot": {"kind": "act"}, "click": {"kind": "write"}, "type": {"kind": "write"}}},
+    {"name": "weather", "description": "Погода по городу", "available": True, "actions": {"now": {"kind": "act"}}},
+    {"name": "alice", "description": "Алиса (Яндекс): спросить через браузер", "available": True, "actions": {"ask": {"kind": "act"}}},
+    {"name": "files", "description": "Файлы рабочей папки: чтение и запись", "available": True,
+     "actions": {"read": {"kind": "act"}, "write": {"kind": "write"}}},
+    {"name": "notes", "description": "Заметки и напоминания", "available": False, "actions": {}},
+]
+SKILLS = [
+    {"name": "site-status", "description": "Проверяет доступность сайтов и присылает сводку"},
+    {"name": "morning-brief", "description": "Утренний брифинг: погода, курс, события календаря"},
+]
+ACCOUNTS = [
+    {"id": "a1", "label": "Groq · ключ 1", "spec": "groq", "enabled": True, "vision_only": False},
+    {"id": "a2", "label": "Groq · ключ 2", "spec": "groq", "enabled": True, "vision_only": False},
+    {"id": "a3", "label": "OpenRouter · ключ 1", "spec": "openrouter", "enabled": True, "vision_only": False},
+]
+
+STATE = {"mic": False, "cam": False, "volume": 0.4, "muted": False,
+         "battery": {"percent": 76, "charging": False, "saver": False}}
+MEDIA = {"playing": False, "title": "Kiasmos — Blurred", "artist": "Kiasmos", "cover": "", "position": 42, "duration": 214,
+         "can_prev": True, "can_next": True, "accent": ""}
+TIMERS = []
+
+
+def handle(method: str, params: dict):
+    if method == "session.hello":
+        return {}
+    if method == "settings.get":
+        return CFG
+    if method == "settings.set" or method == "settings.update":
+        payload = params.get("values") if method == "settings.update" else {params.get("key"): params.get("value")}
+        for path, value in (payload or {}).items():
+            parts = path.split(".")
+            node = CFG
+            for part in parts[:-1]:
+                node = node.setdefault(part, {})
+            node[parts[-1]] = value
+        return {"ok": True}
+    if method == "settings.reset":
+        return {"ok": True}
+    if method == "agent.chats":
+        return CHATS
+    if method == "agent.messages":
+        return MESSAGES.get(params.get("chat_id"), [])
+    if method == "agent.new_chat":
+        CHATS.insert(0, {"id": "c%d" % (len(CHATS) + 1), "title": "Новый диалог"})
+        return {"chat_id": CHATS[0]["id"]}
+    if method == "agent.select_chat" or method == "agent.rename_chat" or method == "agent.delete_chat":
+        return {"ok": True}
+    if method == "memory.list" or method == "memory.search":
+        q = (params.get("query") or "").lower()
+        items = [m for m in MEM if not q or q in m["text"].lower()] if q else MEM
+        return {"items": items[: params.get("limit", 50)]}
+    if method == "memory.save":
+        MEM.insert(0, {"id": "m%d" % (len(MEM) + 10), "text": params.get("text", ""), "kind": "факт", "created": NOW})
+        return {"ok": True}
+    if method == "memory.delete":
+        return {"ok": True}
+    if method == "tools.list":
+        return TOOLS
+    if method == "skills.list":
+        return SKILLS
+    if method == "skills.delete":
+        return {"ok": True}
+    if method == "mcp.servers":
+        return [{"name": "filesystem", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem"], "running": True}]
+    if method == "router.status":
+        return {"active": "groq:openai/gpt-oss-120b", "chain": ["groq:llama-3.3-70b", "openrouter:anthropic/claude-3.5-haiku"],
+                "vision": "groq:meta-llama/llama-4-scout", "vision_chain": [],
+                "providers": {"groq": {"name": "Groq", "note": "быстрые ответы, щедрые лимиты"},
+                              "openrouter": {"name": "OpenRouter", "note": "много моделей, платно"}},
+                "accounts": ACCOUNTS}
+    if method == "router.choices":
+        return {"groq": {"name": "Groq", "note": "быстрые ответы, щедрые лимиты"},
+                "openrouter": {"name": "OpenRouter", "note": "много моделей"}}
+    if method == "keys.list":
+        return ACCOUNTS
+    if method == "keys.add_many" or method == "keys.add" or method == "keys.enable" or method == "keys.remove" or method == "router.set_active" or method == "router.force":
+        return {"ok": True}
+    if method == "router.test" or method == "router.selftest" or method == "core.selftest":
+        return {"active": "groq:openai/gpt-oss-120b", "chain": ["groq:llama-3.3-70b"], "vision": "groq:meta-llama/llama-4-scout",
+                "vision_chain": [], "ok": True, "message": "groq:openai/gpt-oss-120b · 0.9 с",
+                "checks": [{"ok": True, "name": "основная модель", "ms": 900, "detail": "ответ 42 токена"}]}
+    if method == "voice.voices":
+        return {"engines": [
+            {"engine": "sapi", "title": "SAPI Windows", "note": "локальные голоса", "available": True,
+             "voices": [{"id": "Irina", "name": "Ирина", "gender": "ж", "note": "по умолчанию"}, {"id": "Pavel", "name": "Павел", "gender": "м", "note": ""}]},
+            {"engine": "edge", "title": "Edge TTS", "note": "онлайн-голоса", "available": True,
+             "voices": [{"id": "svetlana", "name": "Светлана", "gender": "ж", "note": "живая интонация"}]}],
+            "current": {"engine_sapi": "Irina", "engine_edge": "", "rate": 1.0}}
+    if method == "voice.apply" or method == "voice.install":
+        return {"ok": True}
+    if method == "themes.list":
+        return []
+    if method == "themes.save":
+        return {"slug": "mock", "saved": True}
+    if method == "themes.delete":
+        return {"deleted": True}
+    if method == "scenarios.list":
+        return [{"id": "sc1", "name": "Утренний брифинг", "desc": "Погода и курс по утрам"},
+                {"id": "sc2", "name": "Разбор скриншота", "desc": "Что на экране и почему"}]
+    if method == "scenarios.get":
+        return {"id": params.get("id", "sc1"), "name": "Утренний брифинг", "triggers": "08:00 ежедневно",
+                "nodes": [{"id": "n1", "type": "start", "label": "Старт"},
+                          {"id": "n2", "type": "weather", "label": "Погода", "sum": "Казань"},
+                          {"id": "n3", "type": "end", "label": "Сказать сводку"}], "vars": []}
+    if method == "scenarios.save" or method == "scenarios.delete" or method == "scenarios.run" or method == "scenarios.stop" or method == "scenarios.answer" or method == "scenarios.question" or method == "scenarios.pick" or method == "scenarios.probe":
+        return {"ok": True}
+    if method == "scenarios.blocks":
+        return []
+    # остров
+    if method == "status.state":
+        return STATE
+    if method == "status.volume" or method == "status.mic_mute":
+        return {"ok": True}
+    if method == "island.timers":
+        return TIMERS
+    if method == "island.action" or method == "island.cancel_timer":
+        return {"ok": True}
+    if method == "media.state":
+        return MEDIA
+    if method == "media.control":
+        return {"ok": True}
+    if method == "weather.state":
+        return {"temp": 12, "desc": "облачно", "city": "Казань"}
+    if method == "clipboard.list":
+        return {"items": []}
+    if method == "clipboard.get" or method == "clipboard.paste" or method == "clipboard.paste_plain" or method == "clipboard.pin" or method == "clipboard.delete":
+        return {"ok": True}
+    if method == "recorder.state":
+        return {"recording": False}
+    if method == "recorder.stop" or method == "recorder.toggle":
+        return {"ok": True}
+    if method == "commandbar.query":
+        return [{"icon": "app", "title": "Блокнот", "subtitle": "запуск"},
+                {"icon": "app", "title": "Калькулятор", "subtitle": "запуск"}]
+    if method == "commandbar.run" or method == "capture.color" or method == "capture.screenshot":
+        return {"ok": True}
+    if method == "obs.record" or method == "obs.stream" or method == "obs.set_scene":
+        return {"ok": True}
+    if method == "voice.stop" or method == "agent.ask" or method == "agent.stop" or method == "agent.confirm":
+        return {"ok": True}
+    return {"ok": True}
+
+
+class WSServer:
+    def __init__(self, host: str, port: int):
+        self.srv = socket.socket()
+        self.srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.srv.bind((host, port))
+        self.srv.listen(8)
+        self.clients: list[socket.socket] = []
+
+    def accept(self) -> socket.socket | None:
+        client, _ = self.srv.accept()
+        data = b""
+        while b"\r\n\r\n" not in data:
+            chunk = client.recv(4096)
+            if not chunk:
+                client.close()
+                return None
+            data += chunk
+        key = ""
+        for line in data.decode("latin-1").split("\r\n"):
+            if line.lower().startswith("sec-websocket-key:"):
+                key = line.split(":", 1)[1].strip()
+        accept = base64.b64encode(hashlib.sha1((key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()).digest()).decode()
+        client.sendall(("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+                        f"Sec-WebSocket-Accept: {accept}\r\n\r\n").encode())
+        self.clients.append(client)
+        print("client connected")
+        return client
+
+    @staticmethod
+    def send(sock: socket.socket, text: str) -> None:
+        payload = text.encode("utf-8")
+        header = bytearray([0x81])
+        n = len(payload)
+        if n < 126:
+            header.append(n)
+        elif n < 65536:
+            header.append(126)
+            header += struct.pack(">H", n)
+        else:
+            header.append(127)
+            header += struct.pack(">Q", n)
+        sock.sendall(bytes(header) + payload)
+
+    @staticmethod
+    def recv(sock: socket.socket) -> str | None:
+        header = sock.recv(2)
+        if not header or len(header) < 2:
+            return None
+        opcode = header[0] & 0x0F
+        masked = header[1] & 0x80
+        n = header[1] & 0x7F
+        if n == 126:
+            n = struct.unpack(">H", sock.recv(2))[0]
+        elif n == 127:
+            n = struct.unpack(">Q", sock.recv(8))[0]
+        mask = sock.recv(4) if masked else b"\0\0\0\0"
+        payload = b""
+        while len(payload) < n:
+            chunk = sock.recv(n - len(payload))
+            if not chunk:
+                return None
+            payload += chunk
+        if masked:
+            payload = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+        if opcode == 8:
+            return None
+        if opcode in (9, 10):  # ping/pong
+            return ""
+        return payload.decode("utf-8")
+
+    def drop(self, sock: socket.socket) -> None:
+        if sock in self.clients:
+            self.clients.remove(sock)
+        try:
+            sock.close()
+        except OSError:
+            pass
+
+
+import threading  # noqa: E402
+
+server = WSServer(HOST, PORT)
+lock = threading.Lock()
+print(f"мок-ядро Эйдоса: ws://{HOST}:{PORT}/ws — жду клиентов")
+
+
+def serve_client(sock: socket.socket) -> None:
+    while True:
+        try:
+            text = server.recv(sock)
+        except OSError:
+            break
+        if text is None:
+            break
+        if not text:
+            continue
+        try:
+            msg = json.loads(text)
+            result = handle(str(msg.get("method")), msg.get("params") or {})
+            with lock:
+                server.send(sock, json.dumps({"id": msg.get("id"), "result": result}, ensure_ascii=False))
+        except (OSError, ValueError):
+            break
+    server.drop(sock)
+
+
+try:
+    while True:
+        client = server.accept()
+        if client is not None:
+            threading.Thread(target=serve_client, args=(client,), daemon=True).start()
+except KeyboardInterrupt:
+    pass
