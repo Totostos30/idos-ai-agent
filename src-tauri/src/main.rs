@@ -381,11 +381,16 @@ fn monitors(app: AppHandle) -> Result<Value, String> {
 // ------------------------------------------------------------------ main window
 
 fn create_main(app: &AppHandle) -> Result<(), String> {
+    // иконка окна/панели задач — в рантайме, чтобы не зависеть от кэша exe и проводника
+    let tray_image = tauri::image::Image::from_bytes(include_bytes!("../icons/tray.ico"))
+        .map_err(|e| format!("иконка окна: {e}"))?;
     let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("Эйдос")
         .inner_size(1120.0, 760.0)
         .min_inner_size(860.0, 560.0)
         .maximized(true)
+        .icon(tray_image)
+        .map_err(|e| e.to_string())?
         .decorations(false)
         .transparent(true)
         .center()
