@@ -469,7 +469,7 @@ function draw() {
 
   if (!S.cur) {
     page.replaceChildren(el("div", { class: "scn-wrap" + (S.sidebarCollapsed ? " scn-sidebar-collapsed" : "") }, side, el("div", { class: "scn-empty" },
-      el("h1", {}, "Сценарии"), el("button", { class: "btn primary", onclick: newScenario }, "Создать сценарий"))));
+      el("p", { class: "gr-eyebrow", title: "Мимесис — подражание и воспроизведение у Платона и Аристотеля" }, "Μίμησις · сценарии"), el("h1", {}, "Сценарии"), el("button", { class: "btn primary", onclick: newScenario }, "Создать сценарий"))));
     return;
   }
   const c = S.cur;

@@ -4,18 +4,15 @@
 import { core } from "./rpc.js";
 import { invoke, listen, el, fmtTime, inTauri, micIcon, setMicState } from "./shell.js";
 import { Mic } from "./voice.js";
+import { createNous } from "./nous.js";
+import { iconNode } from "./icons.js";
 import { Fluid } from "./fluid.js";
 import { PARTS, TAB_LIST, TOOL_LIST, partOn, listOn, partValues, RESET_VALUES, applyValues } from "./parts.js";
 
 // видна ли часть интерфейса (настраивается в панели кнопкой ✎ или в настройках)
 const on = (key) => partOn(S.cfg.island, key);
 
-const ICONS = {
-  spark: "✦", app: "▣", globe: "◎", link: "↗", calc: "=", convert: "⇄", timer: "⏱", bell: "⚑",
-  settings: "⚙", system: "⏻", history: "↺", file: "▤", clip: "⎘", note: "✎", info: "i", ok: "✓",
-  error: "!", warn: "!", shot: "▢", rec: "●", music: "♪", download: "↓",
-};
-const icon = (name) => ICONS[name] || "✦";
+const icon = (name, size = 14) => iconNode(name, size);
 
 const S = {
   cfg: { island: {}, hotkeys: {} },
@@ -79,12 +76,25 @@ function timerLeft(t) {
 
 // ------------------------------------------------------------------ rendering
 
+// Знак Νοῦς вместо орба-персонажа (гайдбук §12): морфинг-движок, состояние → set().
+const nous = createNous({ size: 18, getLevel: () => S.mic.level || 0 });
+const nousBig = createNous({ size: 22, getLevel: () => S.mic.level || 0 });
+
+function nousState() {
+  if (S.mic.state === "transcribing") return "transcribing";
+  if (S.mic.state === "listening") return "listen";
+  if (S.agent.confirm) return "waiting";
+  const a = S.agent.state;
+  if (a === "acting" || a === "working") return "working";
+  if (["thinking", "searching", "speaking", "idle"].includes(a)) return a;
+  return "idle";
+}
+
 function orb(extra = "") {
-  const ch = (S.cfg.island.character || "liquid");
-  if (ch === "eyes") return el("span", { class: "eyes " + extra + " s-" + S.agent.state },
-    el("span", { class: "eye" }, el("i")), el("span", { class: "eye" }, el("i")));
-  return el("span", { class: "orb " + ch + " " + extra + " s-" + (S.mic.state === "listening" ? "listening" : S.agent.state) },
-    el("i"), el("i"), el("i"));
+  const big = extra.includes("big");
+  const inst = big ? nousBig : nous;
+  inst.set(nousState());
+  return el("span", { class: "orb nous-wrap " + extra }, inst.el);
 }
 
 function eq(n = 5) {
@@ -515,7 +525,7 @@ function panelAgent() {
 function renderCards() {
   cardsBox.replaceChildren(...S.cards.map((c) =>
     el("div", { class: "card " + (c.kind || "info") + (c.out ? " out" : "") },
-      c.swatch ? el("span", { class: "ic swatch", style: { background: c.swatch } }) : el("span", { class: "ic" }, c.icon && c.icon.length <= 2 ? c.icon : icon(c.icon || c.kind)),
+      c.swatch ? el("span", { class: "ic swatch", style: { background: c.swatch } }) : el("span", { class: "ic" }, icon(c.icon || (c.kind === "ok" ? "check" : c.kind === "error" ? "close" : c.kind === "warn" ? "alert" : "info"))),
       el("div", { class: "body" }, el("div", { class: "title" }, c.title || ""), c.text ? el("div", { class: "text" }, c.text) : null,
         c.image ? el("img", { class: "thumb", src: c.image }) : null,
         (c.actions || []).length ? el("div", { class: "row actions" }, c.actions.map((a) =>
@@ -718,7 +728,6 @@ async function applyConfig(cfg) {
   root.style.setProperty("--wave-lip-animation", waves.lip_breath_enabled === false || reducedMotion ? "none" : `lipbreath ${lipPeriod}s ease-in-out infinite`);
   if (/^#[0-9a-f]{6}$/i.test(waves.color || "")) root.style.setProperty("--wave-accent", waves.color);
   else root.style.removeProperty("--wave-accent");
-  document.documentElement.dataset.theme = isl0.theme || "dark";
   document.documentElement.style.setProperty("--scale", String(isl0.scale || 1));
   document.documentElement.style.setProperty("--op-closed", String(isl0.opacity_collapsed ?? 1));
   document.documentElement.style.setProperty("--op-open", String(isl0.opacity_open ?? 1));
@@ -927,16 +936,16 @@ export function mountIsland() {
   core.on("status.away", (d) => { S.away = !!(d && d.away); render(); });
   core.on("capture.flash", () => { if (fluid) fluid.bead(0.8); S.flash = Date.now(); render(); setTimeout(render, 520); });
   core.on("capture.color_pick", (d) => {
-    if (d.state === "armed") pushCard({ id: "color-pick", title: "Пипетка", text: "Наведите курсор на нужный цвет и нажмите Ctrl · Esc — отмена", kind: "info", icon: "◉", timeout: 0 });
+    if (d.state === "armed") pushCard({ id: "color-pick", title: "Пипетка", text: "Наведите курсор на нужный цвет и нажмите Ctrl · Esc — отмена", kind: "info", icon: "pip", timeout: 0 });
     else if (d.state === "preview") {
       const c = S.cards.find((x) => x.id === "color-pick");
       if (c) { c.title = "Пипетка · " + d.hex; c.text = "Нажмите Ctrl, чтобы взять этот цвет · Esc — отмена"; c.swatch = d.hex; renderCards(); }
     } else {
       dropCard("color-pick");
-      if (d.state === "cancel") pushCard({ title: "Пипетка", text: "Отменена", kind: "info", icon: "◉", timeout: 2 });
+      if (d.state === "cancel") pushCard({ title: "Пипетка", text: "Отменена", kind: "info", icon: "pip", timeout: 2 });
     }
   });
-  core.on("capture.color", (c) => pushCard({ title: "Цвет " + (c.hex || ""), text: "Скопировано в буфер", kind: "info", icon: "●", timeout: 4 }));
+  core.on("capture.color", (c) => pushCard({ title: "Цвет " + (c.hex || ""), text: "Скопировано в буфер", kind: "info", icon: "pip", timeout: 4 }));
   core.on("commandbar.open", (d) => openBar((d && d.text) || ""));
   core.on("clipboard.added", () => { if (S.tab === "clip" && mode() === "panel") loadClip(); });
   core.on("voice.stt", (d) => { if (d && d.partial && S.mic.state === "listening") { S.mic.partial = d.partial; } });

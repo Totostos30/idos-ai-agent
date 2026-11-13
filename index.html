@@ -3,6 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      // FOUC-гвард: применяем кэш темы до первой отрисовки (theme.js кэширует в localStorage).
+      try {
+        var t = JSON.parse(localStorage.getItem("idos.theme") || "{}");
+        var preset = t.preset || "dark";
+        var scheme = preset === "light" ? "light" : preset === "dark" ? "dark"
+          : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.dataset.theme = scheme;
+        document.documentElement.dataset.scheme = preset;
+        var acc = t.accent && { nous: "#7c8cff", aither: "#4fd1ff", nyx: "#b46cff", physis: "#35d07f", helios: "#ffb547" }[t.accent];
+        if (acc) document.documentElement.style.setProperty("--accent", acc);
+      } catch (e) {}
+    </script>
+    <link rel="stylesheet" href="/src/tokens.css" />
     <link rel="stylesheet" href="/src/island.css" />
     <link rel="stylesheet" href="/src/app.css" />
     <link rel="stylesheet" href="/src/select.css" />

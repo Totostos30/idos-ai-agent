@@ -2,20 +2,30 @@
 import { core } from "./rpc.js";
 import { invoke, listen, el, toast, win, inTauri, micIcon, setMicState } from "./shell.js";
 import { Mic } from "./voice.js";
+import { icon, iconNode } from "./icons.js";
+import { createNous } from "./nous.js";
+import { applyTheme, ACCENTS, normalizeTheme } from "./theme.js";
 import { renderScenarios, scenarioEvent } from "./scenarios.js";
 import { PARTS, TAB_LIST, TOOL_LIST, partOn, listOn, partValues, RESET_VALUES, applyValues } from "./parts.js";
 
 const TABS = [
-  ["chat", "Диалог", "💬"],
-  ["memory", "Память", "🧠"],
-  ["models", "Ключи и модели", "🔑"],
-  ["tools", "Инструменты", "🛠"],
-  ["scenarios", "Сценарии", "⛓"],
-  ["settings", "Настройки", "⚙"],
+  { id: "chat", name: "Диалог", icon: "chat", gr: "Λόγος", myth: "Логос у Гераклита — слово и разум" },
+  { id: "memory", name: "Память", icon: "memory", gr: "Μνήμη", myth: "Мнемозина — титанида памяти" },
+  { id: "models", name: "Ключи и модели", icon: "key", gr: "Δύναμις", myth: "Аристотель — сила и возможность" },
+  { id: "tools", name: "Инструменты", icon: "tools", gr: "Ὄργανον", myth: "«Органон» Аристотеля" },
+  { id: "scenarios", name: "Сценарии", icon: "scenario", gr: "Μίμησις", myth: "Мимесис — воспроизведение" },
+  { id: "settings", name: "Настройки", icon: "settings", gr: "Θέμις", myth: "Фемида — богиня порядка" },
 ];
+// Греческий eyebrow страницы (Γλῶττα, гайдбук §11): один на область, с расшифровкой в title.
+const grEyebrow = (meta) => el("p", { class: "gr-eyebrow", title: meta.myth }, meta.gr + " · " + meta.name.toLowerCase());
 
 const A = { tab: "chat", chats: [], chat: null, messages: [], live: "", steps: [], state: "idle", label: "", online: false, cfg: {} };
 let main, nav, statusEl;
+// Знак Νοῦς для титлбара и hello-экрана (гайдбук §12.1)
+const titleMark = createNous({ size: 16 });
+titleMark.set("idle");
+const helloMark = createNous({ size: 56 });
+helloMark.set("idle");
 const mic = new Mic((st) => {
   const b = document.querySelector(".composer .mic");
   setMicState(b, st);
@@ -43,12 +53,12 @@ function setTab(tab) {
 
 function titlebar() {
   const bar = el("div", { class: "titlebar", "data-tauri-drag-region": true },
-    el("span", { class: "brand", "data-tauri-drag-region": true }, el("span", { class: "logo" }), "Эйдос"),
+    el("span", { class: "brand", "data-tauri-drag-region": true }, el("span", { class: "logo nous-logo", title: "Νοῦς — двигатель состояний" }, titleMark.el), "Эйдос"),
     statusEl = el("span", { class: "state", "data-tauri-drag-region": true }, "подключение…"),
     el("span", { class: "grow", "data-tauri-drag-region": true }),
-    el("button", { class: "wbtn danger-h", title: "Экстренная остановка (Ctrl+Alt+X)", onclick: stopAgent }, "■"),
-    el("button", { class: "wbtn", title: "Свернуть", onclick: () => win && win.minimize() }, "—"),
-    el("button", { class: "wbtn", title: "Развернуть", onclick: () => win && win.toggleMaximize() }, "▢"),
+    el("button", { class: "wbtn danger-h", title: "Экстренная остановка (Ctrl+Alt+X)", onclick: stopAgent }, iconNode("stop", 14)),
+    el("button", { class: "wbtn", title: "Свернуть", onclick: () => win && win.minimize() }, iconNode("minus", 14)),
+    el("button", { class: "wbtn", title: "Развернуть", onclick: () => win && win.toggleMaximize() }, iconNode("expand", 13)),
     el("button", { class: "wbtn close", title: "Скрыть в трей", onclick: () => win && win.hide() }, "✕"));
   return bar;
 }
@@ -104,8 +114,13 @@ if (typeof document !== "undefined") {
 }
 
 function stepView(s) {
+  const stIcon = s.status === "running" ? iconNode("spinner", 12)
+    : s.status === "ok" ? iconNode("check", 12)
+    : s.status === "denied" ? iconNode("close", 12)
+    : s.status === "error" ? iconNode("alert", 12)
+    : iconNode("minus", 12);
   return el("div", { class: "stepline " + (s.status || "") },
-    el("span", { class: "st" }, s.status === "running" ? "◌" : s.status === "ok" ? "✓" : s.status === "denied" ? "✕" : s.status === "error" ? "!" : "·"),
+    el("span", { class: "st" }, stIcon),
     el("span", { class: "tool" }, s.tool + (s.action ? "." + s.action : "")),
     el("span", { class: "t" }, s.label || ""),
     s.status === "running" ? el("span", { class: "ms live", "data-t0": String(s.t0 || Date.now()) }, fmtMs(Date.now() - (s.t0 || Date.now())))
@@ -121,13 +136,13 @@ async function renderChat() {
     el("button", { class: "btn primary wide", onclick: async () => { const c = await core.try("agent.new_chat"); if (c && c.chat_id) { A.chat = c.chat_id; A.messages = []; } renderChat(); } }, "+ Новый диалог"),
     A.chats.map((c) => el("div", { class: "chatitem" + (c.id === A.chat ? " on" : ""), onclick: async () => { A.chat = c.id; await core.try("agent.select_chat", { chat_id: c.id }); renderChat(); } },
       el("span", { class: "t" }, c.title || "Без названия"),
-      el("button", { class: "icon", title: "Переименовать", onclick: async (e) => { e.stopPropagation(); const t = prompt("Название диалога", c.title || ""); if (t !== null) { await core.try("agent.rename_chat", { chat_id: c.id, title: t }); renderChat(); } } }, "✎"),
-      el("button", { class: "icon", title: "Удалить", onclick: (e) => { e.stopPropagation(); confirmClick(e.currentTarget, async () => { await core.try("agent.delete_chat", { chat_id: c.id }); if (A.chat === c.id) A.chat = null; renderChat(); }); } }, "✕"))));
+      el("button", { class: "icon", title: "Переименовать", onclick: async (e) => { e.stopPropagation(); const t = prompt("Название диалога", c.title || ""); if (t !== null) { await core.try("agent.rename_chat", { chat_id: c.id, title: t }); renderChat(); } } }, iconNode("edit", 13)),
+      el("button", { class: "icon", title: "Удалить", onclick: (e) => { e.stopPropagation(); confirmClick(e.currentTarget, async () => { await core.try("agent.delete_chat", { chat_id: c.id }); if (A.chat === c.id) A.chat = null; renderChat(); }); } }, iconNode("close", 13)))));
   const log = el("div", { class: "log" },
     A.messages.length ? A.messages.filter((m) => m.role === "user" || m.role === "assistant").map(msgView)
-      : el("div", { class: "hello" }, el("div", { class: "logo big" }), el("h2", {}, "Привет! Я Эйдос."),
+      : el("div", { class: "hello" }, helloMark.el, el("h2", {}, "Привет! Я Эйдос."),
         el("p", {}, "Попросите открыть приложение, найти что-то в интернете, написать письмо или настроить Windows. Можно голосом — PageUp."),
-        el("div", { class: "chips" }, ["Какая погода завтра?", "Открой блокнот и напиши список покупок", "Включи тёмную тему", "Переключись на платную модель"].map((t) =>
+        el("div", { class: "chips" }, ["Собери сводку по моим заметкам", "Найди свежее про курс рубля и перескажи", "Сделай скриншот и объясни, что на экране", "Открой блокнот и составь список покупок"].map((t) =>
           el("button", { class: "chip", onclick: () => send(t) }, t)))),
     el("div", { class: "steps-live" }, A.steps.map(stepView)),
     A.live ? el("div", { class: "msg assistant live" }, el("div", { class: "bubble" }, A.live)) : null);
@@ -221,7 +236,7 @@ async function renderMemory(query = "") {
   const add = el("input", { class: "field", placeholder: "Запомнить факт (например: «Я живу в Казани»)…" });
   add.addEventListener("keydown", async (e) => { if (e.key === "Enter" && add.value.trim()) { await core.try("memory.save", { text: add.value.trim() }); renderMemory(); } });
   main.replaceChildren(el("div", { class: "page" },
-    el("h1", {}, "Память"), el("p", { class: "mut" }, "Локальная долговременная память агента. Эйдос сам сохраняет важное и вспоминает по смыслу."),
+    grEyebrow(TABS[1]), el("h1", {}, "Память"), el("p", { class: "mut" }, "Локальная долговременная память агента. Эйдос сам сохраняет важное и вспоминает по смыслу."),
     el("div", { class: "row2" }, search, add),
     el("div", { class: "cards-list" }, items.length ? items.map((m) => el("div", { class: "item" },
       el("div", { class: "t" }, m.text || m.content || ""),
@@ -285,7 +300,7 @@ async function renderModels() {
   provSel.addEventListener("change", showNote);
   showNote();
   main.replaceChildren(el("div", { class: "page" },
-    el("h1", {}, "Ключи и модели"),
+    grEyebrow(TABS[2]), el("h1", {}, "Ключи и модели"),
     el("p", { class: "mut" }, "Роутер следит за лимитами каждого ключа и заранее переключается на следующий, когда запросы подходят к концу. Модель можно сменить и голосом: «Эйдос, переключись на …»."),
     el("section", { class: "box" }, el("h3", {}, "Активная модель"),
       el("div", { class: "row2" }, active,
@@ -335,7 +350,7 @@ async function renderTools() {
   if (A.tab !== "tools") return;
   if (tools && tools.error) throw new Error(tools.error);
   main.replaceChildren(el("div", { class: "page" },
-    el("h1", {}, "Инструменты"),
+    grEyebrow(TABS[3]), el("h1", {}, "Инструменты"),
     el("p", { class: "mut" }, "Всё, чем агент может пользоваться самостоятельно. Скиллы — инструкции в data/skills, MCP-серверы — в настройках."),
     el("div", { class: "toolgrid" }, (Array.isArray(tools) ? tools : []).map((t) => el("div", { class: "tool" + (t.available ? "" : " off") },
       el("div", { class: "row2" }, el("b", {}, t.name), el("span", { class: "grow" }), el("span", { class: "tag " + (t.available ? "ok" : "warn") }, t.available ? "доступен" : "недоступен")),
@@ -421,7 +436,8 @@ async function renderSettings() {
   filter.addEventListener("input", draw);
   draw();
   main.replaceChildren(el("div", { class: "page" },
-    el("h1", {}, "Настройки"),
+    grEyebrow(TABS[5]), el("h1", {}, "Настройки"),
+    themeBox(cfg),
     el("div", { class: "row2" }, filter,
       el("button", { class: "btn", onclick: async () => { const r = await core.try("core.selftest"); showSelftest(r); } }, "Самопроверка"),
     inTauri ? el("button", { class: "btn ghost", onclick: () => invoke("restart_core") }, "Перезапустить ядро") : null),
@@ -429,6 +445,40 @@ async function renderSettings() {
     islandPartsBox(cfg),
     waveSettingsBox(cfg),
     body));
+}
+
+// «Внешний вид»: пресет темы + акцент (гайдбук §9, THEMES §5). Имена пресетов — по Γλῶτте.
+function themeBox(cfg) {
+  const cur = normalizeTheme(cfg.theme);
+  const box = el("section", { class: "box themebox" },
+    el("h3", {}, el("span", { class: "gr" }, "Χρώμα ·"), " Внешний вид"),
+    el("div", { class: "mut small" }, "Тема применяется во всех окнах сразу. «Системная» следует за настройками Windows."));
+  const presets = [["system", "Системная", "auto"], ["dark", "Тёмная", "moon"], ["light", "Светлая", "sun"]];
+  const seg = el("div", { class: "theme-seg" }, presets.map(([id, label, ic]) =>
+    el("button", { class: "seg-btn" + (cur.preset === id ? " on" : ""), "data-preset": id, title: label,
+      onclick: async (e) => {
+        seg.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === e.currentTarget));
+        applyTheme({ preset: id, accent: cur.accent });
+        const r = await core.try("settings.set", { key: "theme", value: { preset: id, accent: cur.accent } });
+        if (r && r.error) toast(r.error, "error");
+      } }, iconNode(ic, 13), label)));
+  const swatches = el("div", { class: "swatches" },
+    [["", "Авто"], ...Object.entries(ACCENTS)].map(([id, a]) => {
+      const hex = id ? (document.documentElement.dataset.theme === "light" ? a.light : a.dark) : "";
+      const sw = el("button", {
+        class: "swatch" + ((cur.accent || "") === id ? " on" : "") + (id ? "" : " auto"),
+        title: id ? a.label : "Акцент темы", style: id ? { background: hex } : {},
+        onclick: async () => {
+          swatches.querySelectorAll(".swatch").forEach((b) => b.classList.toggle("on", b === sw));
+          applyTheme({ preset: cur.preset, accent: id });
+          const r = await core.try("settings.set", { key: "theme", value: { preset: cur.preset, accent: id } });
+          if (r && r.error) toast(r.error, "error");
+        } }, id ? "" : "A");
+      return sw;
+    }));
+  box.append(el("div", { class: "setrow" }, el("span", { class: "k" }, "Тема"), seg),
+    el("div", { class: "setrow" }, el("span", { class: "k" }, "Акцент"), swatches));
+  return box;
 }
 
 function waveSettingsBox(cfg) {
@@ -546,7 +596,7 @@ function islandPartsBox(cfg) {
 const GENDER = { "м": "мужской", "ж": "женский" };
 
 function voiceBox() {
-  const box = el("section", { class: "box voicebox" }, el("h3", {}, "Голос Эйдоса"), el("div", { class: "mut small" }, "Загружаю голоса…"));
+  const box = el("section", { class: "box voicebox" }, el("h3", {}, el("span", { class: "gr", title: "Музы — богини голоса и песни" }, "Μοῦσα ·"), " Голос Эйдоса"), el("div", { class: "mut small" }, "Загружаю голоса…"));
   refreshVoices(box);
   return box;
 }
@@ -591,7 +641,7 @@ function voiceGroup(info, group, current, pick, install) {
 }
 
 function drawVoices(box, info, note) {
-  const title = el("h3", {}, "Голос Эйдоса");
+  const title = el("h3", {}, el("span", { class: "gr", title: "Музы — богини голоса и песни" }, "Μοῦσα ·"), " Голос Эйдоса");
   if (!info || info.error || !Array.isArray(info.engines)) {
     box.replaceChildren(title, el("div", { class: "warn" }, "Голоса недоступны: " + ((info && info.error) || "нет связи с ядром")));
     return;
@@ -708,7 +758,7 @@ function showAsk(d) {
 
 export function mountApp() {
   document.body.classList.add("view-app");
-  nav = el("nav", { class: "nav" }, TABS.map(([id, name, ic]) => el("button", { "data-tab": id, onclick: () => setTab(id) }, el("span", { class: "ic" }, ic), el("span", {}, name))));
+  nav = el("nav", { class: "nav" }, TABS.map((t) => el("button", { "data-tab": t.id, title: t.myth, onclick: () => setTab(t.id) }, el("span", { class: "ic" }, iconNode(t.icon, 15)), el("span", {}, t.name))));
   main = el("main", { class: "main" });
   document.body.append(el("div", { class: "frame" }, titlebar(), el("div", { class: "body" }, nav, main)));
   listen("main-tab", (tab) => setTab(tab || "chat"));

@@ -3,26 +3,6 @@
   --scale: 1;
   --op-closed: 1;
   --op-open: 1;
-  --bg: #000;
-  --fg: #f5f5f7;
-  --mut: #9a9aa2;
-  --line: rgba(255, 255, 255, 0.09);
-  --soft: rgba(255, 255, 255, 0.07);
-  --soft2: rgba(255, 255, 255, 0.13);
-  --accent: #7c8cff;
-  --ok: #35d07f;
-  --warn: #ffb547;
-  --err: #ff5a5f;
-  --spring: cubic-bezier(0.34, 1.36, 0.5, 1);
-  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-:root[data-theme="light"] {
-  --bg: #fbfbfd;
-  --fg: #111114;
-  --mut: #6b6b75;
-  --line: rgba(0, 0, 0, 0.08);
-  --soft: rgba(0, 0, 0, 0.05);
-  --soft2: rgba(0, 0, 0, 0.1);
 }
 body.view-island {
   margin: 0;
@@ -106,20 +86,20 @@ button:disabled { opacity: 0.35; cursor: default; }
 /* персонаж: жидкая сфера, меняет цвет и движение по состоянию агента */
 .orb { position: relative; width: 18px; height: 18px; flex: none; border-radius: 50%; filter: saturate(1.2); }
 .orb.big { width: 22px; height: 22px; }
-.orb i { position: absolute; inset: 0; border-radius: 45% 55% 50% 50%; background: var(--c1, #7c8cff); mix-blend-mode: screen; opacity: 0.85; animation: blob 6s linear infinite; }
-.orb i:nth-child(2) { background: var(--c2, #b46cff); animation-duration: 7.5s; animation-direction: reverse; }
-.orb i:nth-child(3) { background: var(--c3, #4fd1ff); animation-duration: 9s; inset: 3px; }
+.orb i { position: absolute; inset: 0; border-radius: 45% 55% 50% 50%; background: var(--c1, var(--brand-1)); mix-blend-mode: screen; opacity: 0.85; animation: blob 6s linear infinite; }
+.orb i:nth-child(2) { background: var(--c2, var(--brand-2)); animation-duration: 7.5s; animation-direction: reverse; }
+.orb i:nth-child(3) { background: var(--c3, var(--brand-3)); animation-duration: 9s; inset: 3px; }
 @keyframes blob { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(180deg) scale(0.86, 1.06); } 100% { transform: rotate(360deg) scale(1); } }
 .orb.s-idle i { animation-duration: 14s; }
 .orb.s-thinking i, .orb.s-searching i { animation-duration: 1.6s; }
-.orb.s-working, .orb.s-acting { --c1: #ffb547; --c2: #ff7a59; --c3: #ffd36e; }
+.orb.s-working, .orb.s-acting { --c1: var(--warn); --c2: #ff7a59; --c3: #ffd36e; }
 .orb.s-working i, .orb.s-acting i { animation-duration: 1.2s; }
-.orb.s-speaking { --c1: #35d07f; --c2: #2bb5a0; --c3: #a8f0c6; }
+.orb.s-speaking { --c1: var(--ok); --c2: #2bb5a0; --c3: #a8f0c6; }
 .orb.s-speaking i { animation: blob 2s linear infinite, talk 0.42s ease-in-out infinite alternate; }
 @keyframes talk { from { scale: 0.85; } to { scale: 1.08; } }
 .orb.s-listening { --c1: #ff5a8a; --c2: #ff8a5a; --c3: #ffd1e0; }
 .orb.s-listening i { animation-duration: 2.4s; }
-.orb.s-waiting { --c1: #ffb547; --c2: #ffe08a; --c3: #fff; }
+.orb.s-waiting { --c1: var(--warn); --c2: #ffe08a; --c3: var(--fg); }
 .orb.s-waiting { animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 50% { transform: scale(0.82); } }
 .orb.cube i { border-radius: 4px; }
@@ -286,11 +266,11 @@ button:disabled { opacity: 0.35; cursor: default; }
 .bat-mini.low i { background: var(--err); }
 .bat-mini.charging i { background: var(--ok); }
 .dot { width: 7px; height: 7px; border-radius: 50%; padding: 0; flex: none; }
-.dot.mic { background: #ff9f0a; box-shadow: 0 0 6px #ff9f0a; }
+.dot.mic { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
 .dot.mic.muted { background: var(--err); box-shadow: 0 0 6px var(--err); }
-.dot.cam { background: #30d158; box-shadow: 0 0 6px #30d158; }
+.dot.cam { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
 .chip.caps, .chip.lay, .chip.vpn { padding: 1px 6px; font-weight: 700; font-size: 10.5px; }
-.chip.vpn { color: #64d2ff; }
+.chip.vpn { color: var(--b3, #4fd1ff); }
 .chip.lay { animation: lyricIn 0.3s var(--ease) both; }
 .vol { flex: 1; height: 5px; border-radius: 3px; background: var(--soft2); overflow: hidden; }
 .vol i { display: block; height: 100%; background: var(--fg); border-radius: 3px; transition: width 0.12s; }
@@ -307,7 +287,7 @@ button:disabled { opacity: 0.35; cursor: default; }
 /* строка песни: пропеваемая строка загорается слева направо */
 .lyric-pill { text-align: center; padding: 0 6px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sung { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: 13px;
-  background: linear-gradient(90deg, #fff 0 50%, rgba(255, 255, 255, 0.32) 50% 100%); background-size: 200% 100%; background-position: 100% 0;
+  background: linear-gradient(90deg, var(--fg) 0 50%, color-mix(in srgb, var(--fg) 32%, transparent) 50% 100%); background-size: 200% 100%; background-position: 100% 0;
   -webkit-background-clip: text; background-clip: text; color: transparent;
   animation: sing var(--dur, 3s) linear forwards, lyricIn 0.4s var(--ease) both;
   filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 60%, transparent)); }
@@ -317,7 +297,7 @@ button:disabled { opacity: 0.35; cursor: default; }
 .island { --px: 0; --py: 0; }
 .eyes { display: inline-flex; gap: 3px; flex: none; }
 .eye { width: 9px; height: 11px; border-radius: 50%; background: #fff; display: grid; place-items: center; overflow: hidden; animation: blink 5s infinite; }
-.eye i { width: 5px; height: 5px; border-radius: 50%; background: #000; transform: translate(calc(var(--px) * 2.2px), calc(var(--py) * 2.5px)); transition: transform 0.08s linear; }
+.eye i { width: 5px; height: 5px; border-radius: 50%; background: var(--surface-0); transform: translate(calc(var(--px) * 2.2px), calc(var(--py) * 2.5px)); transition: transform 0.08s linear; }
 .eyes.big .eye { width: 11px; height: 13px; }
 .eyes.s-thinking .eye i, .eyes.s-searching .eye i { animation: look 1.4s ease-in-out infinite; }
 @keyframes look { 0%, 100% { transform: translate(-2px, -2px); } 50% { transform: translate(2px, -2px); } }
@@ -327,7 +307,7 @@ button:disabled { opacity: 0.35; cursor: default; }
 .island.away .orb i { animation-duration: 30s !important; opacity: 0.5; }
 .orb.pixel i { border-radius: 2px; animation-timing-function: steps(6); }
 .orb.spark i:nth-child(n + 2) { display: none; }
-.orb.spark i { border-radius: 50%; box-shadow: 0 0 10px var(--c1, #7c8cff); animation: twinkle 2.2s ease-in-out infinite; }
+.orb.spark i { border-radius: 50%; box-shadow: 0 0 10px var(--c1, var(--brand-1)); animation: twinkle 2.2s ease-in-out infinite; }
 @keyframes twinkle { 50% { transform: scale(0.6) rotate(45deg); opacity: 0.6; } }
 /* автоскрытие: остров уходит за край и возвращается, когда курсор упирается в верхний край */
 .lip { position: absolute; top: 0; left: 50%; width: var(--lip-width, 220px); height: 12px; transform: translateX(-50%); pointer-events: none; z-index: 5; }
@@ -335,17 +315,17 @@ button:disabled { opacity: 0.35; cursor: default; }
 /* сама полоска: тонкая капсула под верхним краем */
 .lip::before {
   content: ""; position: absolute; top: 0; left: 50%; width: 100%; height: 5px; transform: translate(-50%, -8px) scaleX(0.4);
-  border-radius: 0 0 6px 6px; background: rgba(12, 12, 16, 0.92); box-shadow: inset 0 -0.5px 0 rgba(255, 255, 255, 0.22), 0 2px 8px rgba(0, 0, 0, 0.35);
+  border-radius: 0 0 6px 6px; background: color-mix(in srgb, var(--surface-0) 92%, transparent); box-shadow: inset 0 -0.5px 0 rgba(255, 255, 255, 0.22), 0 2px 8px rgba(0, 0, 0, 0.35);
   opacity: 0; transition: transform 0.45s var(--spring), opacity 0.25s, width 0.35s var(--spring), height 0.3s var(--spring), background 0.3s;
 }
 .stage.hidden > .lip::before { transform: translate(-50%, 0) scaleX(1); opacity: 1; transition-delay: 0.12s; }
 .stage.hidden > .lip:hover::before { width: 100%; height: 7px; }
 /* играет музыка — полоска светится цветом обложки и «дышит» */
 .stage.hidden[data-playing="1"] > .lip::before {
-  background: linear-gradient(90deg, rgba(12, 12, 16, 0.92), var(--wave-accent, var(--accent, #7c8cff)) 50%, rgba(12, 12, 16, 0.92));
+  background: linear-gradient(90deg, rgba(12, 12, 16, 0.92), var(--wave-accent, var(--accent)) 50%, rgba(12, 12, 16, 0.92));
   animation: var(--wave-lip-animation, lipbreath 2.4s ease-in-out infinite);
 }
-@keyframes lipbreath { 50% { filter: brightness(1.5); box-shadow: 0 0 10px var(--wave-accent, var(--accent, #7c8cff)); } }
+@keyframes lipbreath { 50% { filter: brightness(1.5); box-shadow: 0 0 10px var(--wave-accent, var(--accent)); } }
 @media (prefers-reduced-motion: reduce) { .stage.hidden[data-playing="1"] > .lip::before { animation: var(--wave-lip-animation, none); } }
 .stage > .island, .stage > .fluid { transition: transform 0.45s var(--spring), opacity 0.3s, width 0.48s var(--spring), border-radius 0.48s var(--spring), padding 0.3s var(--ease); }
 .stage.hidden > .island { transform: translateY(-140%) scale(0.92); opacity: 0; pointer-events: none;
@@ -374,20 +354,20 @@ button:hover > .gmic-wrap .g-right { transform: translateX(.4px) rotate(4deg); }
 button:active > .gmic-wrap .gmic { transform: scale(.86); }
 /* слушаю: капсула растёт под громкость голоса, вокруг расходятся цветные волны */
 .gwaves { position: absolute; inset: -6px; z-index: 0; pointer-events: none; }
-.gwaves i { position: absolute; inset: 0; border-radius: 50%; border: 2px solid #7c8cff; opacity: 0; }
-.gwaves i:nth-child(2) { border-color: #b46cff; }
-.gwaves i:nth-child(3) { border-color: #4fd1ff; }
+.gwaves i { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--brand-1); opacity: 0; }
+.gwaves i:nth-child(2) { border-color: var(--brand-2); }
+.gwaves i:nth-child(3) { border-color: var(--brand-3); }
 [data-state="listening"] .gwaves i { animation: gwave 1.8s cubic-bezier(.2,.7,.3,1) infinite; }
 [data-state="listening"] .gwaves i:nth-child(2) { animation-delay: .6s; }
 [data-state="listening"] .gwaves i:nth-child(3) { animation-delay: 1.2s; }
 @keyframes gwave { 0% { transform: scale(.55); opacity: .75; } 100% { transform: scale(1.45); opacity: 0; } }
 [data-state="listening"] .gmic { transform: scale(calc(1 + var(--lvl, 0) * .22)); transition-duration: .08s; }
 [data-state="listening"] .g-cap { animation: gbreath 1.4s ease-in-out infinite; }
-[data-state="listening"] .g-stem { stroke: #4fd1ff; filter: drop-shadow(0 0 3px rgba(79,209,255,.8)); }
+[data-state="listening"] .g-stem { stroke: var(--brand-3); filter: drop-shadow(0 0 3px rgba(79,209,255,.8)); }
 @keyframes gbreath { 50% { transform: scaleY(1.07); } }
 /* распознаю: четырёхцветное кольцо крутится, микрофон слегка приглушён */
 .gspin { position: absolute; inset: -5px; z-index: 1; border-radius: 50%; opacity: 0; pointer-events: none;
-  background: conic-gradient(#7c8cff 0 25%, #b46cff 0 50%, #4fd1ff 0 75%, #e07cff 0);
+  background: conic-gradient(var(--brand-1) 0 25%, var(--brand-2) 0 50%, var(--brand-3) 0 75%, var(--brand-4) 0);
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px));
   mask: radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2px)); transition: opacity .25s; }
 [data-state="transcribing"] .gspin { opacity: 1; animation: gspin .9s linear infinite; }
@@ -396,7 +376,7 @@ button:active > .gmic-wrap .gmic { transform: scale(.86); }
 /* ошибка: короткое «покачивание головой» */
 [data-state="error"] .gmic { animation: gshake .45s ease-in-out 1; }
 @keyframes gshake { 20%, 60% { transform: translateX(-2px); } 40%, 80% { transform: translateX(2px); } }
-.mic.on { background: rgba(66, 133, 244, 0.14); }
+.mic.on { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 @media (prefers-reduced-motion: reduce) { .gwaves i, .g-cap, .gspin { animation: none !important; } }
 
 /* ---------- режим «✎ Настроить»: что показывать в капсуле и панели */
@@ -426,3 +406,7 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .gmic svg { filter: drop-shadow(0 0 4px rgba(124, 140, 255, .35)); }
 [data-state="listening"] .gmic svg { filter: drop-shadow(0 0 calc(4px + var(--lvl, 0) * 10px) rgba(124, 140, 255, .75)); }
 .card .ic.swatch { border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.35), 0 0 10px rgba(0,0,0,.4); }
+
+/* знак Νοῦς в капсуле: обёртка центрирует движок вместо слоёв орба */
+.orb.nous-wrap { display: inline-flex; align-items: center; justify-content: center; overflow: visible; }
+.orb.nous-wrap .nous-mark { flex: none; }
