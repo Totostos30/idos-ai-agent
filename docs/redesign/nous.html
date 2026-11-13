@@ -505,7 +505,7 @@
     { id: "waiting", gr: "Ἀναμονή", title: "Ждёт подтверждения", ref: "Агент просит разрешить действие (confirm).",
       note: "Ядро мягко подпрыгивает — «нуль?»; пунктир дыхания мигает. Ничего не вращается быстро: ожидание спокойное, но заметное.", map: "confirm-режим" },
     { id: "error", gr: "Ἀπορία", title: "Ошибка", ref: "Шаг упал, отказ инструмента, нет связи.",
-      note: "Ядро краснеет и встряхивается (короткая дрожь с паузой), кольца красные. Точка покоя на месте — сбой не разрушает двигатель.", map: ".step.error" },
+      note: "Ядро краснеет и спокойно дышит (медленный вдох-выдох ~3 с), кольца красные. Точка покоя на месте — сбой не разрушает двигатель.", map: ".step.error" },
     { id: "done", gr: "Τέλος", title: "Готово", ref: "Шаг завершён, таймер вышел, задача выполнена.",
       note: "Кольца сворачиваются внутрь ядра, зелёная галка держится в кольце структуры — «форма достигнута».", map: ".step.ok" },
     { id: "transcribing", gr: "Γραφή", title: "Распознаёт речь", ref: "STT обрабатывает запись (GigaSTT).",
@@ -670,7 +670,7 @@
     working:      { r1: R(5.6, C.ink, 1.4, .16, 1, 0), r2: R(8.6, C.b2, 1.3, 0, 4.2, 4.2, 25.7), r3: R(11.6, C.b3, 1.2, 0, 1, 0), dot: D(2.8, C.ink, 1), glow: .12, x: { pulses: 1 } },
     speaking:     { r1: R(5.6, C.b1, 1.5, .9, 1, 0), r2: R(8.6, C.b2, 1.3, .4, 4.2, 4.2, 25.7), r3: R(11.6, C.b3, 1.2, .2, 1, 0), dot: D(2.9, C.ink, 1), glow: .18, x: { waves: 1 }, speak: 1 },
     waiting:      { r1: R(5.6, C.b1, 1.5, .9, 1, 0), r2: R(8.6, C.b2, 1.3, .5, 4.2, 4.2, 60), r3: R(11.6, C.b3, 1.2, .35, 2.5, 4), dot: D(2.8, C.ink, 1), glow: .12, bounce: 1, blink: 1 },
-    error:        { r1: R(5.6, C.err, 1.5, .85, 1, 0), r2: R(8.6, C.err, 1.3, 0, 4.2, 4.2, 25.7), r3: R(11.6, C.err, 1.2, .25, 1, 0), dot: D(2.8, C.err, 1), glow: .1, shake: 1, blink: 1 },
+    error:        { r1: R(5.6, C.err, 1.5, .85, 1, 0), r2: R(8.6, C.err, 1.3, 0, 4.2, 4.2, 25.7), r3: R(11.6, C.err, 1.2, .25, 1, 0), dot: D(2.8, C.err, 1), glow: .1, breath: 1, blink: 1 },
     done:         { r1: R(6.4, C.ok, 1.5, .9, 1, 0), r2: R(6.4, C.ok, 1.3, 0, 4.2, 4.2, 25.7), r3: R(3.2, C.ok, 1.2, 0, 1, 0), dot: D(2.8, C.ink, 0), glow: 0, x: { tick: 1 } },
     transcribing: { r1: R(5.6, C.b1, 1.5, 0, 1, 0), r2: R(8.6, C.b2, 1.3, 0, 4.2, 4.2, 25.7), r3: R(11.6, C.b3, 1.2, 0, 1, 0), dot: D(2.5, C.ink, .85), glow: 0, x: { quad: 1 } },
     scn:          { r1: R(5.6, C.b1, 1.5, 0, 1, 0), r2: R(8.6, C.b2, 1.3, 0, 4.2, 4.2, 25.7), r3: R(11.6, C.b3, 1.2, 0, 1, 0), dot: D(2.8, C.ink, 1), glow: .12, x: { scn: 1 } },
@@ -749,7 +749,7 @@
     ang1 += cur.r1.spd * dt; ang2 += cur.r2.spd * dt;
     els.r1.setAttribute("transform", `rotate(${ang1.toFixed(1)} 48 32)`);
     els.r2.setAttribute("transform", `rotate(${ang2.toFixed(1)} 48 32)`);
-    for (const key of ["glow", "shake", "bounce", "lvl", "speak", "blink"]) {
+    for (const key of ["glow", "breath", "bounce", "lvl", "speak", "blink"]) {
       cur[key] = lerp(cur[key] || 0, target[key] || 0, k);
     }
     for (const key of ["comets", "waves", "pulses", "quad", "tick", "scn"]) {
@@ -759,15 +759,15 @@
     cur.dot.op = lerp(cur.dot.op, target.dot.op, k);
     cur.dot.amp = lerp(cur.dot.amp || 0, target.dot.amp || 0, k);
     cur.dot.c = lerpC(cur.dot.c, target.dot.c, k);
-    // ядро: уровень голоса, такт фраз, пульс мысли, подпрыгивание, дрожь
+    // ядро: уровень голоса, такт фраз, пульс мысли, подпрыгивание, спокойное дыхание в ошибке
     if (Math.random() < .1) lvlT = Math.random() * .25; else if (Math.random() < .2) lvlT = .45 + Math.random() * .55;
     lvl += (lvlT - lvl) * .3;
     env *= .9; if (Math.random() < .07) env = .5 + Math.random() * .5;
     const amp = Math.sin(now * .00546) * cur.dot.amp * .18;
-    const dotR = Math.max(0, cur.dot.r * (1 + cur.lvl * lvl * .4 + cur.speak * env * .5 + amp));
+    const breath = Math.sin(now * .0021) * .13 * cur.breath; // медленный выдох-вдох ~3 с
+    const dotR = Math.max(0, cur.dot.r * (1 + cur.lvl * lvl * .4 + cur.speak * env * .5 + amp + breath));
     const dy = -1.2 * Math.abs(Math.sin((now % 1600) / 1600 * Math.PI)) * cur.bounce;
-    const dx = Math.sin(now * .045) * 1.7 * cur.shake;
-    els.core.setAttribute("transform", `translate(${(48 + dx).toFixed(2)} ${(32 + dy).toFixed(2)})`);
+    els.core.setAttribute("transform", `translate(48 ${(32 + dy).toFixed(2)})`);
     els.dot.setAttribute("r", dotR.toFixed(2));
     els.hi.setAttribute("r", dotR.toFixed(2));
     els.dot.setAttribute("fill", strC(cur.dot.c));
@@ -810,8 +810,19 @@
       els.runner.setAttribute("cx", lerp(p0[0], p1[0], e).toFixed(2));
       els.runner.setAttribute("cy", lerp(p0[1], p1[1], e).toFixed(2));
       els.nodes.forEach((n, j) => {
-        n.setAttribute("fill", j < i ? strC(C.ok) : j === i ? strC(C.b1) : "rgba(255,255,255,.18)");
-        n.setAttribute("r", j === i ? (1.7 + Math.sin(now * .008) * .5).toFixed(2) : "1.7");
+        // хвост сценария: зелёный след затухает за бегунком — выполнение бесконечно
+        const behind = (i - j + 8) % 8;
+        if (behind === 0) {
+          n.setAttribute("fill", strC(C.b1));
+          n.setAttribute("r", (1.7 + Math.sin(now * .008) * .5).toFixed(2));
+        } else if (behind < 5) {
+          const f = 1 - behind / 5;
+          n.setAttribute("fill", `rgba(${C.ok[0]},${C.ok[1]},${C.ok[2]},${(f * .95).toFixed(2)})`);
+          n.setAttribute("r", "1.7");
+        } else {
+          n.setAttribute("fill", "rgba(255,255,255,.18)");
+          n.setAttribute("r", "1.7");
+        }
       });
     }
     requestAnimationFrame(frame);
