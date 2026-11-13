@@ -580,15 +580,16 @@ function themeBox(cfg) {
   const swatches = el("div", { class: "swatches" },
     [["", "Авто"], ...Object.entries(ACCENTS)].map(([id, a]) => {
       const hex = id ? (document.documentElement.dataset.theme === "light" ? a.light : a.dark) : "";
+      const letter = id ? (a.letter || a.label[0]) : "A";
       const sw = el("button", {
         class: "swatch" + ((cur.accent || "") === id ? " on" : "") + (id ? "" : " auto"),
-        title: id ? t(a.label) : t("Акцент темы"), "aria-label": id ? t(a.label) : t("Акцент темы"), style: id ? { background: hex } : {},
+        title: id ? t(a.label) : t("Акцент темы"), "aria-label": id ? t(a.label) : t("Акцент темы"), style: id ? { color: hex } : {},
         onclick: async () => {
           swatches.querySelectorAll(".swatch").forEach((b) => b.classList.toggle("on", b === sw));
           applyTheme({ preset: cur.preset, accent: id });
           const r = await core.try("settings.set", { key: "theme", value: { preset: cur.preset, accent: id } });
           if (r && r.error) toast(r.error, "error");
-        } }, id ? "" : "A");
+        } }, letter);
       return sw;
     }));
   box.append(el("div", { class: "setrow" }, el("span", { class: "k" }, t("Тема")), seg),
