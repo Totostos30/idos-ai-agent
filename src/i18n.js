@@ -317,6 +317,7 @@ const EN = {
   "Город погоды": "Weather city",
   "Ищу город…": "Looking up the city…",
   "Не удалось определить город": "Couldn't locate the city",
+  "Город «{city}» сохранён, но прогноз недоступен: {err}": "The city “{city}” is saved, but the forecast is unavailable: {err}",
   "Погода: ": "Weather: ",
   "Город показывает температуру в острове — справа в капсуле и виджетом в панели «Сейчас». Ядро само найдёт координаты и включит обновление.":
     "The city shows the temperature in the island — right in the capsule and as a widget in the “Now” panel. The core geocodes it and enables updates itself.",

@@ -251,16 +251,17 @@ button:disabled { opacity: 0.35; cursor: default; }
 .island { box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.07); }
 .island[data-edge="on"][data-playing="1"]:is([data-mode="music"], [data-mode="idle"]) { box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.07); }
 /* слегка «висит» с верхнего края экрана: верхние углы меньше.
-   idle — исключение: там идеальная симметричная капсула под круглый логотип,
-   паддинг 6px со всех сторон (правило выше), радиус 22 как у базы. */
-.island:is([data-mode="music"], [data-mode="timer"], [data-mode="rec"], [data-mode="agent"], [data-mode="mic"]) {
+   idle и music — исключения: симметричная капсула нового вида (радиус 22 как у базы). */
+.island:is([data-mode="timer"], [data-mode="rec"], [data-mode="agent"], [data-mode="mic"]) {
   margin-top: 0; border-top-left-radius: 12px; border-top-right-radius: 12px; padding-top: 7px;
 }
 .island[data-mode="idle"] { width: 200px; }
+/* музыкальная капсула — тот же новый вид, что и у idle: симметричный радиус, ровный паддинг */
+.island[data-mode="music"] { border-radius: 22px; padding: 6px 8px; }
 .island[data-mode="music"][data-music="normal"] { width: 210px; }
 .island[data-mode="music"][data-music="wide"] { width: 320px; }
-.island[data-mode="music"][data-music="wide"][data-lyric="1"] { width: 380px; border-radius: 12px 12px 24px 24px; }
-.island[data-mode="music"][data-music="mini"] { width: 400px; border-radius: 12px 12px 26px 26px; padding: 8px 10px; }
+.island[data-mode="music"][data-music="wide"][data-lyric="1"] { width: 380px; }
+.island[data-mode="music"][data-music="mini"] { width: 400px; padding: 8px 10px; }
 /* minmax(0,1fr) по краям: левые чипы (vpn, раскладка) не поднимают минимум колонки,
    и часы стоят ровно по центру при любом наборе включённых элементов.
    Высота ряда = высоте знака Νοῦς (27): отступы от логотипа до контуров капсулы

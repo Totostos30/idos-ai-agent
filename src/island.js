@@ -38,6 +38,7 @@ const S = {
   flash: 0,
   away: false,
   hover: false,
+  stick: false,
   kbd: {},
   privacy: {},
 };
@@ -561,7 +562,8 @@ function tucked(m) {
   if (sig !== lastSig) { lastSig = sig; quietSince = Date.now(); }
   // Обычные задачи не скрываем. Автоскрытие действует только для покоя и музыки.
   const transient = m === "idle" || m === "music";
-  const quiet = !!I.auto_hide && !S.hover && !S.expanded && !S.pinned && transient && !S.cards.length && !S.bar.open;
+  // S.stick: капсула раскрыта по клику на полоске и не прячется, пока не откроют панель
+  const quiet = !!I.auto_hide && !S.hover && !S.stick && !S.expanded && !S.pinned && transient && !S.cards.length && !S.bar.open;
   if (!quiet) { quietSince = Date.now(); clearTimeout(tuckTimer); tuckTimer = null; return false; }
   const idleDelay = Number(I.auto_hide_delay);
   const wait = m === "music" ? 3000 : (Number.isFinite(idleDelay) && idleDelay >= 0 ? idleDelay : 1) * 1000;
@@ -822,7 +824,9 @@ export function mountIsland() {
   listen("island-cursor", (p) => { if (Array.isArray(p)) onCursor(p[0], p[1]); else if (p) onCursor(p.x, p.y); });
   lip.addEventListener("mouseenter", peek);
   lip.addEventListener("mousemove", peek);
-  lip.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); peek(); });
+  // Клик по полоске при скрытом островке: капсула раскрывается и ОСТАЁТСЯ открытой
+  // (первый клик — «обычный островок»); второй клик по капсуле откроет панель.
+  lip.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); peek(); S.stick = true; });
   root.addEventListener("mouseleave", () => {
     if (!S.hover) return;
     setTimeout(() => { if (!isl.matches(":hover") && !lip.matches(":hover")) { S.hover = false; render(); } }, 500);
@@ -842,7 +846,7 @@ export function mountIsland() {
   isl.addEventListener("click", (e) => {
     if (e.target.closest("button,input,.bar-item,.clip,.progress")) return;
     const m = mode();
-    if (m === "idle" || m === "music" || m === "timer") { S.expanded = true; render(); }
+    if (m === "idle" || m === "music" || m === "timer") { S.expanded = true; S.stick = false; render(); }
   });
   isl.addEventListener("dblclick", (e) => { if (!e.target.closest("button,input")) invoke("show_main", { tab: "chat" }); });
   isl.addEventListener("wheel", (e) => {

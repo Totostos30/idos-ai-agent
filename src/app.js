@@ -503,8 +503,14 @@ function weatherCityBox() {
     // чтобы ядро успело ответить целиком (короткий таймаут давал «Ядро не ответило»)
     const r = await core.try("weather.set_city", { city }, 90000);
     btn.disabled = false; btn.textContent = oldLabel;
-    if (!r || r.error || r.ok === false) { toast((r && (r.error || r.reason)) || t("Не удалось определить город"), "error"); return; }
-    toast(t("Погода: ") + (r.city || city) + (r.temp !== undefined && r.temp !== null ? ", " + Math.round(r.temp) + "°" : ""), "ok");
+    if (!r || r.error) { toast((r && r.error) || t("Не удалось определить город"), "error"); return; }
+    // город с координатами сохраняется, даже если прогноз снять не удалось, — говорим об этом честно
+    if (r.ok === false || r.temp === undefined || r.temp === null) {
+      toast(t("Город «{city}» сохранён, но прогноз недоступен: {err}", { city: r.city || city, err: r.error || r.reason || "" }), "error");
+      renderSettings();
+      return;
+    }
+    toast(t("Погода: ") + (r.city || city) + ", " + Math.round(r.temp) + "°", "ok");
     renderSettings();
   } }, t("Сохранить"));
   return el("section", { class: "box" }, el("h3", {}, t("Погода")),

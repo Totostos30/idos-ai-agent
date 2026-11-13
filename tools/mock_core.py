@@ -244,7 +244,9 @@ def handle(method: str, params: dict):
     if method == "media.state":
         return MEDIA
     if method == "media.control":
-        return {"ok": True}
+        MEDIA["playing"] = not MEDIA.get("playing", False)
+        MEDIA["active"] = True
+        return {"ok": True, "playing": MEDIA["playing"]}
     if method == "weather.state":
         return WEATHER
     if method == "weather.set_city":
