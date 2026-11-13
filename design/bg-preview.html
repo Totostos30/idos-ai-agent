@@ -38,12 +38,14 @@
   body { margin: 0; height: 100vh; overflow: hidden; background: var(--surface-0); color: var(--fg);
          font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
 
-  /* --- поле бегущих слов: фиксировано за окном приложения --- */
+  /* --- поле бегущих слов: фиксировано за окном приложения ---
+     Слова идут в разнобой, но не пересекаются: каждая полоса — отдельная
+     горизонтальная дорожка; внутри неё случайные размеры (0.5×–3×) и зазоры;
+     вертикально слово держится в своей дорожке, поэтому наложений нет. */
   .field { position: fixed; inset: 0; overflow: hidden; pointer-events: none; user-select: none; }
-  .row { position: absolute; left: 0; width: 200%; display: flex; gap: 56px; white-space: nowrap;
-         will-change: transform; animation: run linear infinite; }
+  .row { position: absolute; left: 0; width: max-content; display: inline-flex; align-items: center; white-space: nowrap;
+         will-change: transform; animation: run 90s linear infinite; }
   .row span { color: var(--accent); font-weight: 600; letter-spacing: 0.06em; }
-  .row span.dim { opacity: 0.55; }
   .row:nth-child(odd) { animation-direction: reverse; }
   @keyframes run { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   .giant { position: fixed; right: 2%; bottom: -3%; font-size: clamp(120px, 22vw, 260px); font-weight: 800;
@@ -97,7 +99,6 @@
   .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; }
   .legend b { font-weight: 600; color: var(--accent); }
   .legend span { color: var(--mut); }
-  @media (prefers-reduced-motion: reduce) { .row, .giant { animation: none; } }
 </style>
 </head>
 <body>
@@ -184,18 +185,31 @@
       "Ὕπνος", "Ἔρως", "Θέμις", "Μοῦσα", "Χάος", "Σοφία", "Γνῶσις", "Ἠχώ", "Δύναμις", "Μίμησις",
       "Θάλασσα", "Πῦρ", "Ἀκάδημα", "Λύκειον", "Στοά", "Προμηθεύς", "Ὠκεανός", "Ἀθήνη", "Ἀπόλλων"];
     const field = document.getElementById("field");
-    const ROWS = 8;
-    for (let r = 0; r < ROWS; r++) {
+    const BASE = 18; // 1× размера слова
+    const laneCount = Math.max(5, Math.min(9, Math.round((window.innerHeight || 900) / 125)));
+    const laneH = 100 / laneCount; // дорожки не пересекаются: слова живут в своей полосе
+    const pool = WORDS.slice().sort(() => Math.random() - 0.5);
+    for (let r = 0; r < laneCount; r++) {
       const row = document.createElement("div");
       row.className = "row";
-      // половина набора на строку, дублируем для бесшовного цикла translateX(-50%)
-      const pick = WORDS.filter((_, i) => i % ROWS === r % ROWS);
-      const seq = pick.concat(pick);
-      row.innerHTML = seq.map((w, i) => `<span${i % 3 === 1 ? ' class="dim"' : ""}>${w}</span>`).join("");
-      row.style.top = (3 + r * 12) + "%";
-      row.style.fontSize = (15 + (r % 3) * 5) + "px";
-      row.style.animationDuration = (70 + (r % 4) * 22) + "s";
-      row.style.animationDelay = (-r * 13) + "s";
+      row.style.top = (r * laneH) + "%";
+      row.style.height = laneH + "%";
+      // случайные размеры (0.5×–3×) и случайные зазоры — «в разнобой», но без наложений:
+      // внутри дорожки слова идут потоком (flex), между дорожками вертикальной совместности нет
+      let half = "", i = r, width = 0;
+      const target = Math.max(1400, (window.innerWidth || 1200) * 1.25);
+      while (width < target) {
+        const w = pool[i % WORDS.length];
+        i += 3;
+        const sc = 0.5 + Math.random() * 2.5;
+        const op = (0.10 + Math.random() * 0.10).toFixed(2);
+        const gap = Math.round(70 + Math.random() * 220);
+        half += `<span style="font-size:${Math.round(BASE * sc)}px;opacity:${op};margin-right:${gap}px">${w}</span>`;
+        width += BASE * sc * w.length * 0.62 + gap;
+      }
+      row.innerHTML = half + half; // дубль половины → бесшовный translateX(-50%)
+      row.style.animationDuration = Math.round(80 + Math.random() * 70) + "s";
+      row.style.animationDelay = (-Math.random() * 120).toFixed(0) + "s";
       field.appendChild(row);
     }
     function setTheme(t) {
