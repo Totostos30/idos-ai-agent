@@ -1,0 +1,238 @@
+<!doctype html>
+<!-- ПРЕВЬЮ: концепты виджетов островка и расширенной панели + варианты иконок.
+     Самодостаточно; иконки — монолинейный набор 24-сетка, stroke 2 (гайдбук §3). -->
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Эйдос — концепты островка</title>
+<style>
+  :root { --surface-0: #000; --surface-frame: #0b0b0d; --surface-1: #111114; --surface-2: #141417;
+    --fg: #f5f5f7; --mut: #9a9aa2; --line: rgba(255,255,255,.09); --fill-1: rgba(255,255,255,.07);
+    --accent: #7c8cff; --ok: #35d07f; --warn: #ffb547; --err: #ff5a5f; color-scheme: dark; }
+  [data-theme="light"] { --surface-0: #fbfbfd; --surface-frame: #f0f0f3; --surface-1: #f4f4f6; --surface-2: #f3f3f5;
+    --fg: #111114; --mut: #6b6b75; --line: rgba(0,0,0,.08); --fill-1: rgba(0,0,0,.05); --accent: #5b6ee0; color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--surface-0); color: var(--fg); padding: 34px 40px 60px;
+    font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
+  h1 { margin: 0 0 4px; font-size: 24px; letter-spacing: -0.02em; }
+  h2 { margin: 34px 0 4px; font-size: 18px; }
+  .sub { color: var(--mut); margin: 0 0 6px; }
+  .eyebrow { color: var(--accent); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; margin: 0 0 6px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .card { background: var(--surface-1); border-radius: 14px; box-shadow: inset 0 0 0 1px var(--line); padding: 14px 16px; }
+  .card h3 { margin: 10px 0 4px; font-size: 14.5px; }
+  .card p { margin: 0 0 10px; color: var(--mut); font-size: 12.5px; }
+  .mock { display: flex; justify-content: center; padding: 14px 8px; background: var(--surface-0);
+    border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line); }
+  .caps { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border-radius: 17px;
+    background: var(--surface-2); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.07); font-size: 12.5px; }
+  .caps .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--accent); display: inline-grid; place-items: center; }
+  .caps .dot i { width: 4px; height: 4px; border-radius: 50%; background: var(--fg); }
+  .caps .mutd { color: var(--mut); }
+  .panelmock { width: 100%; border-radius: 12px; background: var(--surface-2); box-shadow: inset 0 0 0 .5px var(--line); padding: 10px 12px; font-size: 12px; }
+  .prow { display: flex; align-items: center; gap: 8px; padding: 4px 0; color: var(--mut); }
+  .prow b { color: var(--fg); font-weight: 600; }
+  .variants { display: flex; gap: 8px; flex-wrap: wrap; }
+  .vtile { width: 52px; height: 52px; border-radius: 12px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line);
+    display: grid; place-items: center; color: var(--fg); }
+  .vtile.now { box-shadow: inset 0 0 0 1.5px var(--accent); }
+  .vlabel { display: block; text-align: center; font-size: 9.5px; color: var(--mut); margin-top: 3px; }
+  .vgroup { display: flex; gap: 6px; align-items: flex-start; }
+  .chip { font-size: 10.5px; padding: 1px 7px; border-radius: 9px; background: var(--fill-1); color: var(--mut); }
+  .chip.now { color: var(--accent); }
+  .bar { height: 6px; border-radius: 3px; background: var(--fill-1); overflow: hidden; flex: 1; }
+  .bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+  .themebar { position: fixed; top: 14px; right: 18px; display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; z-index: 5; }
+  .themebar button { border: 0; background: var(--surface-1); color: var(--mut); font: inherit; font-size: 11.5px; padding: 5px 12px; cursor: pointer; }
+  .themebar button.on { color: var(--fg); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+  svg.ic { width: 22px; height: 22px; display: block; }
+</style>
+</head>
+<body>
+  <div class="themebar">
+    <button class="on" onclick="setTheme('dark')">Тёмная</button>
+    <button onclick="setTheme('light')">Светлая</button>
+  </div>
+  <p class="eyebrow">Νῆσος · концепты</p>
+  <h1>Островок: что ещё показывать</h1>
+  <p class="sub">Каждая карточка — мини-макет капсулы или панели с виджетом. Под макетом — варианты иконки (✦ отмечен текущий).
+  Выбирайте номер концепта и букву варианта иконки — перенесу в живой островок.</p>
+
+  <h2>Капсула · новые виджеты</h2>
+  <div class="cards" id="capsCards"></div>
+
+  <h2>Панель · новые виджеты</h2>
+  <div class="cards" id="panelCards"></div>
+
+  <h2>Существующие элементы · варианты иконок</h2>
+  <div class="cards" id="iconCards"></div>
+
+  <script>
+  const I = (paths, extra = "") =>
+    `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}${extra}</svg>`;
+
+  // ---------- иконки-варианты ----------
+  const V = {
+    bat: {
+      a: I('<rect x="3" y="8" width="16" height="8.5" rx="2"/><path d="M21.5 11v2.5"/><rect x="5.5" y="10" width="6" height="4.5" rx="1" fill="currentColor" stroke="none"/>'),
+      b: I('<rect x="8" y="4" width="8" height="16.5" rx="2"/><path d="M10.5 4V2.5h3V4"/><rect x="10" y="13" width="4" height="5.5" rx="1" fill="currentColor" stroke="none"/>'),
+      c: I('<circle cx="12" cy="12" r="7.5" opacity=".3"/><path d="M12 4.5a7.5 7.5 0 0 1 7.5 7.5"/><path d="M13 7.5l-3.5 5h3l-1.5 4.5 3.8-5.6h-3.2Z" fill="currentColor" stroke="none"/>'),
+      d: I('<rect x="3" y="8" width="16" height="8.5" rx="2"/><path d="M21.5 11v2.5"/><path d="M12.4 9.5l-2.6 3.6h2.3l-1 2.9 3-4h-2.3Z" fill="currentColor" stroke="none"/>'),
+    },
+    vpn: {
+      a: I('<path d="M12 3.5 19 6.2v5.6c0 4.4-3 7.1-7 8.7-4-1.6-7-4.3-7-8.7V6.2L12 3.5Z"/><path d="M9.3 11.7l1.9 1.9 3.5-3.5"/>'),
+      b: I('<path d="M12 3.5 19 6.2v5.6c0 4.4-3 7.1-7 8.7-4-1.6-7-4.3-7-8.7V6.2L12 3.5Z"/><rect x="9.5" y="10.8" width="5" height="4.6" rx="1.2"/><path d="M10.6 10.8V9.4a1.4 1.4 0 0 1 2.8 0v1.4"/>'),
+      c: I('<path d="M12 3.5 19 6.2v5.6c0 4.4-3 7.1-7 8.7-4-1.6-7-4.3-7-8.7V6.2L12 3.5Z"/><circle cx="12" cy="11" r="1.6"/><path d="M12 12.6v3"/>'),
+      d: I('<rect x="6" y="10.5" width="12" height="9" rx="2.5"/><path d="M9 10.5V8a3 3 0 0 1 6 0v2.5"/><path d="M12 13.5v2.5"/>'),
+    },
+    weather: {
+      a: I('<path d="M10.2 5a1.9 1.9 0 0 1 3.8 0v7.8a4.3 4.3 0 1 1-3.8 0Z"/><path d="M12.1 9v5.5"/><circle cx="12.1" cy="16.2" r="1.3" fill="currentColor" stroke="none"/>'),
+      b: I('<circle cx="12" cy="11" r="3.4"/><path d="M12 3.5V6M12 16v2.5M4.5 11H7M17 11h2.5M6.7 5.7l1.7 1.7M15.6 14.6l1.7 1.7M6.7 16.3l1.7-1.7"/>'),
+      c: I('<path d="M7 17.5a4 4 0 0 1 .6-8 5 5 0 0 1 9.6 1.3A3.4 3.4 0 0 1 16.5 17.5Z"/><path d="M18.5 4v2M21 6.5h-2"/>'),
+      d: I('<path d="M3.5 12h9M10 12a3 3 0 0 1 6 0M16 12h4.5"/><path d="M6 16.5c0-1.2 1-2.2 2.2-2.2h6.6a2.6 2.6 0 0 1 0 5.2H8.2A2.2 2.2 0 0 1 6 17.3Z"/>'),
+    },
+    timer: {
+      a: I('<circle cx="12" cy="12" r="7.5"/><path d="M12 8v4.4l3 1.8"/>'),
+      b: I('<path d="M7 3.5h10v2.6l-3.6 4v1.8l3.6 4v4.1H7v-4.1l3.6-4v-1.8L7 6.1Z"/>'),
+      c: I('<circle cx="12" cy="13.5" r="7"/><path d="M10 3.2h4M12 3.2v3.3M12 13.5l2.8-2.8"/>'),
+      d: I('<circle cx="12" cy="12" r="8" opacity=".3"/><path d="M12 4a8 8 0 0 1 8 8"/><path d="M12 12V8M12 12l3 2"/>'),
+    },
+    clip: {
+      a: I('<rect x="6" y="5" width="12" height="16" rx="2"/><path d="M9.5 5V4a2.5 2.5 0 0 1 5 0v1"/>'),
+      b: I('<rect x="7.5" y="3.5" width="11" height="13" rx="2"/><path d="M5.5 7.5v11a2 2 0 0 0 2 2H15"/>'),
+      c: I('<rect x="6" y="5" width="12" height="16" rx="2"/><path d="M9.5 5V4a2.5 2.5 0 0 1 5 0v1"/><path d="M9.5 13l2 2 3.5-3.5"/>'),
+      d: I('<path d="M8.5 12 15 5.8a3.4 3.4 0 0 1 4.8 4.8l-7.7 7.7a5.3 5.3 0 0 1-7.5-7.5l7.6-7.6"/>'),
+    },
+    mic: {
+      a: I('<rect x="9.2" y="4" width="5.6" height="10.5" rx="2.8"/><path d="M6.2 11.2a5.8 5.8 0 0 0 11.6 0M12 17v3"/>'),
+      b: I('<rect x="9.2" y="4" width="5.6" height="10.5" rx="2.8"/><path d="M12 17v3"/><path d="M16.8 7.5a5.5 5.5 0 0 1 0 8.5M19.2 5.5a9 9 0 0 1 0 12.5"/>'),
+      c: I('<path d="M4.5 10.5v3M8.5 7.5v9M12.5 5v14M16.5 8v8M20.5 10.5v3"/>'),
+      d: I('<rect x="9.2" y="4" width="5.6" height="10.5" rx="2.8"/><path d="M6.2 11.2a5.8 5.8 0 0 0 11.6 0M12 17v3"/><path d="M4.5 4l15 16"/>'),
+    },
+    stop: {
+      a: I('<path d="M8.2 3.5h7.6l4.7 4.7v7.6l-4.7 4.7H8.2L3.5 15.8V8.2L8.2 3.5Z"/><rect x="9.2" y="9.2" width="5.6" height="5.6" rx="1.4" fill="currentColor" stroke="none"/>'),
+      b: I('<path d="M8.2 3.5h7.6l4.7 4.7v7.6l-4.7 4.7H8.2L3.5 15.8V8.2L8.2 3.5Z"/><path d="M12 7.5v5"/><circle cx="12" cy="15.8" r=".6" fill="currentColor" stroke="none"/>'),
+      c: I('<circle cx="12" cy="12" r="8.5"/><rect x="9.2" y="9.2" width="5.6" height="5.6" rx="1.4" fill="currentColor" stroke="none"/>'),
+      d: I('<circle cx="12" cy="12" r="8.5"/><path d="M12.8 6.5 9 12.6h2.8l-.9 4.9 4-6.4h-2.8Z" fill="currentColor" stroke="none"/>'),
+    },
+    net: {
+      a: I('<path d="M7 4.5v9M7 13.5 4.5 11M7 13.5 9.5 11"/><path d="M17 19.5v-9M17 10.5 14.5 13M17 10.5 19.5 13"/>'),
+      b: I('<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.3 3.8 5.2 3.8 8.5s-1.3 6.2-3.8 8.5M12 3.5C9.5 5.8 8.2 8.7 8.2 12s1.3 6.2 3.8 8.5"/>'),
+      c: I('<path d="M12 4v9m0 0 3.5-3.5M12 13l-3.5-3.5"/><path d="M5 16.5v2A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-2"/>'),
+    },
+    cal: {
+      a: I('<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/><circle cx="9" cy="14" r="1.1" fill="currentColor" stroke="none"/><circle cx="13" cy="14" r="1.1" fill="currentColor" stroke="none"/>'),
+      b: I('<path d="M12 4a5.5 5.5 0 0 1 5.5 5.5c0 3.5 1 4.5 1.8 5.5H4.7c.8-1 1.8-2 1.8-5.5A5.5 5.5 0 0 1 12 4Z"/><path d="M10 18.5a2.2 2.2 0 0 0 4 0"/>'),
+    },
+    cpu: {
+      a: I('<path d="M4.5 14a7.5 7.5 0 0 1 15 0"/><path d="M12 14l3.5-4.5"/><path d="M4.5 14h3M16.5 14h3M12 14h.01"/>'),
+      b: I('<rect x="7" y="7" width="10" height="10" rx="2"/><path d="M10 7V4.5M14 7V4.5M10 19.5V17M14 19.5V17M7 10H4.5M7 14H4.5M19.5 10H17M19.5 14H17"/><rect x="10" y="10" width="4" height="4" rx="1" fill="currentColor" stroke="none"/>'),
+      c: I('<path d="M6 17V9M12 17V5.5M18 17v-4"/><path d="M4 20h16"/>'),
+    },
+    phone: {
+      a: I('<path d="M4.5 14v-2a7.5 7.5 0 0 1 15 0v2"/><rect x="3.5" y="13.5" width="4.5" height="6.5" rx="2"/><rect x="16" y="13.5" width="4.5" height="6.5" rx="2"/>'),
+      b: I('<path d="M12 4v9m0 0 3.5-3.5M12 13l-3.5-3.5"/><path d="M5 16.5v2A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-2"/>'),
+    },
+  };
+
+  // ---------- концепты капсулы ----------
+  const CAPS = [
+    { t: "Загрузка системы", d: "ЦП/ОЗУ дугой с процентом; при перегреве или 90%+ подсвечивается warn.", i: V.cpu,
+      mock: `<div class="caps"><span class="dot"><i></i></span><span>${I(V.cpu.a)}</span><b>37° 62%</b></div>` },
+    { t: "Сеть и трафик", d: "Скорость ↓↑ рядом со щитом VPN; клик — детали соединения.", i: V.net,
+      mock: `<div class="caps"><span class="dot"><i></i></span><span class="mutd">${I(V.vpn.a)}</span><span>${I(V.net.a)}</span><span class="mutd">42 Мбит</span></div>` },
+    { t: "Фокус-сессия", d: "Помодоро: капсула-таймер с кольцом прогресса, «перерыв через 5:00».", i: V.timer,
+      mock: `<div class="caps"><span class="dot"><i></i></span><span>${I(V.timer.d)}</span><b>24:12</b><span class="mutd">фокус</span></div>` },
+    { t: "Ближайшее событие", d: "До встречи из календаря Windows: «15:00 · планёрка — 25 мин».", i: V.cal,
+      mock: `<div class="caps"><span class="dot"><i></i></span><span>${I(V.cal.a)}</span><b>15:00</b><span class="mutd">планёрка · 25 мин</span></div>` },
+    { t: "Скачивания", d: "Активная загрузка с прогрессом и скоростью; по завершении — карточка.", i: V.phone,
+      mock: `<div class="caps"><span class="dot"><i></i></span><span>${I(V.phone.b)}</span><span class="bar" style="width:70px"><i style="width:64%"></i></span><span class="mutd">64%</span></div>` },
+    { t: "Батарея устройств", d: "Наушники/мышь/геймпад: маленькие уровни рядом с батареей ПК.", i: V.phone,
+      mock: `<div class="caps"><span class="dot"><i></i></span><span>${I(V.phone.a)}</span><span class="mutd">87%</span><span class="mutd"> headphones</span></div>` },
+    { t: "Курс и тикеры", d: "Валюта/акции/крипта бегущей строкой при простое капсулы.", i: V.net,
+      mock: `<div class="caps"><span class="dot"><i></i></span><span class="mutd">$ 92.4 ↓ · ₿ 97.3k ↑</span></div>` },
+    { t: "Таймер сна / выключение", d: "«Погасить через 30 мин» — с отменой жестом.", i: V.timer,
+      mock: `<div class="caps"><span class="dot"><i></i></span><span>${I(V.timer.a)}</span><b>30:00</b><span class="mutd">сон</span></div>` },
+    { t: "Распознавание трека", d: "Капсула «слушает» музыку и показывает название, как Shazam.", i: V.mic,
+      mock: `<div class="caps"><span class="dot"><i></i></span><span>${I(V.mic.c)}</span><span class="mutd">слушаю трек…</span></div>` },
+    { t: "Статус модели/ядра", d: "Первый запуск: «качается модель — 40%», прогрев ядра.", i: V.cpu,
+      mock: `<div class="caps"><span class="dot"><i></i></span><span class="bar" style="width:80px"><i style="width:40%"></i></span><span class="mutd">модель 40%</span></div>` },
+  ];
+
+  // ---------- концепты панели ----------
+  const PANEL = [
+    { t: "Прогноз погоды на 5 дней", d: "Строка дней: иконка, min/max; сегодня выделено акцентом.", i: V.weather,
+      mock: `<div class="panelmock"><div class="prow"><b>Сегодня 12°</b><span>облачно</span></div>
+        <div class="prow"><span>Чт</span><span>${I(V.weather.b)}</span><span>8° / 14°</span></div>
+        <div class="prow"><span>Пт</span><span>${I(V.weather.c)}</span><span>7° / 12°</span></div></div>` },
+    { t: "Повестка дня", d: "Ближайшие события календаря с обратным отсчётом.", i: V.cal,
+      mock: `<div class="panelmock"><div class="prow"><span>${I(V.cal.a)}</span><b>15:00 планёрка</b><span class="chip">через 25 мин</span></div>
+        <div class="prow"><span>${I(V.cal.b)}</span><b>18:30 спортзал</b></div></div>` },
+    { t: "Системный монитор", d: "ЦП / ОЗУ / диск полосами; топ-процесс по клику.", i: V.cpu,
+      mock: `<div class="panelmock"><div class="prow"><span>ЦП</span><span class="bar"><i style="width:37%"></i></span><span>37%</span></div>
+        <div class="prow"><span>ОЗУ</span><span class="bar"><i style="width:62%"></i></span><span>62%</span></div>
+        <div class="prow"><span>Диск</span><span class="bar"><i style="width:8%"></i></span><span>8%</span></div></div>` },
+    { t: "Менеджер загрузок", d: "Активные загрузки: прогресс, скорость, пауза.", i: V.phone,
+      mock: `<div class="panelmock"><div class="prow"><span>${I(V.phone.b)}</span><b>update.zip</b><span class="bar"><i style="width:64%"></i></span><span>64%</span></div>
+        <div class="prow"><span class="chip">пауза</span><span class="chip">отмена</span></div></div>` },
+    { t: "Микшер громкости", d: "Ползунки по приложениям: музыка тише — голос громче.", i: V.volume || V.net,
+      mock: `<div class="panelmock"><div class="prow"><b>Музыка</b><span class="bar"><i style="width:40%"></i></span></div>
+        <div class="prow"><b>Голос</b><span class="bar"><i style="width:85%"></i></span></div></div>` },
+    { t: "Живой сценарий", d: "Какой сценарий выполняется сейчас и на каком шаге он стоит.", i: V.cal,
+      mock: `<div class="panelmock"><div class="prow"><b>Утренний брифинг</b><span class="chip">шаг 3/7</span></div>
+        <div class="prow"><span class="mutd">Запустить программу ✓ → Прочитать ✓ → Спросить…</span></div></div>` },
+    { t: "Мировые часы", d: "2–3 часовых пояса: команда, близкие.", i: V.timer,
+      mock: `<div class="panelmock"><div class="prow"><b>Казань 23:41</b><span class="mutd">дом</span></div>
+        <div class="prow"><b>Берлин 21:41</b><span class="mutd">команда</span></div></div>` },
+    { t: "Заметка на лету", d: "Последняя заметка и быстрый ввод без открытия окна.", i: V.clip,
+      mock: `<div class="panelmock"><div class="prow"><span>${I(V.clip.c)}</span><b class="mutd">идея: добавить тёмный смузи-режим</b></div></div>` },
+    { t: "Здоровье", d: "Пауза 20-20-20 для глаз, «встань и пройдись», вода.", i: V.timer,
+      mock: `<div class="panelmock"><div class="prow"><span>${I(V.timer.d)}</span><b>глаза: 20 сек</b><span class="chip">осталось 12с</span></div></div>` },
+    { t: "Сводка дня", d: "Утренний дайджест, который собирает агент: погода, дела, напоминания.", i: V.cal,
+      mock: `<div class="panelmock"><div class="prow"><b>Доброе утро</b></div>
+        <div class="prow"><span class="mutd">12° облачно · 2 события · 3 задачи</span></div></div>` },
+  ];
+
+  // ---------- варианты для существующих ----------
+  const EXISTING = [
+    { t: "Батарея (капсула)", cur: "a", v: V.bat,
+      names: ["контур + уровень", "вертикальная", "дуга + молния", "контур + молния"] },
+    { t: "VPN · щит", cur: "a", v: V.vpn,
+      names: ["щит + галочка (сейчас)", "щит + замок", "щит + ключ", "замок"] },
+    { t: "Погода / температура", cur: "—", v: V.weather,
+      names: ["термометр", "солнце + °", "облако + °", "ветер + °"] },
+    { t: "Таймер", cur: "a", v: V.timer,
+      names: ["циферблат (сейчас)", "песочные часы", "секундомер", "кольцо отсчёта"] },
+    { t: "Буфер обмена", cur: "a", v: V.clip,
+      names: ["планшет (сейчас)", "стопка листов", "лист + галочка", "скрепка"] },
+    { t: "Микрофон", cur: "a", v: V.mic,
+      names: ["капсула (сейчас)", "с волнами", "дорожка уровня", "выключен (слэш)"] },
+    { t: "Экстренная остановка", cur: "a", v: V.stop,
+      names: ["восьмиугольник (сейчас)", "восьмиугольник + !", "круг + квадрат", "молния в круге"] },
+  ];
+
+  const card = (title, desc, mock, v, names, curKey) => {
+    const variants = v ? `<div class="variants">${Object.entries(v).map(([k, svg], idx) =>
+      `<div><div class="vtile ${k === curKey ? "now" : ""}">${svg}</div><span class="vlabel">${(names && names[idx]) || "АБВГ"[idx]}</span></div>`).join("")}</div>` : "";
+    return `<div class="card">
+      <div class="mock">${mock}</div>
+      <h3>${title}</h3>
+      <p>${desc}</p>
+      ${variants}
+    </div>`;
+  };
+
+  document.getElementById("capsCards").innerHTML =
+    CAPS.map((c, idx) => card(`${idx + 1}. ${c.t}`, c.d, c.mock, c.i, null)).join("");
+  document.getElementById("panelCards").innerHTML =
+    PANEL.map((c, idx) => card(`${idx + 1}. ${c.t}`, c.d, c.mock, c.i, null)).join("");
+  document.getElementById("iconCards").innerHTML =
+    EXISTING.map((e) => card(e.t, "Варианты в той же моно-линейной сетке.", e.v.a, e.v, e.names, e.cur)).join("");
+
+  function setTheme(t) {
+    document.documentElement.dataset.theme = t;
+    document.querySelectorAll(".themebar button").forEach((b, i) => b.classList.toggle("on", (i === 0) === (t === "dark")));
+  }
+  </script>
+</body>
+</html>
