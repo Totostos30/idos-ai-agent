@@ -40,6 +40,7 @@ const S = {
   hover: false,
   stick: false,
   near: false,
+  musicView: "auto",
   kbd: {},
   privacy: {},
 };
@@ -63,7 +64,8 @@ function mode() {
   if (S.agent.showReply) return "reply";
   if (S.rec.recording) return "rec";
   if (runningTimers().length) return "timer";
-  if (S.media.active && S.media.title) return "music";
+  // ПКМ переключает вид капсулы: musicView "normal" показывает обычный островок во время музыки
+  if (S.media.active && S.media.title && S.musicView !== "normal") return "music";
   return "idle";
 }
 
@@ -884,7 +886,14 @@ export function mountIsland() {
       if (r && typeof r.volume === "number") { S.vol = { v: r.volume, at: Date.now() }; render(); setTimeout(render, 1300); }
     }, 60);
   }, { passive: false });
-  isl.addEventListener("contextmenu", (e) => { e.preventDefault(); hotkey("voice"); });
+  // ПКМ по капсуле: переключение музыкального и обычного вида. Голос по ПКМ убрали —
+  // запуск микрофона падал карточкой «Нет доступа к микрофону», голос остался на PageUp.
+  isl.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    if (mode() === "music") S.musicView = "normal";
+    else if (S.media.active && S.media.title) S.musicView = "auto";
+    render();
+  });
 
   listen("hotkey", (name) => hotkey(typeof name === "string" ? name : name && name.name));
   listen("emergency-stop", stopAll);
@@ -956,7 +965,7 @@ export function mountIsland() {
     if (t.state === "cancelled") S.timers.delete(t.id);
     render();
   });
-  core.on("media.state", (m) => { S.media = m || { active: false }; render(); });
+  core.on("media.state", (m) => { S.media = m || { active: false }; if (!(S.media && S.media.active)) S.musicView = "auto"; render(); });
   core.on("media.position", (p) => { if (S.media) { S.media.position = p.position; if (mode() === "panel" && S.tab === "now" && Date.now() - (S.posDrawn || 0) > 900) { S.posDrawn = Date.now(); render(); } } });
   core.on("media.levels", (d) => {
     S.bands = d.bands || S.bands;
