@@ -411,3 +411,7 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 /* знак Νοῦς в капсуле: обёртка центрирует движок вместо слоёв орба */
 .orb.nous-wrap { display: inline-flex; align-items: center; justify-content: center; overflow: visible; }
 .orb.nous-wrap .nous-mark { flex: none; }
+
+/* часы острова: тихий пульс двоеточия — остров жив и в покое (ревью I1) */
+.clock .colon { animation: colonPulse 2s ease-in-out infinite; }
+@keyframes colonPulse { 50% { opacity: 0.25; } }

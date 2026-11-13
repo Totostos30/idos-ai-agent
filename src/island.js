@@ -128,7 +128,7 @@ function batInfo() {
 
 function clock() {
   const d = new Date();
-  return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  return String(d.getHours()).padStart(2, "0") + '<span class="colon">:</span>' + String(d.getMinutes()).padStart(2, "0");
 }
 
 const VIEWS = {
@@ -143,7 +143,7 @@ const VIEWS = {
       el("span", { class: "vol" }, el("i", { style: { width: S.vol.v + "%" } })), el("span", { class: "mono sub" }, String(S.vol.v)))];
     return [el("div", { class: "row pill tri" },
       el("span", { class: "side l" }, liquid || !on("orb") ? null : orb(), ...dots()),
-      el("span", { class: "mid" }, on("clock") ? el("span", { class: "clock" }, clock()) : null, bat),
+      el("span", { class: "mid" }, on("clock") ? Object.assign(el("span", { class: "clock" }), { innerHTML: clock() }) : null, bat),
       el("span", { class: "side r" }, !S.online && on("core_status") ? el("span", { class: "chip warn" }, "ядро…") : temp))];
   },
   music: () => {
@@ -294,7 +294,7 @@ function panel() {
   const editing = S.tab === "edit";
   const head = el("div", { class: "row tabs" }, on("h_orb") ? orb() : null,
     editing ? el("span", { class: "label" }, "Настройка островка")
-      : tabs.length > 1 ? tabs.map(([id, name]) => el("button", { class: "tab" + (S.tab === id ? " on" : ""), onclick: (e) => { e.stopPropagation(); S.tab = id; if (id === "clip") loadClip(); render(); } }, name))
+      : tabs.length > 1 ? tabs.map(([id, name]) => el("button", { class: "tab" + (S.tab === id ? " on" : ""), title: name, onclick: (e) => { e.stopPropagation(); S.tab = id; if (id === "clip") loadClip(); render(); } }, name))
       : el("span", { class: "label" }, tabs[0][1]),
     el("span", { class: "grow" }),
     on("h_edit") || editing ? el("button", { class: "icon" + (editing ? " on" : ""), title: editing ? "Готово" : "Настроить: что показывать", onclick: (e) => { e.stopPropagation(); toggleEdit(); } }, editing ? iconNode("check", 13) : iconNode("edit", 13)) : null,

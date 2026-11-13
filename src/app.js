@@ -429,7 +429,7 @@ async function renderSettings() {
     const q = filter.value.trim().toLowerCase();
     body.replaceChildren(...Object.entries(cfg).filter(([, v]) => v && typeof v === "object" && !Array.isArray(v)).map(([sec, vals]) => {
       const rows = Object.entries(vals).filter(([k]) => !(sec === "island" && (PARTS_KEYS.has(k) || k === "waves"))).filter(([k]) => !q || (sec + "." + k).toLowerCase().includes(q)).map(([k, v]) =>
-        el("div", { class: "setrow" }, el("span", { class: "k mono" }, k), field(sec + "." + k, v)));
+        el("div", { class: "setrow" + (q ? " hl" : "") }, el("span", { class: "k mono" }, k), field(sec + "." + k, v)));
       if (!rows.length) return el("span");
       return el("section", { class: "box" }, el("h3", {}, SECTION_NAMES[sec] || sec, el("span", { class: "mut small" }, "  " + sec)), rows,
         el("div", { class: "row2 end" }, el("button", { class: "btn ghost", onclick: (e) => confirmClick(e.currentTarget, async () => { await core.try("settings.reset", { key: sec }); renderSettings(); }) }, "Сбросить раздел")));
