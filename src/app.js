@@ -951,7 +951,7 @@ function showAsk(d) {
 // Фон Γλῶτта: бегущие греческие слова мифов и философов в цвете темы
 // (design/bg-preview.html — превью). Дорожки не пересекаются, размеры 0.5×–3×.
 const BG_WORDS = ["εἶδος", "Νοῦς", "Λόγος", "Ἀλήθεια", "Μνήμη", "Κόσμος", "Ἀρετή", "Φύσις", "Τύχη", "Μοῖρα",
-  "Ὕπνος", "Ἔρως", "Θέμις", "Μοῦσα", "Χάος", "Σοφία", "Γνῶσις", "Ἠχώ", "Δύναμις", "Μίμησις",
+  "Ὕπνος", "Ἔρως", "Θέμις", "Μοῦσα", "Χάος", "Σοφία", "Γνῶσις", "Δύναμις", "Μίμησις",
   "Θάλασσα", "Πῦρ", "Ἀκάδημα", "Λύκειον", "Στοά", "Προμηθεύς", "Ὠκεανός", "Ἀθήνη", "Ἀπόλλων"];
 
 function buildWordField() {
@@ -969,7 +969,7 @@ function buildWordField() {
       const w = pool[i % BG_WORDS.length];
       i += 3;
       const sc = 0.5 + Math.random() * 2.5;
-      const op = (0.10 + Math.random() * 0.10).toFixed(2);
+      const op = (0.06 + Math.random() * 0.06).toFixed(2);
       const gap = Math.round(70 + Math.random() * 220);
       half += `<span style="font-size:${Math.round(18 * sc)}px;opacity:${op};margin-right:${gap}px">${w}</span>`;
       width += 18 * sc * w.length * 0.62 + gap;
