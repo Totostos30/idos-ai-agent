@@ -13,6 +13,29 @@ export const ACCENTS = {
 };
 let lastCfg = { preset: "dark", accent: "" };
 let media = null;
+let customThemes = {}; // slug → {name, base, vars} (THEMES §3)
+const CUSTOM_APPLIED = []; // переменные, выставленные последней кастомной темой
+
+// Базы для слияния и контраст-гейта на фронте (дублируют tokens.css)
+export const BASE_VARS = {
+  dark: { "--surface-0": "#000", "--surface-frame": "#0b0b0d", "--surface-1": "#111114", "--surface-2": "#141417",
+    "--surface-3": "#1b1b20", "--bubble-user": "#2a2d3a", "--fg": "#f5f5f7", "--mut": "#9a9aa2",
+    "--line": "rgba(255,255,255,0.09)", "--fill-1": "rgba(255,255,255,0.07)", "--fill-2": "rgba(255,255,255,0.13)",
+    "--accent": "#7c8cff", "--accent-contrast": "#000", "--ok": "#35d07f", "--warn": "#ffb547", "--err": "#ff5a5f" },
+  light: { "--surface-0": "#fbfbfd", "--surface-frame": "#f0f0f3", "--surface-1": "#f4f4f6", "--surface-2": "#f3f3f5",
+    "--surface-3": "#ffffff", "--bubble-user": "#e4e7ff", "--fg": "#111114", "--mut": "#6b6b75",
+    "--line": "rgba(0,0,0,0.08)", "--fill-1": "rgba(0,0,0,0.05)", "--fill-2": "rgba(0,0,0,0.1)",
+    "--accent": "#5b6ee0", "--accent-contrast": "#fff", "--ok": "#1f9d5e", "--warn": "#b07016", "--err": "#e03e43" },
+};
+
+export async function loadCustomThemes() {
+  try {
+    const list = await core.call("themes.list", {}, 8000);
+    if (Array.isArray(list)) customThemes = Object.fromEntries(list.map((t) => [t.slug, t]));
+  } catch (e) { customThemes = {}; }
+  return customThemes;
+}
+export function customThemesMap() { return customThemes; }
 
 function systemDark() { return matchMedia("(prefers-color-scheme: dark)").matches; }
 
@@ -31,10 +54,23 @@ function schemeOf(preset) {
 export function applyTheme(cfg) {
   lastCfg = normalizeTheme(cfg);
   const { preset, accent } = lastCfg;
-  const scheme = schemeOf(preset);
   const root = document.documentElement;
+  // сброс переменных предыдущей кастомной темы
+  for (const k of CUSTOM_APPLIED.splice(0)) root.style.removeProperty(k);
+  let scheme;
+  const custom = customThemes[preset];
+  if (custom) {
+    scheme = custom.base === "light" ? "light" : "dark";
+    const merged = Object.assign({}, BASE_VARS[scheme], custom.vars || {});
+    for (const [k, v] of Object.entries(merged)) {
+      root.style.setProperty(k, v);
+      CUSTOM_APPLIED.push(k);
+    }
+  } else {
+    scheme = schemeOf(preset);
+  }
   root.dataset.theme = scheme;
-  root.dataset.scheme = preset;
+  root.dataset.scheme = custom ? "custom:" + preset : preset;
   const a = accent && ACCENTS[accent];
   if (a) root.style.setProperty("--accent", scheme === "light" ? a.light : a.dark);
   else root.style.removeProperty("--accent");
@@ -49,11 +85,13 @@ export function applyCachedTheme() {
 
 export function initTheme() {
   applyCachedTheme();
+  loadCustomThemes().then(() => applyTheme(lastCfg)).catch(() => {});
   core.try("settings.get", {}, 8000).then((cfg) => {
     if (cfg && !cfg.error && cfg.theme) applyTheme(cfg.theme);
   }).catch(() => {});
   core.on("settings.changed", ({ key }) => {
-    if (key !== "theme") return;
+    if (key !== "theme" && !key.startsWith("themes.")) return;
+    if (key.startsWith("themes.")) { loadCustomThemes().then(() => applyTheme(lastCfg)).catch(() => {}); return; }
     core.try("settings.get", {}, 8000).then((c) => { if (c && !c.error) applyTheme(c.theme); }).catch(() => {});
   });
   media = matchMedia("(prefers-color-scheme: dark)");

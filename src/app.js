@@ -4,7 +4,7 @@ import { invoke, listen, el, toast, win, inTauri, micIcon, setMicState } from ".
 import { Mic } from "./voice.js";
 import { icon, iconNode } from "./icons.js";
 import { createNous } from "./nous.js";
-import { applyTheme, ACCENTS, normalizeTheme } from "./theme.js";
+import { applyTheme, ACCENTS, BASE_VARS, normalizeTheme } from "./theme.js";
 import { renderScenarios, scenarioEvent } from "./scenarios.js";
 import { PARTS, TAB_LIST, TOOL_LIST, partOn, listOn, partValues, RESET_VALUES, applyValues } from "./parts.js";
 
@@ -477,8 +477,65 @@ function themeBox(cfg) {
       return sw;
     }));
   box.append(el("div", { class: "setrow" }, el("span", { class: "k" }, "Тема"), seg),
-    el("div", { class: "setrow" }, el("span", { class: "k" }, "Акцент"), swatches));
+    el("div", { class: "setrow" }, el("span", { class: "k" }, "Акцент"), swatches),
+    customThemesUI(cur));
   return box;
+}
+
+// Кастомные темы (THEMES §3): выбор, JSON-редактор, сохранение с контраст-гейтом в ядре.
+function customThemesUI(cur) {
+  const select = el("select", { class: "field small" }, el("option", { value: "" }, "— нет —"));
+  const editor = el("textarea", { class: "field mono", rows: 6, spellcheck: "false" });
+  const status = el("span", { class: "mut small" }, "");
+  let themesMap = {};
+  const fillEditor = (slug) => {
+    const t = slug && themesMap[slug];
+    editor.value = JSON.stringify(t ? { name: t.name, base: t.base, vars: t.vars }
+      : { name: "Моя тема", base: "dark", vars: { "--surface-0": "", "--accent": "" } }, null, 2);
+  };
+  const refresh = async () => {
+    try {
+      const list = await core.call("themes.list", {}, 8000);
+      themesMap = Object.fromEntries((Array.isArray(list) ? list : []).map((t) => [t.slug, t]));
+      select.replaceChildren(el("option", { value: "" }, "— нет —"),
+        ...Object.entries(themesMap).map(([slug, t]) => el("option", { value: slug }, t.name)));
+      select.value = cur.preset.startsWith("custom:") ? cur.preset.slice(7) : "";
+      if (select.value && themesMap[select.value]) fillEditor(select.value);
+    } catch (e) { status.textContent = "Список тем недоступен"; }
+  };
+  select.addEventListener("change", async () => {
+    fillEditor(select.value);
+    await core.try("settings.set", { key: "theme", value: { preset: select.value ? "custom:" + select.value : "dark", accent: cur.accent } });
+    const c = await core.try("settings.get", {}, 8000);
+    if (c && !c.error) applyTheme(c.theme);
+  });
+  const saveBtn = el("button", { class: "btn", onclick: async () => {
+    let payload;
+    try { payload = JSON.parse(editor.value); } catch (e) { toast("Неверный JSON в теме", "error"); return; }
+    // полное слияние поверх базы: ядро проверяет контраст на итоговых значениях
+    const base = payload.base === "light" ? "light" : "dark";
+    const merged = Object.assign({}, BASE_VARS[base], payload.vars || {});
+    const r = await core.try("themes.save", { name: payload.name || "Тема", base, vars: merged }, 8000);
+    if (r && r.error) { toast(r.error, "error"); return; }
+    toast("Тема сохранена", "ok");
+    await core.try("settings.set", { key: "theme", value: { preset: "custom:" + r.slug, accent: cur.accent } });
+    await refresh();
+    const c = await core.try("settings.get", {}, 8000);
+    if (c && !c.error) applyTheme(c.theme);
+  } }, "Сохранить");
+  const delBtn = el("button", { class: "btn ghost", onclick: async () => {
+    if (!select.value) return;
+    await core.try("themes.delete", { name: select.value }, 8000);
+    await core.try("settings.set", { key: "theme", value: { preset: "dark", accent: cur.accent } });
+    applyTheme({ preset: "dark", accent: cur.accent });
+    await refresh();
+  } }, "Удалить");
+  refresh();
+  return el("div", { class: "custom-themes" },
+    el("div", { class: "setrow" }, el("span", { class: "k" }, "Своя тема"), select, saveBtn, delBtn),
+    el("div", { class: "setrow" }, editor),
+    status,
+    el("div", { class: "mut small" }, "JSON: name, base (dark/light) и vars — только семантические переменные. Ядро не сохранит тему с контрастом текста ниже 4.5:1."));
 }
 
 function waveSettingsBox(cfg) {

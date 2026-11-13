@@ -7,6 +7,7 @@ threads explicitly. Secrets never leave the core: key lists are masked.
 from __future__ import annotations
 
 import asyncio
+import json
 import base64
 import logging
 from typing import Any, Callable
@@ -399,6 +400,88 @@ def build_methods(app) -> dict[str, Callable[..., Any]]:
         status = await app.stt.ensure()
         bus.emit("voice.stt", status)
         return status
+
+    # ------------------------------------------------------------------ themes (кастомные, THEMES.md §3)
+    # Пользовательские темы: data/themes/<slug>.json. Сохранение проходит контраст-гейт:
+    # пары текст/поверхность ниже 4.5:1 не сохраняются — тема не может стать нечитаемой.
+    @method("themes.list")
+    async def themes_list() -> list:
+        out = []
+        d = config.DATA / "themes"
+        for f in sorted(d.glob("*.json")) if d.is_dir() else []:
+            try:
+                item = json.loads(f.read_text(encoding="utf-8"))
+                out.append({"slug": f.stem, "name": item.get("name", f.stem),
+                            "base": item.get("base", "dark"), "vars": item.get("vars", {})})
+            except (OSError, ValueError):
+                continue
+        return out
+
+    @method("themes.save")
+    async def themes_save(name: str, base: str = "dark", vars: dict | None = None) -> dict:
+        import re as _re
+
+        slug = _re.sub(r"[^\w\-]+", "-", (name or "").strip().lower(), flags=_re.UNICODE).strip("-_")[:40] or "theme"
+        clean = {}
+        for k, v in (vars or {}).items():
+            k = str(k)
+            if k.startswith("--") and isinstance(v, str) and v.strip():
+                clean[k] = v.strip()
+        base = base if base in ("dark", "light") else "dark"
+
+        def lum(hexc: str):
+            h = hexc.strip().lstrip("#")
+            if len(h) == 3:
+                h = "".join(ch * 2 for ch in h)
+            if len(h) != 6 or not all(ch in "0123456789abcdefABCDEF" for ch in h):
+                return None
+            def lin(c: str):
+                x = int(c, 16) / 255
+                return x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4
+            r, g, b = (lin(h[i:i + 2]) for i in (0, 2, 4))
+            return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+        def contrast(a: str, b: str):
+            la, lb = lum(a), lum(b)
+            if la is None or lb is None:
+                return None
+            hi, lo = max(la, lb), min(la, lb)
+            return (hi + 0.05) / (lo + 0.05)
+
+        pairs = [("text-1", "surface-0"), ("text-1", "surface-1"), ("text-1", "surface-2"), ("text-1", "surface-3"),
+                 ("text-2", "surface-0"), ("text-2", "surface-1"), ("text-2", "surface-2"), ("text-2", "surface-3")]
+        failed = []
+        for ta, sa in pairs:
+            t, srf = clean.get("--" + ta), clean.get("--" + sa)
+            if not t or not srf:
+                continue
+            cr = contrast(t, srf)
+            if cr is not None and cr < 4.5:
+                failed.append(f"--{ta} на --{sa}: {cr:.2f}")
+        acc_t, acc = clean.get("--accent-contrast"), clean.get("--accent")
+        if acc_t and acc:
+            cr = contrast(acc_t, acc)
+            if cr is not None and cr < 3:
+                failed.append(f"--accent-contrast на --accent: {cr:.2f}")
+        if failed:
+            raise ValueError("Контраст ниже 4.5:1 — тема не сохранена. Провалены пары: " + "; ".join(failed))
+
+        d = config.DATA / "themes"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / (slug + ".json")).write_text(
+            json.dumps({"name": name.strip() or slug, "base": base, "vars": clean}, ensure_ascii=False), encoding="utf-8")
+        return {"slug": slug, "saved": True}
+
+    @method("themes.delete")
+    async def themes_delete(name: str) -> dict:
+        import re as _re
+
+        slug = _re.sub(r"[^\w\-]+", "-", (name or "").strip().lower(), flags=_re.UNICODE).strip("-_")[:40]
+        f = config.DATA / "themes" / (slug + ".json")
+        if f.is_file():
+            f.unlink()
+            return {"deleted": True}
+        return {"deleted": False}
 
     @method("voice.stt_probe")
     async def stt_probe(full: bool = True) -> dict:

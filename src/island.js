@@ -166,15 +166,15 @@ const VIEWS = {
         lyricOn ? el("span", { class: "sung", key: S.lyric }, S.lyric) : on("music_title") ? el("span", { class: "a" }, m.artist || m.app || "") : null,
         thin()),
       !on("music_controls") ? null : el("span", { class: "mini-ctl" },
-        el("button", { class: "icon", disabled: !m.can_prev, onclick: (e) => { e.stopPropagation(); core.try("media.control", { action: "previous" }); } }, "⏮"),
-        el("button", { class: "icon", onclick: (e) => { e.stopPropagation(); core.try("media.control", { action: "play_pause" }); } }, m.playing ? "⏸" : "▶"),
-        el("button", { class: "icon", disabled: !m.can_next, onclick: (e) => { e.stopPropagation(); core.try("media.control", { action: "next" }); } }, "⏭")))];
+        el("button", { class: "icon", disabled: !m.can_prev, onclick: (e) => { e.stopPropagation(); core.try("media.control", { action: "previous" }); } }, iconNode("prev", 13)),
+        el("button", { class: "icon", onclick: (e) => { e.stopPropagation(); core.try("media.control", { action: "play_pause" }); } }, iconNode(m.playing ? "pause" : "play", 13)),
+        el("button", { class: "icon", disabled: !m.can_next, onclick: (e) => { e.stopPropagation(); core.try("media.control", { action: "next" }); } }, iconNode("next", 13))))];
   },
   agent: () => [
     el("div", { class: "row pill" }, orb("big"),
       el("span", { class: "label" }, S.agent.label || stateLabel(S.agent.state)),
       el("span", { class: "grow" }),
-      on("agent_stop") ? el("button", { class: "icon stop", title: "Остановить", onclick: (e) => { e.stopPropagation(); stopAll(); } }, "■") : null),
+      on("agent_stop") ? el("button", { class: "icon stop", title: "Остановить", onclick: (e) => { e.stopPropagation(); stopAll(); } }, iconNode("stop", 13)) : null),
     on("agent_steps") ? stepsMini() : null,
   ],
   reply: () => [
@@ -193,7 +193,7 @@ const VIEWS = {
     el("div", { class: "row pill" }, el("span", { class: "rec-dot" }),
       el("span", { class: "label mono" }, fmtTime(S.rec.elapsed || (S.rec.started_at ? Date.now() / 1000 - S.rec.started_at : 0))),
       el("span", { class: "grow" }),
-      el("button", { class: "icon stop", title: "Остановить запись", onclick: (e) => { e.stopPropagation(); core.try("recorder.stop"); } }, "■")),
+      el("button", { class: "icon stop", title: "Остановить запись", onclick: (e) => { e.stopPropagation(); core.try("recorder.stop"); } }, iconNode("stop", 13))),
   ],
   timer: () => {
     const t = runningTimers().sort((a, b) => timerLeft(a) - timerLeft(b))[0];
@@ -297,8 +297,8 @@ function panel() {
       : tabs.length > 1 ? tabs.map(([id, name]) => el("button", { class: "tab" + (S.tab === id ? " on" : ""), onclick: (e) => { e.stopPropagation(); S.tab = id; if (id === "clip") loadClip(); render(); } }, name))
       : el("span", { class: "label" }, tabs[0][1]),
     el("span", { class: "grow" }),
-    on("h_edit") || editing ? el("button", { class: "icon" + (editing ? " on" : ""), title: editing ? "Готово" : "Настроить: что показывать", onclick: (e) => { e.stopPropagation(); toggleEdit(); } }, editing ? "✓" : "✎") : null,
-    on("h_pin") && !editing ? el("button", { class: "icon" + (S.pinned ? " on" : ""), title: "Закрепить", onclick: (e) => { e.stopPropagation(); S.pinned = !S.pinned; render(); } }, "⌂") : null,
+    on("h_edit") || editing ? el("button", { class: "icon" + (editing ? " on" : ""), title: editing ? "Готово" : "Настроить: что показывать", onclick: (e) => { e.stopPropagation(); toggleEdit(); } }, editing ? iconNode("check", 13) : iconNode("edit", 13)) : null,
+    on("h_pin") && !editing ? el("button", { class: "icon" + (S.pinned ? " on" : ""), title: "Закрепить", onclick: (e) => { e.stopPropagation(); S.pinned = !S.pinned; render(); } }, iconNode("home", 13)) : null,
     on("h_open") && !editing ? el("button", { class: "icon", title: "Окно Эйдоса", onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "chat" }); } }, "↗") : null);
   const body = ({ now: panelNow, tools: panelTools, clip: panelClip, agent: panelAgent, edit: panelEdit })[S.tab]();
   return [head, el("div", { class: "panel-body" + (editing ? " edit" : "") }, body)];
@@ -370,9 +370,9 @@ function panelNow() {
           el("i", { style: { width: Math.min(100, (pos / dur) * 100).toFixed(1) + "%" } })) : null,
         dur && on("p_progress") ? el("div", { class: "times mono" }, el("span", {}, fmtTime(pos)), el("span", {}, fmtTime(dur))) : null,
         el("div", { class: "controls" },
-          el("button", { class: "icon", disabled: !m.can_prev, onclick: () => core.try("media.control", { action: "previous" }) }, "⏮"),
-          el("button", { class: "icon big", onclick: () => core.try("media.control", { action: "play_pause" }) }, m.playing ? "⏸" : "▶"),
-          el("button", { class: "icon", disabled: !m.can_next, onclick: () => core.try("media.control", { action: "next" }) }, "⏭"),
+          el("button", { class: "icon", disabled: !m.can_prev, onclick: () => core.try("media.control", { action: "previous" }) }, iconNode("prev", 13)),
+          el("button", { class: "icon big", onclick: () => core.try("media.control", { action: "play_pause" }) }, iconNode(m.playing ? "pause" : "play", 15)),
+          el("button", { class: "icon", disabled: !m.can_next, onclick: () => core.try("media.control", { action: "next" }) }, iconNode("next", 13)),
           on("p_eq") ? eq(9) : null))));
   }
   const widgets = el("div", { class: "widgets" });
@@ -401,22 +401,22 @@ const TOOL_BUTTONS = [
   ["shot_screen", "▭", "Экран", () => hotkey("shot_screen")],
   ["ocr", "T", "Текст (OCR)", () => hotkey("ocr")],
   ["qr", "▦", "QR-код", () => hotkey("qr")],
-  ["color", "◉", "Пипетка", () => hotkey("color")],
-  ["record", "●", "Запись экрана", () => hotkey("record")],
-  ["record_area", "⬚", "Запись области", () => invoke("open_selector", { purpose: "record" })],
-  ["dictation", "⌨", "Диктовка", () => hotkey("dictation")],
-  ["note", "✎", "Заметка", () => openBar("заметка: ")],
-  ["timer", "⏱", "Таймер", () => openBar("таймер ")],
+  ["color", "pip", "Пипетка", () => hotkey("color")],
+  ["record", "rec", "Запись экрана", () => hotkey("record")],
+  ["record_area", "shot", "Запись области", () => invoke("open_selector", { purpose: "record" })],
+  ["dictation", "keyboard", "Диктовка", () => hotkey("dictation")],
+  ["note", "note", "Заметка", () => openBar("заметка: ")],
+  ["timer", "clock", "Таймер", () => openBar("таймер ")],
 ];
 
 function panelTools() {
   const grid = el("div", { class: "grid" }, TOOL_BUTTONS.filter(([id]) => listOn(S.cfg.island, "tools", id)).map(([, ic, name, fn]) =>
-    el("button", { class: "tile", onclick: (e) => { e.stopPropagation(); S.expanded = false; S.pinned = false; render(); fn(); } }, el("span", { class: "ic" }, ic), el("span", {}, name))));
+    el("button", { class: "tile", onclick: (e) => { e.stopPropagation(); S.expanded = false; S.pinned = false; render(); fn(); } }, el("span", { class: "ic" }, iconNode(ic, 16)), el("span", {}, name))));
   const out = [grid];
   if (on("obs") && S.obs && S.obs.connected) {
     out.push(el("div", { class: "row obs" }, el("span", { class: "sub" }, "OBS"),
-      el("button", { class: "btn" + (S.obs.recording ? " danger" : ""), onclick: () => core.try("obs.record", { command: "toggle" }) }, S.obs.recording ? "■ Запись" : "● Запись"),
-      el("button", { class: "btn" + (S.obs.streaming ? " danger" : ""), onclick: () => core.try("obs.stream", { command: "toggle" }) }, S.obs.streaming ? "■ Эфир" : "▶ Эфир"),
+      el("button", { class: "btn" + (S.obs.recording ? " danger" : ""), onclick: () => core.try("obs.record", { command: "toggle" }) }, S.obs.recording ? "Остановить запись" : "Запись экрана"),
+      el("button", { class: "btn" + (S.obs.streaming ? " danger" : ""), onclick: () => core.try("obs.stream", { command: "toggle" }) }, S.obs.streaming ? "Эфир" : "Эфир"),
       (S.obs.scenes || []).slice(0, 4).map((sc) => el("button", { class: "btn ghost" + (sc === S.obs.scene ? " on" : ""), onclick: () => core.try("obs.set_scene", { name: sc }) }, sc))));
   }
   return out;
@@ -515,7 +515,7 @@ function panelAgent() {
   return [
     el("div", { class: "row" }, el("span", { class: "label" }, stateLabel(S.agent.state)), el("span", { class: "grow" }),
       on("pa_model") ? el("span", { class: "chip" }, S.router || "") : null,
-      BUSY.has(S.agent.state) ? el("button", { class: "btn danger", onclick: stopAll }, "■ Стоп") : null),
+      BUSY.has(S.agent.state) ? el("button", { class: "btn danger", onclick: stopAll }, iconNode("stop", 13), " Стоп") : null),
     on("pa_steps") ? stepsMini() : null,
     on("pa_reply") && S.agent.lastReply ? el("div", { class: "reply-text" }, S.agent.lastReply) : null,
     on("pa_input") ? el("div", { class: "row" }, input) : null,
