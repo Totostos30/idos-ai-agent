@@ -580,16 +580,15 @@ function themeBox(cfg) {
   const swatches = el("div", { class: "swatches" },
     [["", "Авто"], ...Object.entries(ACCENTS)].map(([id, a]) => {
       const hex = id ? (document.documentElement.dataset.theme === "light" ? a.light : a.dark) : "";
-      const letter = id ? (a.letter || a.label[0]) : "A";
       const sw = el("button", {
         class: "swatch" + ((cur.accent || "") === id ? " on" : "") + (id ? "" : " auto"),
-        title: id ? t(a.label) : t("Акцент темы"), "aria-label": id ? t(a.label) : t("Акцент темы"), style: id ? { color: hex } : {},
+        title: id ? t(a.label) : t("Акцент темы"), "aria-label": id ? t(a.label) : t("Акцент темы"), style: id ? { background: hex } : {},
         onclick: async () => {
           swatches.querySelectorAll(".swatch").forEach((b) => b.classList.toggle("on", b === sw));
           applyTheme({ preset: cur.preset, accent: id });
           const r = await core.try("settings.set", { key: "theme", value: { preset: cur.preset, accent: id } });
           if (r && r.error) toast(r.error, "error");
-        } }, letter);
+        } }, id ? "" : "A");
       return sw;
     }));
   box.append(el("div", { class: "setrow" }, el("span", { class: "k" }, t("Тема")), seg),
@@ -602,6 +601,8 @@ function themeBox(cfg) {
 function customThemesUI(cur) {
   const select = el("select", { class: "field small" }, el("option", { value: "" }, t("— нет —")));
   const editor = el("textarea", { class: "field mono", rows: 6, spellcheck: "false" });
+  // редактор сразу с шаблоном: пикеры-буквы пишут в него с первого клика, без пустого JSON
+  editor.value = JSON.stringify({ name: "Моя тема", base: "dark", vars: {} }, null, 2);
   const status = el("span", { class: "mut small" }, "");
   let themesMap = {};
   const fillEditor = (slug) => {
@@ -647,11 +648,12 @@ function customThemesUI(cur) {
     await refresh();
   } }, "Удалить");
   refresh();
-  // простой режим: пикеры ключевых переменных пишут прямо в JSON (ревью U3)
+  // простой режим: интерактивные греческие буквы — каждая окрашена в текущее значение
+  // переменной; клик по букве открывает выбор цвета, после выбора буква перекрашивается
   const PICKS = [
-    ["--surface-0", "Фон"], ["--surface-1", "Карточки"], ["--surface-2", "Панели"], ["--surface-3", "Тосты"],
-    ["--fg", "Текст"], ["--mut", "Вторичный"], ["--accent", "Акцент"], ["--accent-contrast", "На акценте"],
-    ["--ok", "Успех"], ["--warn", "Внимание"], ["--err", "Ошибка"],
+    ["--surface-0", "Α", "Фон"], ["--surface-1", "Β", "Карточки"], ["--surface-2", "Γ", "Панели"], ["--surface-3", "Δ", "Тосты"],
+    ["--fg", "Ε", "Текст"], ["--mut", "Ζ", "Вторичный"], ["--accent", "Η", "Акцент"], ["--accent-contrast", "Θ", "На акценте"],
+    ["--ok", "Ι", "Успех"], ["--warn", "Κ", "Внимание"], ["--err", "Λ", "Ошибка"],
   ];
   const setVar = (key, value) => {
     let payload;
@@ -660,10 +662,19 @@ function customThemesUI(cur) {
     if (value) payload.vars[key] = value; else delete payload.vars[key];
     editor.value = JSON.stringify(payload, null, 2);
   };
-  const pickers = el("div", { class: "var-pickers" }, PICKS.map(([key, label]) => {
-    const input = el("input", { class: "var-picker", type: "color", title: t(label), "aria-label": t(label) });
-    input.addEventListener("input", () => setVar(key, input.value));
-    return el("label", { class: "var-pick" }, input, el("span", {}, t(label)));
+  const pickers = el("div", { class: "var-pickers" }, PICKS.map(([key, letter, label]) => {
+    const input = el("input", { class: "var-picker", type: "color", title: t(label), "aria-label": t(label), tabindex: "-1" });
+    const letterEl = el("span", { class: "var-letter", title: t(label) + " · " + key }, letter);
+    const paint = () => {
+      let vars = {};
+      try { vars = (JSON.parse(editor.value) || {}).vars || {}; } catch (e) { /* неверный JSON — красим из темы */ }
+      input.value = vars[key] || getComputedStyle(document.documentElement).getPropertyValue(key).trim() || "#000000";
+      letterEl.style.color = vars[key] || input.value;
+    };
+    input.addEventListener("input", () => { setVar(key, input.value); paint(); });
+    editor.addEventListener("input", paint);
+    paint();
+    return el("label", { class: "var-pick" }, letterEl, input, el("span", {}, t(label)));
   }));
   return el("div", { class: "custom-themes" },
     el("div", { class: "setrow" }, el("span", { class: "k" }, t("Своя тема")), select, saveBtn, delBtn),

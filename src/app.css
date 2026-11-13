@@ -528,26 +528,27 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
   color: var(--mut); font-weight: 600; transition: background 0.15s, color 0.15s; }
 .seg-btn:hover { color: var(--fg); background: var(--fill-1); }
 .seg-btn.on { background: var(--surface-3); color: var(--fg); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); }
-.swatches { display: inline-flex; align-items: center; gap: 6px; }
-/* акценты — интерактивные буквы греческого алфавита: каждая в своём цвете,
-   выбранная — с рамкой; буквы перекрашиваются вместе с темой (hex инлайн) */
-.swatch { width: 30px; height: 30px; border-radius: 9px; border: 0; cursor: pointer;
-  background: transparent; display: grid; place-items: center;
-  color: var(--mut); font: 700 17px Georgia, "Times New Roman", serif;
-  transition: transform 0.15s var(--spring), background 0.15s, box-shadow 0.15s; }
-.swatch:hover { transform: scale(1.12); background: var(--fill-1); text-shadow: 0 0 14px currentColor; }
-.swatch.on { background: color-mix(in srgb, var(--fill-1) 100%, transparent); box-shadow: inset 0 0 0 1.5px var(--fg); transform: scale(1.06); }
-.swatch.auto { color: var(--accent); }
+.swatches { display: inline-flex; align-items: center; gap: 8px; }
+.swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--line); display: grid; place-items: center;
+  color: var(--mut); font: 600 10px ui-monospace, Consolas, monospace; transition: transform 0.15s var(--spring); }
+.swatch:hover { transform: scale(1.12); }
+.swatch.on { border-color: var(--surface-1); box-shadow: 0 0 0 2px var(--fg); transform: scale(1.15); }
+.swatch.auto { background: linear-gradient(135deg, var(--brand-3), var(--brand-1) 55%, var(--brand-2)); }
 
-/* простой режим редактора тем: пикеры ключевых переменных (ревью U3) */
-.var-pickers { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-start; }
-.var-pick { display: inline-flex; flex-direction: column; align-items: center; gap: 5px;
+/* простой режим редактора тем: интерактивные греческие буквы вместо кружков.
+   Буква окрашена в текущее значение переменной, клик открывает выбор цвета,
+   после выбора буква перекрашивается в указанный цвет (ревью U3) */
+.var-pickers { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-start; }
+.var-pick { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 5px;
   font-size: 11px; color: var(--mut); text-align: center; }
-.var-pick > span { white-space: nowrap; line-height: 1.2; }
-.var-picker { width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 50%;
-  background: var(--fill-1); cursor: pointer; overflow: hidden; }
-.var-picker::-webkit-color-swatch-wrapper { padding: 2px; }
-.var-picker::-webkit-color-swatch { border: 0; border-radius: 50%; }
+.var-pick > span:last-child { white-space: nowrap; line-height: 1.2; }
+.var-letter { display: inline-grid; place-items: center; width: 34px; height: 40px;
+  font: 700 23px Georgia, "Times New Roman", serif; cursor: pointer; user-select: none;
+  transition: transform 0.15s var(--spring), text-shadow 0.15s; }
+.var-letter:hover { transform: scale(1.14); text-shadow: 0 0 14px currentColor; }
+.var-letter:active { transform: scale(0.96); }
+.var-picker { position: absolute; inset: auto; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; }
 
 /* найденная настройка подсвечивается (ревью U7) */
 .setrow.hl { background: color-mix(in srgb, var(--accent) 7%, transparent); box-shadow: inset 2px 0 0 var(--accent); }
