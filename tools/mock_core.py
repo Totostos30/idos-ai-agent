@@ -123,6 +123,15 @@ TIMERS = []
 # Погода: по умолчанию город не задан (как в живом ядре с включённым островом) —
 # остров показывает чип «город?» и виджет-заглушку; weather.set_city «настраивает» её.
 WEATHER = {"ok": False, "reason": "укажите город в настройках погоды"}
+# Буфер обмена: пара записей с полными текстами для проверки кнопки «Копировать».
+CLIP = [
+    {"id": "c1", "kind": "text", "preview": "Пароль от Wi-Fi: otdelnyi-dom-5G", "length": 62, "pinned": True},
+    {"id": "c2", "kind": "text", "preview": "Казань, ул. Баумана, 44, офис 307", "length": 45, "pinned": False},
+]
+CLIP_TEXT = {
+    "c1": "Пароль от Wi-Fi: otdelnyi-dom-5G (гостевая сеть: dom-gost-2G, пароль тот же)",
+    "c2": "Казань, ул. Баумана, 44, офис 307 — вход со двора, третий этаж, домофон 44К",
+}
 
 
 def handle(method: str, params: dict):
@@ -255,8 +264,11 @@ def handle(method: str, params: dict):
                         "city": (params or {}).get("city") or "Казань"})
         return dict(WEATHER)
     if method == "clipboard.list":
-        return {"items": []}
-    if method == "clipboard.get" or method == "clipboard.paste" or method == "clipboard.paste_plain" or method == "clipboard.pin" or method == "clipboard.delete":
+        return {"items": CLIP}
+    if method == "clipboard.get":
+        cid = (params or {}).get("item_id")
+        return {"text": CLIP_TEXT.get(cid, "")}
+    if method == "clipboard.paste" or method == "clipboard.paste_plain" or method == "clipboard.pin" or method == "clipboard.delete":
         return {"ok": True}
     if method == "recorder.state":
         return {"recording": False}

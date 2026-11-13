@@ -483,13 +483,18 @@ async function toggleClip(itemId) {
   render();
 }
 
-async function pasteClip(itemId) {
-  const result = await core.try("clipboard.paste", { item_id: itemId });
-  if (!result || result.error || result.ok === false) {
-    toastCard(t("Буфер обмена"), result && result.error || t("Не удалось вставить запись"));
+// «Копировать»: полный текст записи — в системный буфер пользователя (без вставки в активное окно).
+async function copyClip(item) {
+  const fallback = String(item.preview || item.text || "");
+  const res = await core.try("clipboard.get", { item_id: item.id });
+  const text = res && typeof res.text === "string" ? res.text : fallback;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    toastCard(t("Буфер обмена"), (e && e.message) || t("Не удалось скопировать запись"));
     return;
   }
-  await loadClip();
+  pushCard({ title: t("Скопировано"), text: text.slice(0, 90), kind: "ok", icon: "clip", timeout: 2 });
 }
 
 async function setClipPinned(itemId, pinned) {
@@ -521,7 +526,7 @@ function panelClip() {
         "aria-label": expanded ? t("Свернуть запись буфера обмена") : t("Раскрыть запись буфера обмена") + ", " + (c.length || preview.length) + " " + t("симв."),
         title: expanded ? t("Свернуть запись буфера обмена") : t("Показать полностью"), onclick: () => toggleClip(c.id) },
         c.kind === "image" && c.preview && !expanded ? el("img", { src: c.preview, alt: "Предпросмотр изображения" }) : el("span", { class: "t" }, text)),
-      el("button", { class: "btn ghost clip-paste", type: "button", title: t("Вставить"), onclick: () => pasteClip(c.id) }, t("Вставить")),
+      el("button", { class: "btn ghost clip-copy", type: "button", title: t("Скопировать в буфер обмена"), onclick: () => copyClip(c) }, t("Копировать")),
       el("button", { class: "icon", type: "button", title: c.pinned ? t("Открепить") : t("Закрепить"), "aria-label": c.pinned ? t("Открепить запись") : t("Закрепить запись"), onclick: () => setClipPinned(c.id, !c.pinned) }, c.pinned ? "★" : "☆"),
       el("button", { class: "icon", type: "button", title: t("Удалить"), "aria-label": t("Удалить запись"), onclick: () => deleteClip(c.id) }, "✕"));
   }))];
@@ -861,7 +866,12 @@ export function mountIsland() {
     const m = mode();
     if (m === "idle" || m === "music" || m === "timer") { S.expanded = true; S.stick = false; render(); }
   });
-  isl.addEventListener("dblclick", (e) => { if (!e.target.closest("button,input")) invoke("show_main", { tab: "chat" }); });
+  // Двойной клик открывает окно только на капсуле; в раскрытой панели это обычный жест
+  // (двойной клик по записи буфера не должен тянуть за собой окно Эйдоса).
+  isl.addEventListener("dblclick", (e) => {
+    if (mode() === "panel" || mode() === "bar") return;
+    if (!e.target.closest("button,input")) invoke("show_main", { tab: "chat" });
+  });
   isl.addEventListener("wheel", (e) => {
     const m = mode();
     if (m === "panel" || m === "bar" || m === "reply" || m === "confirm") return;
