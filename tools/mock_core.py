@@ -183,8 +183,12 @@ def handle(method: str, params: dict):
                               "openrouter": {"name": "OpenRouter", "note": "много моделей, платно"}},
                 "accounts": ACCOUNTS}
     if method == "router.choices":
-        return {"groq": {"name": "Groq", "note": "быстрые ответы, щедрые лимиты"},
-                "openrouter": {"name": "OpenRouter", "note": "много моделей"}}
+        return {"active": "groq:openai/gpt-oss-120b", "force": "",
+                "choices": [
+                    {"spec": "groq:openai/gpt-oss-120b", "model": "openai/gpt-oss-120b", "provider": "groq", "ready": True},
+                    {"spec": "groq:openai/gpt-oss-20b", "model": "openai/gpt-oss-20b", "provider": "groq", "ready": True},
+                    {"spec": "groq:qwen/qwen3.8-27b", "model": "qwen/qwen3.8-27b", "provider": "groq", "ready": True},
+                    {"spec": "openrouter:anthropic/claude-3.5-haiku", "model": "anthropic/claude-3.5-haiku", "provider": "openrouter", "ready": False}]}
     if method == "keys.list":
         return ACCOUNTS
     if method == "keys.add_many" or method == "keys.add" or method == "keys.enable" or method == "keys.remove" or method == "router.set_active" or method == "router.force":

@@ -1036,7 +1036,9 @@ function cselToggle(sel, wrap) {
   const place = () => {
     const r = wrap.getBoundingClientRect();
     const pw = pop.offsetWidth, ph = pop.offsetHeight;
-    let left = Math.max(8, Math.min(r.left, window.innerWidth - pw - 8));
+    // попап центрируется на триггере (узкие пилюли не «уезжают» вбок) и прижимается к краям экрана
+    let left = r.left + r.width / 2 - pw / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
     let top = r.bottom + 6;
     if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
     pop.style.left = left + "px";
