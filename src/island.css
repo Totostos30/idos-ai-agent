@@ -141,6 +141,7 @@ button:disabled { opacity: 0.35; cursor: default; }
 .tile { background: var(--soft); border-radius: 16px; padding: 10px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11.5px; color: var(--mut); }
 .tile .ic { font-size: 18px; color: var(--fg); }
 .tile:hover { background: var(--soft2); color: var(--fg); }
+.tile:hover .ic { color: var(--accent); }
 .obs { flex-wrap: wrap; }
 .clip-list { display: flex; flex-direction: column; gap: 4px; }
 .clip { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 12px; background: var(--soft); min-height: 30px; }

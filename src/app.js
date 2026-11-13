@@ -116,11 +116,11 @@ if (typeof document !== "undefined") {
 }
 
 function stepView(s) {
-  const stIcon = s.status === "running" ? iconNode("spinner", 12)
-    : s.status === "ok" ? iconNode("check", 12)
-    : s.status === "denied" ? iconNode("close", 12)
-    : s.status === "error" ? iconNode("alert", 12)
-    : iconNode("minus", 12);
+  const stIcon = s.status === "running" ? iconNode("spinner", 13)
+    : s.status === "ok" ? iconNode("check", 13)
+    : s.status === "denied" ? iconNode("close", 13)
+    : s.status === "error" ? iconNode("alert", 13)
+    : iconNode("minus", 13);
   return el("div", { class: "stepline " + (s.status || "") },
     el("span", { class: "st" }, stIcon),
     el("span", { class: "tool" }, s.tool + (s.action ? "." + s.action : "")),
@@ -253,11 +253,15 @@ async function renderMemory(query = "") {
 // ------------------------------------------------------------------ keys & models
 
 function bucketLine(model, b) {
-  const lim = b.limit_requests, rem = b.remaining_requests;
-  const pct = lim ? Math.round((rem / lim) * 100) : null;
-  return el("div", { class: "bucket" }, el("span", { class: "m" }, model),
-    pct !== null ? el("span", { class: "bar" }, el("i", { style: { width: pct + "%", background: pct < 15 ? "var(--err)" : pct < 40 ? "var(--warn)" : "var(--ok)" } })) : el("span", { class: "bar empty" }),
-    el("span", { class: "n" }, (rem ?? "?") + " / " + (lim ?? "?") + " запр. · сегодня " + (b.used_today || 0)),
+  const lim = Number(b.limit_requests) || 0, rem = Number(b.remaining_requests);
+  const known = lim > 0 && Number.isFinite(rem);
+  const pct = known ? Math.max(0, Math.min(100, Math.round((rem / lim) * 100))) : null;
+  // Лимит неизвестен — полосы нет вовсе (класс .empty на полосе ловил глобальный
+  // padding из body.view-app .empty и раздувал её до огромного блока, фото 1).
+  // Текст встаёт на место полосы и приглушается: .bucket.no-lim .n в app.css.
+  return el("div", { class: "bucket" + (known ? "" : " no-lim") }, el("span", { class: "m" }, model),
+    known ? el("span", { class: "bar" }, el("i", { style: { width: pct + "%", background: pct < 15 ? "var(--err)" : pct < 40 ? "var(--warn)" : "var(--ok)" } })) : null,
+    el("span", { class: "n" }, known ? rem + " / " + lim + " запр. · сегодня " + (b.used_today || 0) : "лимит неизвестен · сегодня " + (b.used_today || 0)),
     b.cooldown_in ? el("span", { class: "warn" }, "пауза " + b.cooldown_in + "с") : null);
 }
 
@@ -344,7 +348,7 @@ async function renderModels() {
               renderModels();
             }) }, iconNode("close", 13))] : null),
         Object.entries(a.buckets || {}).map(([m, b]) => bucketLine(m, b))))
-        : el("div", { class: "empty" }, iconNode("key", 14), " Ключей пока нет. Добавьте хотя бы один ключ Groq — console.groq.com/keys")),
+        : el("div", { class: "empty" }, iconNode("key", 15), " Ключей пока нет. Добавьте хотя бы один ключ Groq — console.groq.com/keys")),
     Array.isArray(keys) && keys.length > accounts.length ? el("div", { class: "mut small" }, "В хранилище ключей: " + keys.length) : null));
 }
 
@@ -362,14 +366,14 @@ async function renderTools() {
     grEyebrow(TABS[3]), el("h1", {}, "Инструменты"),
     el("p", { class: "mut" }, "Всё, чем агент может пользоваться самостоятельно. Скиллы — инструкции в data/skills, MCP-серверы — в настройках."),
     el("div", { class: "toolgrid" }, (Array.isArray(tools) ? tools : []).map((t) => el("div", { class: "tool" + (t.available ? "" : " off") },
-      el("div", { class: "row2" }, el("span", { class: "tool-ic" }, iconNode(TOOL_ICONS[t.name] || "spark", 15)), el("b", {}, t.name), el("span", { class: "grow" }), el("span", { class: "tag " + (t.available ? "ok" : "warn") }, t.available ? "доступен" : "недоступен")),
+      el("div", { class: "row2" }, el("span", { class: "tool-ic" }, iconNode(TOOL_ICONS[t.name] || "spark", 17)), el("b", {}, t.name), el("span", { class: "grow" }), el("span", { class: "tag " + (t.available ? "ok" : "warn") }, t.available ? "доступен" : "недоступен")),
       el("div", { class: "mut small" }, t.description || ""),
       el("div", { class: "acts" }, Object.entries(t.actions || {}).map(([n, a]) => el("span", { class: "act " + (a.kind || ""), title: a.label || "" }, n)))))),
     el("h2", {}, "Скиллы"),
     el("div", { class: "cards-list" }, (Array.isArray(skills) && skills.length ? skills : []).map((s) => el("div", { class: "item" },
       el("div", { class: "t" }, el("b", {}, s.name || s), s.description ? " — " + s.description : ""),
       el("button", { class: "icon", title: "Удалить", onclick: (e) => confirmClick(e.currentTarget, async () => { await core.try("skills.delete", { name: s.name || s }); renderTools(); }) }, "✕"))),
-      Array.isArray(skills) && skills.length ? null : el("div", { class: "empty" }, iconNode("spark", 14), " Скиллов пока нет — агент создаёт их сам, когда осваивает новое приложение")),
+      Array.isArray(skills) && skills.length ? null : el("div", { class: "empty" }, iconNode("spark", 15), " Скиллов пока нет — агент создаёт их сам, когда осваивает новое приложение")),
     el("h2", {}, "MCP-серверы"),
     el("div", { class: "cards-list" }, (Array.isArray(mcp) ? mcp : []).map((m) => el("div", { class: "item" },
       el("div", { class: "t" }, el("b", {}, m.name), " ", el("span", { class: "mono mut" }, m.command ? [m.command].concat(m.args || []).join(" ") : m.url || "")),
@@ -470,7 +474,7 @@ function themeBox(cfg) {
         applyTheme({ preset: id, accent: cur.accent });
         const r = await core.try("settings.set", { key: "theme", value: { preset: id, accent: cur.accent } });
         if (r && r.error) toast(r.error, "error");
-      } }, iconNode(ic, 13), label)));
+      } }, iconNode(ic, 14), label)));
   const swatches = el("div", { class: "swatches" },
     [["", "Авто"], ...Object.entries(ACCENTS)].map(([id, a]) => {
       const hex = id ? (document.documentElement.dataset.theme === "light" ? a.light : a.dark) : "";
@@ -843,7 +847,7 @@ function showAsk(d) {
 
 export function mountApp() {
   document.body.classList.add("view-app");
-  nav = el("nav", { class: "nav" }, TABS.map((t) => el("button", { "data-tab": t.id, title: t.myth, onclick: () => setTab(t.id) }, el("span", { class: "ic" }, iconNode(t.icon, 15)), el("span", {}, t.name))));
+  nav = el("nav", { class: "nav" }, TABS.map((t) => el("button", { "data-tab": t.id, title: t.myth, onclick: () => setTab(t.id) }, el("span", { class: "ic" }, iconNode(t.icon, 18)), el("span", {}, t.name))));
   main = el("main", { class: "main" });
   document.body.append(el("div", { class: "frame" }, titlebar(), el("div", { class: "body" }, nav, main)));
   listen("main-tab", (tab) => setTab(tab || "chat"));

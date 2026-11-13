@@ -7,7 +7,7 @@ import { el, toast, win } from "./shell.js";
 const ICONS = { start: "play", launch: "spark", focus: "expand", click: "pip", type: "keyboard", hotkey: "settings",
   wait: "clock", wait_for: "clock", if_exists: "info", condition: "convert", repeat: "history", read: "search",
   media: "play", open: "file", say: "chat", ask: "chat", window: "app", scenario: "scenario", end: "stop" };
-const iconGlyph = (name, size = 12) => iconNode(ICONS[name] || "spark", size);
+const iconGlyph = (name, size = 14) => iconNode(ICONS[name] || "spark", size);
 const PALETTE = ["launch", "window", "click", "type", "read", "ask", "condition", "repeat", "hotkey", "wait",
   "wait_for", "if_exists", "focus", "media", "open", "say", "scenario", "end"];
 const WINDOW_NAMES = { minimize: "Свернуть", maximize: "Развернуть", restore: "Восстановить", close: "Закрыть",
@@ -444,7 +444,7 @@ function scenarioSidebar() {
   const nodeRows = PALETTE.map((t) => {
     const title = blockTitle(t);
     const row = el("button", { class: "scn-node-item", title, "data-search": title.toLocaleLowerCase() },
-      el("span", { class: "scn-node-icon" }, iconGlyph(t, 13)), el("span", { class: "scn-node-label" }, title));
+      el("span", { class: "scn-node-icon" }, iconGlyph(t, 14)), el("span", { class: "scn-node-label" }, title));
     row.addEventListener("pointerdown", (e) => startPaletteDrag(t, row, e));
     return row;
   });

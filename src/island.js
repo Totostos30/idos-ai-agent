@@ -126,9 +126,14 @@ function batInfo() {
   return { percent: Math.max(0, Math.min(100, Math.round(p))), charging: !!b.charging, saver: !!b.saver };
 }
 
-function clock() {
+// Часы «ЧЧ:ММ» — элементом, а не HTML-строкой: el() вставляет строки как текст,
+// из-за чего в раскрытой панели виднелась разметка. Пульс двоеточия — .clock .colon.
+function clockNode() {
   const d = new Date();
-  return String(d.getHours()).padStart(2, "0") + '<span class="colon">:</span>' + String(d.getMinutes()).padStart(2, "0");
+  return el("span", { class: "clock" },
+    String(d.getHours()).padStart(2, "0"),
+    el("span", { class: "colon" }, ":"),
+    String(d.getMinutes()).padStart(2, "0"));
 }
 
 const VIEWS = {
@@ -143,7 +148,7 @@ const VIEWS = {
       el("span", { class: "vol" }, el("i", { style: { width: S.vol.v + "%" } })), el("span", { class: "mono sub" }, String(S.vol.v)))];
     return [el("div", { class: "row pill tri" },
       el("span", { class: "side l" }, on("orb") ? orb() : null, ...dots()),
-      el("span", { class: "mid" }, on("clock") ? Object.assign(el("span", { class: "clock" }), { innerHTML: clock() }) : null, bat),
+      el("span", { class: "mid" }, on("clock") ? clockNode() : null, bat),
       el("span", { class: "side r" }, !S.online && on("core_status") ? el("span", { class: "chip warn" }, "ядро…") : temp))];
   },
   music: () => {
@@ -379,7 +384,7 @@ function panelNow() {
   if (on("w_weather") && S.weather && S.weather.temp !== undefined)
     widgets.append(el("div", { class: "widget" }, el("div", { class: "big" }, (S.weather.icon || "") + " " + Math.round(S.weather.temp) + "°"),
       el("div", { class: "sub" }, [S.weather.city, S.weather.text].filter(Boolean).join(" · "))));
-  if (on("w_clock")) widgets.append(el("div", { class: "widget" }, el("div", { class: "big mono" }, clock()),
+  if (on("w_clock")) widgets.append(el("div", { class: "widget" }, el("div", { class: "big mono" }, clockNode()),
     el("div", { class: "sub" }, new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" }))));
   if (on("w_battery") && batInfo())
     widgets.append(el("div", { class: "widget" }, el("div", { class: "big" }, (batInfo().charging ? "⚡ " : "") + Math.round(batInfo().percent) + "%"),
@@ -411,7 +416,7 @@ const TOOL_BUTTONS = [
 
 function panelTools() {
   const grid = el("div", { class: "grid" }, TOOL_BUTTONS.filter(([id]) => listOn(S.cfg.island, "tools", id)).map(([, ic, name, fn]) =>
-    el("button", { class: "tile", onclick: (e) => { e.stopPropagation(); S.expanded = false; S.pinned = false; render(); fn(); } }, el("span", { class: "ic" }, iconNode(ic, 16)), el("span", {}, name))));
+    el("button", { class: "tile", onclick: (e) => { e.stopPropagation(); S.expanded = false; S.pinned = false; render(); fn(); } }, el("span", { class: "ic" }, iconNode(ic, 18)), el("span", {}, name))));
   const out = [grid];
   if (on("obs") && S.obs && S.obs.connected) {
     out.push(el("div", { class: "row obs" }, el("span", { class: "sub" }, "OBS"),

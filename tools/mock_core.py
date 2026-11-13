@@ -91,10 +91,27 @@ SKILLS = [
     {"name": "site-status", "description": "Проверяет доступность сайтов и присылает сводку"},
     {"name": "morning-brief", "description": "Утренний брифинг: погода, курс, события календаря"},
 ]
+# Ключи как в живом ядре: у первого лимиты известны, у второго — только у части моделей
+# (воспроизводит случай «? / ?» для проверки компактной строки без полосы).
 ACCOUNTS = [
-    {"id": "a1", "label": "Groq · ключ 1", "spec": "groq", "enabled": True, "vision_only": False},
-    {"id": "a2", "label": "Groq · ключ 2", "spec": "groq", "enabled": True, "vision_only": False},
-    {"id": "a3", "label": "OpenRouter · ключ 1", "spec": "openrouter", "enabled": True, "vision_only": False},
+    {"id": "a1", "provider": "groq", "masked": "gsk_...qOnp", "label": "Groq · ключ 1", "spec": "groq",
+     "enabled": True, "disabled": False, "current": True, "source": "local",
+     "buckets": {
+         "openai/gpt-oss-120b": {"limit_requests": 1000, "remaining_requests": 996, "used_today": 4},
+         "whisper-large-v3-turbo": {"limit_requests": 2000, "remaining_requests": 1999, "used_today": 1},
+         "qwen/qwen3.8-27b": {"limit_requests": 1000, "remaining_requests": 999, "used_today": 1}}},
+    {"id": "a2", "provider": "groq", "masked": "gsk_...cCA0", "label": "Groq · ключ 2", "spec": "groq",
+     "enabled": True, "disabled": False, "current": False, "source": "local",
+     "buckets": {
+         "openai/gpt-oss-120b": {"limit_requests": 1000, "remaining_requests": 999, "used_today": 1},
+         "whisper-large-v3-turbo": {"used_today": 0},
+         "qwen/qwen3.8-27b": {"used_today": 0}}},
+    {"id": "a3", "provider": "groq", "masked": "gsk_...xVMQ", "label": "Groq · ключ 3", "spec": "groq",
+     "enabled": True, "disabled": False, "current": False, "source": "local",
+     "buckets": {
+         "openai/gpt-oss-120b": {"limit_requests": 1000, "remaining_requests": 999, "used_today": 1},
+         "whisper-large-v3-turbo": {"used_today": 0},
+         "qwen/qwen3.8-27b": {"used_today": 0}}},
 ]
 
 STATE = {"mic": False, "cam": False, "volume": 0.4, "muted": False,
