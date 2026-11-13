@@ -385,6 +385,7 @@ fn create_main(app: &AppHandle) -> Result<(), String> {
         .title("Эйдос")
         .inner_size(1120.0, 760.0)
         .min_inner_size(860.0, 560.0)
+        .maximized(true)
         .decorations(false)
         .transparent(true)
         .center()

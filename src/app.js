@@ -948,11 +948,45 @@ function showAsk(d) {
 
 // ------------------------------------------------------------------ wiring
 
+// Фон Γλῶτта: бегущие греческие слова мифов и философов в цвете темы
+// (design/bg-preview.html — превью). Дорожки не пересекаются, размеры 0.5×–3×.
+const BG_WORDS = ["εἶδος", "Νοῦς", "Λόγος", "Ἀλήθεια", "Μνήμη", "Κόσμος", "Ἀρετή", "Φύσις", "Τύχη", "Μοῖρα",
+  "Ὕπνος", "Ἔρως", "Θέμις", "Μοῦσα", "Χάος", "Σοφία", "Γνῶσις", "Ἠχώ", "Δύναμις", "Μίμησις",
+  "Θάλασσα", "Πῦρ", "Ἀκάδημα", "Λύκειον", "Στοά", "Προμηθεύς", "Ὠκεανός", "Ἀθήνη", "Ἀπόλλων"];
+
+function buildWordField() {
+  const field = el("div", { class: "word-field", "aria-hidden": "true" });
+  const laneCount = Math.max(5, Math.min(9, Math.round((window.innerHeight || 900) / 125)));
+  const laneH = 100 / laneCount;
+  const pool = BG_WORDS.slice().sort(() => Math.random() - 0.5);
+  for (let r = 0; r < laneCount; r++) {
+    const row = el("div", { class: "row" });
+    row.style.top = (r * laneH) + "%";
+    row.style.height = laneH + "%";
+    let half = "", i = r, width = 0;
+    const target = Math.max(1400, (window.innerWidth || 1200) * 1.25);
+    while (width < target && i < 500) {
+      const w = pool[i % BG_WORDS.length];
+      i += 3;
+      const sc = 0.5 + Math.random() * 2.5;
+      const op = (0.10 + Math.random() * 0.10).toFixed(2);
+      const gap = Math.round(70 + Math.random() * 220);
+      half += `<span style="font-size:${Math.round(18 * sc)}px;opacity:${op};margin-right:${gap}px">${w}</span>`;
+      width += 18 * sc * w.length * 0.62 + gap;
+    }
+    row.innerHTML = half + half; // дубль половины → бесшовный translateX(-50%)
+    row.style.animationDuration = Math.round(80 + Math.random() * 70) + "s";
+    row.style.animationDelay = (-Math.random() * 120).toFixed(0) + "s";
+    field.append(row);
+  }
+  return field;
+}
+
 export function mountApp() {
   document.body.classList.add("view-app");
   nav = el("nav", { class: "nav" }, TABS.map((tab) => el("button", { "data-tab": tab.id, title: t(tab.myth), onclick: () => setTab(tab.id) }, el("span", { class: "ic" }, iconNode(tab.icon, 18)), el("span", {}, t(tab.name)))));
   main = el("main", { class: "main" });
-  document.body.append(el("div", { class: "frame" }, titlebar(), el("div", { class: "body" }, nav, main)));
+  document.body.append(el("div", { class: "frame" }, buildWordField(), titlebar(), el("div", { class: "body" }, nav, main)));
   listen("main-tab", (tab) => setTab(tab || "chat"));
   listen("emergency-stop", stopAgent);
   core.on("core.connected", () => { A.online = true; updateStatus(); setTab(A.tab); });

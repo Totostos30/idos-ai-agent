@@ -1,7 +1,16 @@
 /* Главное окно: тот же визуальный язык, что и у острова: чёрный фон, скругления, мягкие пружины. */
 body.view-app { margin: 0; background: transparent; color: var(--fg); font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; height: 100vh; overflow: hidden; }
-.frame { height: 100vh; display: flex; flex-direction: column; background: var(--surface-frame); border-radius: 14px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
-.titlebar { height: 42px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 14px; flex: none; user-select: none; border-bottom: 1px solid var(--line); }
+.frame { position: relative; height: 100vh; display: flex; flex-direction: column; background: var(--surface-frame); border-radius: 14px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+/* фон Γλῶττα: бегущие греческие слова в цвете темы — слой за полупрозрачными блоками.
+   Дорожки не пересекаются, размеры 0.5×–3×, зазоры случайные; см. design/bg-preview.html */
+.word-field { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; user-select: none; }
+.word-field .row { position: absolute; left: 0; width: max-content; display: inline-flex; align-items: center; white-space: nowrap;
+  will-change: transform; animation: words-run 90s linear infinite; }
+.word-field .row span { color: var(--accent); font-weight: 600; letter-spacing: 0.06em; }
+.word-field .row:nth-child(odd) { animation-direction: reverse; }
+@keyframes words-run { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.titlebar { position: relative; z-index: 2; height: 42px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 14px; flex: none; user-select: none;
+  background: color-mix(in srgb, var(--surface-1) 27%, transparent); border-bottom: 1px solid var(--line); }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: 0.2px; }
 .state { font-size: 12px; color: var(--mut); padding: 2px 9px; border-radius: 10px; background: var(--soft); }
 .state.offline { color: var(--err); }
@@ -12,8 +21,9 @@ body.view-app { margin: 0; background: transparent; color: var(--fg); font: 14px
 .wbtn:hover { background: var(--soft2); color: var(--fg); }
 .wbtn.close:hover { background: #e81123; color: #fff; }
 .wbtn.danger-h:hover { color: var(--err); }
-.body { flex: 1; display: flex; min-height: 0; }
-.nav { width: 196px; flex: none; padding: 6px 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+.body { position: relative; z-index: 1; flex: 1; display: flex; min-height: 0; }
+.nav { width: 196px; flex: none; padding: 6px 10px 14px; display: flex; flex-direction: column; gap: 2px;
+  background: color-mix(in srgb, var(--surface-1) 27%, transparent); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
 .nav button { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; color: var(--mut); text-align: left; font-weight: 600; transition: background 0.15s, color 0.15s; }
 .nav button:hover { background: var(--soft); color: var(--fg); }
 .nav button { position: relative; }
@@ -23,7 +33,7 @@ body.view-app { margin: 0; background: transparent; color: var(--fg); font: 14px
 .nav button.on .ic { color: var(--accent); }
 .nav button .ic { display: inline-flex; }
 .nav .ic { width: 22px; text-align: center; }
-.main { flex: 1; min-width: 0; background: radial-gradient(1100px 480px at 82% -12%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 60%), var(--surface-0); border-top-left-radius: 18px; overflow: hidden; display: flex; }
+.main { flex: 1; min-width: 0; background: radial-gradient(1100px 480px at 82% -12%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 60%); border-top-left-radius: 18px; overflow: hidden; display: flex; }
 .page { flex: 1; overflow: auto; padding: 22px 28px 40px; }
 .page h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
 .page h2 { margin: 26px 0 10px; font-size: 18px; letter-spacing: -0.01em; }
@@ -39,7 +49,7 @@ body.view-app { margin: 0; background: transparent; color: var(--fg); font: 14px
 .field.hk { cursor: pointer; caret-color: transparent; }
 select.field { appearance: none; }
 textarea.field { resize: vertical; }
-.box { background: var(--surface-1); border-radius: var(--r-l); padding: 16px 18px; margin: 14px 0;
+.box { background: color-mix(in srgb, var(--surface-1) 27%, transparent); border-radius: var(--r-l); padding: 16px 18px; margin: 14px 0;
   box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow 0.2s var(--ease); }
 .box:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent); }
 .box h3 { margin: 0 0 8px; font-size: 15px; }
@@ -49,7 +59,7 @@ textarea.field { resize: vertical; }
 .tag.err { color: var(--err); background: rgba(255, 90, 95, 0.14); }
 body.view-app .empty { color: var(--mut); text-align: center; padding: 26px; }
 .cards-list { display: flex; flex-direction: column; gap: 6px; }
-.item { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: var(--surface-1); box-shadow: inset 0 0 0 1px var(--line); }
+.item { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--surface-1) 27%, transparent); box-shadow: inset 0 0 0 1px var(--line); }
 .item .t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .item .meta { color: var(--mut); font-size: 12px; white-space: nowrap; }
 .account { padding: 8px 10px; border-radius: 14px; margin: 6px 0; background: var(--soft); }
