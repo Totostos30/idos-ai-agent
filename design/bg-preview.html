@@ -43,11 +43,11 @@
   .row { position: absolute; left: 0; width: 200%; display: flex; gap: 56px; white-space: nowrap;
          will-change: transform; animation: run linear infinite; }
   .row span { color: var(--accent); font-weight: 600; letter-spacing: 0.06em; }
-  .row span.dim { opacity: 0.45; }
+  .row span.dim { opacity: 0.55; }
   .row:nth-child(odd) { animation-direction: reverse; }
   @keyframes run { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   .giant { position: fixed; right: 2%; bottom: -3%; font-size: clamp(120px, 22vw, 260px); font-weight: 800;
-           letter-spacing: 0.02em; color: var(--accent); opacity: 0.055; pointer-events: none; user-select: none;
+           letter-spacing: 0.02em; color: var(--accent); opacity: 0.08; pointer-events: none; user-select: none;
            animation: breathe 9s ease-in-out infinite; }
   @keyframes breathe { 50% { opacity: 0.09; transform: translateY(-8px); } }
   .glow { position: fixed; inset: 0; pointer-events: none;
@@ -55,11 +55,11 @@
 
   /* --- макет главного окна: несущие блоки с альфой ≈ 80/255 --- */
   .frame { position: fixed; inset: 18px; display: flex; flex-direction: column; border-radius: 14px; z-index: 1;
-           background: color-mix(in srgb, var(--surface-frame) 55%, transparent);
+           background: color-mix(in srgb, var(--surface-frame) 40%, transparent);
            box-shadow: inset 0 0 0 1px var(--line), 0 18px 60px rgba(0, 0, 0, 0.35);
-           backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); overflow: hidden; }
+           backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); overflow: hidden; }
   .titlebar { height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 14px; flex: none;
-              background: color-mix(in srgb, var(--surface-1) 31%, transparent); border-bottom: 1px solid var(--line); }
+              background: color-mix(in srgb, var(--surface-1) 27%, transparent); border-bottom: 1px solid var(--line); }
   .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; }
   .logo { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--accent); display: inline-grid; place-items: center; }
   .logo i { width: 6px; height: 6px; border-radius: 50%; background: var(--fg); }
@@ -73,7 +73,7 @@
   .lang button.on { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--fg); }
   .body { flex: 1; display: flex; min-height: 0; }
   .nav { width: 196px; flex: none; padding: 8px 10px 14px; display: flex; flex-direction: column; gap: 2px;
-         background: color-mix(in srgb, var(--surface-1) 31%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+         background: color-mix(in srgb, var(--surface-1) 27%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
   .nav button { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; border: 0;
                 background: transparent; color: var(--mut); text-align: left; font: inherit; font-weight: 600; cursor: pointer; width: 100%; }
   .nav button:hover { background: var(--fill-1); color: var(--fg); }
@@ -85,9 +85,9 @@
   h1 { margin: 0 0 8px; font-size: 26px; letter-spacing: -0.02em; }
   .mut { color: var(--mut); }
   .small { font-size: 12px; }
-  .box { background: color-mix(in srgb, var(--surface-1) 31%, transparent);
+  .box { background: color-mix(in srgb, var(--surface-1) 27%, transparent);
          box-shadow: inset 0 0 0 1px var(--line); border-radius: var(--r-l); padding: 16px 18px; margin: 14px 0;
-         backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+         backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
   .box h3 { margin: 0 0 8px; font-size: 15px; }
   .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .field-mock { background: color-mix(in srgb, var(--fill-1) 100%, transparent); border-radius: 12px; padding: 9px 12px;
@@ -132,11 +132,11 @@
         <p class="eyebrow">Λόγος · превью фона</p>
         <h1>Бегущие слова мифов</h1>
         <p class="mut">Фон — поток греческих слов в цвете темы. Несущие блоки полупрозрачны
-        (альфа ≈ 80/255) со стеклянным размытием: слова просвечивают, текст остаётся читаемым.</p>
+        (альфа ≈ 70/255) со слабым стеклянным размытием: слова просвечивают, текст остаётся читаемым.</p>
         <div class="grid2">
           <div class="box">
             <h3>Ἀλήθεια</h3>
-            <p class="mut small">Карточка с альфа-каналом ≈ 80. Слова за ней размываются стеклом и не мешают чтению.</p>
+            <p class="mut small">Карточка с альфа-каналом ≈ 70 (27.5%). Слова за ней размываются стеклом и не мешают чтению.</p>
             <div class="field-mock">поле ввода тоже полупрозрачное</div>
           </div>
           <div class="box">
