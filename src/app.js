@@ -228,7 +228,7 @@ async function renderChat() {
 // любая другая строка — принудительно только эта модель (ключи при этом всё равно чередуются).
 function modelPicker() {
   const sel = el("select", { class: "modelpick", title: t("Модель для чата") }, el("option", { value: "" }, "Auto"));
-  const wrap = el("label", { class: "modelpick-wrap" }, el("span", { class: "dot" }), sel);
+  const wrap = el("span", { class: "modelpick-wrap" }, el("span", { class: "dot" }), sel); // не label: label пересылает клик скрытому select
   const paint = () => {
     wrap.classList.toggle("forced", !!sel.value);
     const o = sel.selectedOptions[0];
@@ -982,11 +982,127 @@ function buildWordField() {
   return field;
 }
 
+// --- выпадающие списки в стиле интерфейса: нативный select скрыт внутри обёртки
+// и продолжает держать значение/события change, попап рисуем сами (стеклянная карточка,
+// клавиатура, клик вне закрывает). Улучшаются select.field и select.modelpick.
+let cselOpen = null; // { sel, wrap, pop, opts, hl }
+
+function cselSyncLabel(sel) {
+  const wrap = sel.closest(".csel-wrap");
+  if (wrap) wrap.querySelector(".csel-label").textContent = sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : "";
+}
+
+function cselClose() {
+  if (!cselOpen) return;
+  if (cselOpen.cleanup) cselOpen.cleanup();
+  cselOpen.pop.remove();
+  cselOpen.wrap.classList.remove("open");
+  cselOpen = null;
+}
+
+function cselToggle(sel, wrap) {
+  if (cselOpen && cselOpen.sel === sel) { cselClose(); return; }
+  cselClose();
+  const opts = [...sel.options];
+  let hl = Math.max(0, opts.findIndex((o) => o.selected));
+  const pop = el("div", { class: "csel-pop", role: "listbox" });
+  const paint = () => pop.replaceChildren(...opts.map((o, idx) => {
+    const b = el("div", { class: "csel-opt" + (idx === hl ? " hl" : "") + (o.selected ? " on" : "") + (o.disabled ? " dis" : ""),
+      role: "option", "aria-selected": o.selected ? "true" : "false" }, o.textContent,
+      o.selected ? el("span", { class: "csel-ck" }, "✓") : null);
+    if (!o.disabled) b.addEventListener("click", () => {
+      if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+      cselClose();
+      wrap.focus();
+    });
+    return b;
+  }));
+  paint();
+  document.body.append(pop);
+  cselOpen = { sel, wrap, pop, opts, hl };
+  wrap.classList.add("open");
+  const place = () => {
+    const r = wrap.getBoundingClientRect();
+    const pw = pop.offsetWidth, ph = pop.offsetHeight;
+    let left = Math.max(8, Math.min(r.left, window.innerWidth - pw - 8));
+    let top = r.bottom + 6;
+    if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
+    pop.style.left = left + "px";
+    pop.style.top = top + "px";
+    pop.style.minWidth = Math.max(160, r.width) + "px";
+  };
+  place();
+  const cleanup = () => { window.removeEventListener("scroll", cselClose, true); window.removeEventListener("resize", cselClose); };
+  cselOpen.cleanup = cleanup;
+}
+
+function enhanceSelect(sel) {
+  const wrap = document.createElement("span");
+  wrap.className = ("csel-wrap " + sel.className).trim();
+  wrap.tabIndex = 0;
+  sel.className = "csel-host";
+  sel.before(wrap);
+  wrap.append(sel);
+  const label = el("span", { class: "csel-label" });
+  wrap.append(label, el("i", { class: "csel-chev" }));
+  const d = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
+  Object.defineProperty(sel, "value", {
+    get() { return d.get.call(sel); },
+    set(v) { d.set.call(sel, v); cselSyncLabel(sel); },
+  });
+  cselSyncLabel(sel);
+  // пересланный label-активацией клик по скрытому select гасим: preventDefault не даёт
+  // открыться нативному попапу, а триггер игнорирует это событие — иначе toggle дважды
+  sel.addEventListener("click", (e) => e.preventDefault());
+  // триггер: сама обёртка, а для пикера модели — пилюля вокруг него; stopPropagation
+  // не даёт глобальному «клик вне — закрыть» закрыть только что открытый попап
+  const trigger = sel.closest(".modelpick-wrap") || wrap;
+  trigger.addEventListener("click", (e) => {
+    if (e.target.classList && e.target.classList.contains("csel-host")) return;
+    e.stopPropagation();
+    cselToggle(sel, wrap);
+  });
+  wrap.addEventListener("keydown", (e) => {
+    if (cselOpen && cselOpen.sel === sel) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const dir = e.key === "ArrowDown" ? 1 : -1;
+        do { cselOpen.hl = (cselOpen.hl + dir + cselOpen.opts.length) % cselOpen.opts.length; }
+        while (cselOpen.opts[cselOpen.hl].disabled);
+        const pop = cselOpen.pop;
+        [...pop.children].forEach((c, idx) => c.classList.toggle("hl", idx === cselOpen.hl));
+        return;
+      }
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        const o = cselOpen.opts[cselOpen.hl];
+        if (!o.disabled) { if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event("change", { bubbles: true })); } }
+        cselClose();
+        return;
+      }
+    }
+    if (e.key === "Enter" || e.key === " " || (e.key === "ArrowDown" && !cselOpen)) { e.preventDefault(); cselToggle(sel, wrap); }
+    if (e.key === "Escape") cselClose();
+  });
+}
+
+function enhanceSelects(root = document) {
+  for (const sel of root.querySelectorAll("select.field, select.modelpick")) {
+    if (sel.dataset.csel) continue;
+    sel.dataset.csel = "1";
+    enhanceSelect(sel);
+  }
+}
+
 export function mountApp() {
   document.body.classList.add("view-app");
   nav = el("nav", { class: "nav" }, TABS.map((tab) => el("button", { "data-tab": tab.id, title: t(tab.myth), onclick: () => setTab(tab.id) }, el("span", { class: "ic" }, iconNode(tab.icon, 18)), el("span", {}, t(tab.name)))));
   main = el("main", { class: "main" });
   document.body.append(el("div", { class: "frame" }, buildWordField(), titlebar(), el("div", { class: "body" }, nav, main)));
+  // списки в стиле интерфейса: следим за перерисовками страниц и улучшаем новые select-ы
+  enhanceSelects();
+  new MutationObserver(() => enhanceSelects()).observe(document.body, { childList: true, subtree: true });
+  document.addEventListener("click", (e) => { if (cselOpen && !e.target.closest(".csel-wrap, .csel-pop")) cselClose(); });
   listen("main-tab", (tab) => setTab(tab || "chat"));
   listen("emergency-stop", stopAgent);
   core.on("core.connected", () => { A.online = true; updateStatus(); setTab(A.tab); });

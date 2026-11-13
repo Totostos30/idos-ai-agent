@@ -337,9 +337,29 @@ button:active > .gmic-wrap .gmic { transform: scale(.86); }
 :root { color-scheme: dark; }
 :root[data-theme="light"] { color-scheme: light; }
 select, select.field, input, textarea { color: var(--fg); }
+/* фолбэк для движков без base-select: тёмный попап и клиновидная стрелка */
 select option, select optgroup { background: var(--surface-3); color: var(--fg); }
 select option:checked { background: var(--accent); color: #fff; }
 select.field { background-image: linear-gradient(45deg, transparent 50%, var(--mut) 50%), linear-gradient(135deg, var(--mut) 50%, transparent 50%); background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 28px; }
+/* выпадающие списки в стиле интерфейса: нативный select скрыт внутри обёртки и держит
+   значение/события change, попап рисуем сами — стеклянная карточка с подсветкой выбора */
+.csel-wrap { position: relative; display: inline-flex; align-items: center; cursor: pointer; background-image: none; }
+.csel-wrap.modelpick { padding-right: 16px; }
+.csel-host { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; }
+.csel-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.csel-chev { width: 8px; height: 8px; flex: none; border-right: 2px solid var(--mut); border-bottom: 2px solid var(--mut);
+  transform: rotate(45deg) translateY(-2px); transition: transform 0.2s var(--ease); margin-right: 4px; }
+.csel-wrap.open .csel-chev { transform: rotate(225deg) translateY(-2px); }
+.csel-pop { position: fixed; z-index: 80; min-width: 160px; max-width: 440px; max-height: 320px; overflow: auto; padding: 6px;
+  border-radius: 14px; background: color-mix(in srgb, var(--surface-2) 94%, transparent);
+  box-shadow: inset 0 0 0 1px var(--line), 0 14px 40px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.csel-opt { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 9px; color: var(--fg);
+  font: inherit; cursor: pointer; }
+.csel-opt.hl, .csel-opt:hover { background: var(--fill-1); }
+.csel-opt.on { background: color-mix(in srgb, var(--accent) 14%, transparent); font-weight: 600; }
+.csel-opt.dis { color: var(--mut); cursor: default; }
+.csel-opt .csel-ck { margin-left: auto; color: var(--accent); font-weight: 700; }
 input:-webkit-autofill, textarea:-webkit-autofill { -webkit-text-fill-color: var(--fg); -webkit-box-shadow: 0 0 0 1000px #1b1b20 inset; caret-color: var(--fg); }
 .field::placeholder { color: var(--mut); opacity: 1; }
 .account, .account b, .account .mono, .bucket { color: var(--fg); }
