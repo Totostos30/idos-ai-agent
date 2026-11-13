@@ -7,7 +7,7 @@ import { t } from "./i18n.js";
 // иконки узлов сценариев — SVG-набор (гайдбук §3), без эмодзи
 const ICONS = { start: "play", launch: "spark", focus: "expand", click: "pip", type: "keyboard", hotkey: "settings",
   wait: "clock", wait_for: "clock", if_exists: "info", condition: "convert", repeat: "history", read: "search",
-  media: "play", open: "file", say: "chat", ask: "chat", window: "app", scenario: "scenario", end: "stop" };
+  media: "play", open: "file", say: "chat", ask: "chat", window: "app", scenario: "scenario", end: "end" };
 const iconGlyph = (name, size = 14) => iconNode(ICONS[name] || "spark", size);
 const PALETTE = ["launch", "window", "click", "type", "read", "ask", "condition", "repeat", "hotkey", "wait",
   "wait_for", "if_exists", "focus", "media", "open", "say", "scenario", "end"];

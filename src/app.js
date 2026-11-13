@@ -119,7 +119,7 @@ function titlebar() {
     el("span", { class: "brand", "data-tauri-drag-region": true }, el("span", { class: "logo nous-logo", title: t("Νοῦς — двигатель состояний") }, titleMark.el), t("Эйдос")),
     statusEl = el("span", { class: "state", "data-tauri-drag-region": true }, t("подключение…")),
     el("span", { class: "grow", "data-tauri-drag-region": true }),
-    el("button", { class: "wbtn danger-h", title: t("Экстренная остановка (Ctrl+Alt+X)"), onclick: stopAgent }, iconNode("stop", 14)),
+    el("button", { class: "wbtn danger-h", title: t("Экстренная остановка (Ctrl+Alt+X)"), onclick: stopAgent }, iconNode("stop", 17)),
     el("button", { class: "wbtn", title: t("Свернуть"), onclick: () => win && win.minimize() }, iconNode("minus", 14)),
     el("button", { class: "wbtn", title: t("Развернуть"), onclick: () => win && win.toggleMaximize() }, iconNode("expand", 13)),
     el("button", { class: "wbtn close", title: t("Скрыть в трей"), onclick: () => win && win.hide() }, "✕"));

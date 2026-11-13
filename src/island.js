@@ -190,7 +190,7 @@ const VIEWS = {
     el("div", { class: "row pill" }, orb("big"),
       el("span", { class: "label" }, S.agent.label || stateLabel(S.agent.state)),
       el("span", { class: "grow" }),
-      on("agent_stop") ? el("button", { class: "icon stop", title: t("Остановить"), onclick: (e) => { e.stopPropagation(); stopAll(); } }, iconNode("stop", 13)) : null),
+      on("agent_stop") ? el("button", { class: "icon stop", title: t("Остановить"), onclick: (e) => { e.stopPropagation(); stopAll(); } }, iconNode("stop", 14)) : null),
     on("agent_steps") ? stepsMini() : null,
   ],
   reply: () => [
@@ -209,7 +209,7 @@ const VIEWS = {
     el("div", { class: "row pill" }, el("span", { class: "rec-dot" }),
       el("span", { class: "label mono" }, fmtTime(S.rec.elapsed || (S.rec.started_at ? Date.now() / 1000 - S.rec.started_at : 0))),
       el("span", { class: "grow" }),
-      el("button", { class: "icon stop", title: "Остановить запись", onclick: (e) => { e.stopPropagation(); core.try("recorder.stop"); } }, iconNode("stop", 13))),
+      el("button", { class: "icon stop", title: "Остановить запись", onclick: (e) => { e.stopPropagation(); core.try("recorder.stop"); } }, iconNode("stop", 14))),
   ],
   timer: () => {
     const t = runningTimers().sort((a, b) => timerLeft(a) - timerLeft(b))[0];
@@ -545,7 +545,7 @@ function panelAgent() {
   return [
     el("div", { class: "row" }, el("span", { class: "label" }, stateLabel(S.agent.state)), el("span", { class: "grow" }),
       on("pa_model") ? el("span", { class: "chip" }, S.router || "") : null,
-      BUSY.has(S.agent.state) ? el("button", { class: "btn danger", onclick: stopAll }, iconNode("stop", 13), t(" Стоп")) : null),
+      BUSY.has(S.agent.state) ? el("button", { class: "btn danger", onclick: stopAll }, iconNode("stop", 14), t(" Стоп")) : null),
     on("pa_steps") ? stepsMini() : null,
     on("pa_reply") && S.agent.lastReply ? el("div", { class: "reply-text" }, S.agent.lastReply) : null,
     on("pa_input") ? el("div", { class: "row" }, input) : null,
