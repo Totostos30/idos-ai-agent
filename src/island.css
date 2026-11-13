@@ -276,10 +276,16 @@ button:disabled { opacity: 0.35; cursor: default; }
 .temp { font-size: 12px; font-weight: 600; color: var(--fg); opacity: 0.85;
   display: inline-grid; place-items: center; min-width: 27px; height: 27px;
   padding: 0 5px; margin-left: 3px; border-radius: 999px; box-sizing: border-box; }
-.bat-mini { position: relative; display: inline-grid; place-items: center; width: 24px; height: 12px; border-radius: 4px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); overflow: hidden; }
-.bat-mini i { position: absolute; left: 1.5px; top: 1.5px; bottom: 1.5px; border-radius: 2.5px; background: rgba(255, 255, 255, 0.85); max-width: calc(100% - 3px); }
-.bat-mini b { position: relative; font-size: 8.5px; font-weight: 800; color: #000; mix-blend-mode: difference; filter: invert(1); }
+/* батарея в цветах темы: контур и ножка из fg, уровень — accent (зарядка ok, низ err),
+   процент вынесен вправо и читается на любом фоне; всё следует за сменой темы/акцента */
+.bat-mini { position: relative; display: inline-block; width: 24px; height: 12px; border-radius: 3.5px;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--fg) 50%, transparent); margin-right: 15px; }
+.bat-mini::after { content: ""; position: absolute; left: calc(100% + 2px); top: 50%; transform: translateY(-50%);
+  width: 2.5px; height: 5px; border-radius: 0 1.5px 1.5px 0; background: color-mix(in srgb, var(--fg) 50%, transparent); }
+.bat-mini i { position: absolute; left: 2px; top: 2px; bottom: 2px; border-radius: 1.5px; background: var(--accent);
+  max-width: calc(100% - 4px); transition: width 0.4s, background 0.3s; }
+.bat-mini b { position: absolute; left: calc(100% + 6px); top: 50%; transform: translateY(-50%);
+  font-size: 10px; font-weight: 700; color: var(--fg); opacity: 0.92; }
 .bat-mini.low i { background: var(--err); }
 .bat-mini.charging i { background: var(--ok); }
 .dot { width: 7px; height: 7px; border-radius: 50%; padding: 0; flex: none; }
@@ -287,8 +293,9 @@ button:disabled { opacity: 0.35; cursor: default; }
 .dot.mic.muted { background: var(--err); box-shadow: 0 0 6px var(--err); }
 .dot.cam { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
 .chip.caps, .chip.lay, .chip.vpn { padding: 1px 6px; font-weight: 700; font-size: 10.5px; }
-/* vpn теперь монолинейный щит в общем стиле иконок, а не текстовая плашка */
-.chip.vpn { display: inline-flex; align-items: center; color: var(--b3, #4fd1ff); }
+/* vpn теперь монолинейный щит в общем стиле иконок, а не текстовая плашка;
+   цвет — акцент темы (переменной --b3 нет, старый фолбэк давал вечно cyan) */
+.chip.vpn { display: inline-flex; align-items: center; color: var(--accent); opacity: 0.9; }
 /* чип «город?» в капсуле: подсказка вместо спрятанной погоды */
 .chip.w-ask { cursor: pointer; color: var(--mut); transition: color 0.15s; }
 .chip.w-ask:hover { color: var(--accent); }

@@ -5,11 +5,15 @@ import { core } from "./rpc.js";
 
 const LS_KEY = "idos.theme";
 export const ACCENTS = {
-  nous:   { dark: "#7c8cff", light: "#5b6ee0", label: "Νοῦς · индиго" },
-  aither: { dark: "#4fd1ff", light: "#0e7fb8", label: "Αἰθήρ · циан" },
-  nyx:    { dark: "#b46cff", light: "#8a46d6", label: "Νύξ · фиолет" },
-  physis: { dark: "#35d07f", light: "#1f9d5e", label: "Φύσις · зелёный" },
-  helios: { dark: "#ffb547", light: "#b07016", label: "Ἥλιος · оранж" },
+  nous:     { dark: "#7c8cff", light: "#5b6ee0", label: "Νοῦς · индиго" },
+  aither:   { dark: "#4fd1ff", light: "#0e7fb8", label: "Αἰθήρ · циан" },
+  nyx:      { dark: "#b46cff", light: "#8a46d6", label: "Νύξ · фиолет" },
+  physis:   { dark: "#35d07f", light: "#1f9d5e", label: "Φύσις · зелёный" },
+  helios:   { dark: "#ffb547", light: "#b07016", label: "Ἥλιος · оранж" },
+  thalassa: { dark: "#2fbdb3", light: "#12857c", label: "Θάλασσα · бирюза" },
+  pyr:      { dark: "#ff6d55", light: "#cf4630", label: "Πῦρ · огонь" },
+  eros:     { dark: "#ff6fa5", light: "#cf4d80", label: "Ἔρως · розовый" },
+  chloros:  { dark: "#a8d94a", light: "#7ba32c", label: "Χλωρός · лайм" },
 };
 let lastCfg = { preset: "dark", accent: "" };
 let media = null;

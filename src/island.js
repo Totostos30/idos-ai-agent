@@ -607,7 +607,10 @@ function render() {
   isl.dataset.mode = m;
   isl.dataset.edge = S.cfg.island.eq_edge === false ? "off" : "on";
   isl.dataset.playing = S.media.active && S.media.playing ? "1" : "0";
-  isl.style.setProperty("--accent", S.media.active && S.media.accent ? S.media.accent : "#7c8cff");
+  // акцент капсулы: цвет трека, если есть, иначе — акцент темы (хардкод #7c8cff
+  // перекрывал тему для батареи, щита и всего внутри острова)
+  if (S.media.active && S.media.accent) isl.style.setProperty("--accent", S.media.accent);
+  else isl.style.removeProperty("--accent");
   isl.style.setProperty("--cover", S.media.active && S.media.cover ? "url(" + JSON.stringify(S.media.cover) + ")" : "none");
   isl.classList.toggle("flash", Date.now() - S.flash < 500);
   isl.classList.toggle("away", S.away);
@@ -615,7 +618,7 @@ function render() {
   isl.dataset.lyric = m === "music" && musicKind() === "wide" && S.cfg.island.lyrics !== false && S.lyric ? "1" : "0";
   root.classList.toggle("hidden", tucked(m));
   root.dataset.playing = isl.dataset.playing;
-  root.style.setProperty("--accent", isl.style.getPropertyValue("--accent"));
+  root.style.setProperty("--accent", getComputedStyle(document.documentElement).getPropertyValue("--accent"));
   root.style.setProperty("--lip-width", `${Math.max(1, isl.offsetWidth)}px`);
   root.classList.toggle("through", !!S.cfg.island.through_mode && (m === "idle" || m === "music" || m === "timer" || m === "rec"));
   const focusedValue = m === "bar" ? null : undefined;
