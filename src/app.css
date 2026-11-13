@@ -1,12 +1,13 @@
 /* Главное окно: тот же визуальный язык, что и у острова: чёрный фон, скругления, мягкие пружины. */
 body.view-app { margin: 0; background: transparent; color: var(--fg); font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; height: 100vh; overflow: hidden; }
 .frame { height: 100vh; display: flex; flex-direction: column; background: var(--surface-frame); border-radius: 14px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
-.titlebar { height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 14px; flex: none; user-select: none; }
+.titlebar { height: 42px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 14px; flex: none; user-select: none; border-bottom: 1px solid var(--line); }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: 0.2px; }
 .state { font-size: 12px; color: var(--mut); padding: 2px 9px; border-radius: 10px; background: var(--soft); }
 .state.offline { color: var(--err); }
 .state.thinking, .state.working, .state.acting, .state.searching { color: var(--warn); }
 .state.speaking { color: var(--ok); }
+.state.idle { color: var(--ok); }
 .wbtn { width: 40px; height: 30px; border-radius: 8px; color: var(--mut); }
 .wbtn:hover { background: var(--soft2); color: var(--fg); }
 .wbtn.close:hover { background: #e81123; color: #fff; }
@@ -15,12 +16,17 @@ body.view-app { margin: 0; background: transparent; color: var(--fg); font: 14px
 .nav { width: 196px; flex: none; padding: 6px 10px 14px; display: flex; flex-direction: column; gap: 2px; }
 .nav button { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; color: var(--mut); text-align: left; font-weight: 600; transition: background 0.15s, color 0.15s; }
 .nav button:hover { background: var(--soft); color: var(--fg); }
-.nav button.on { background: var(--soft2); color: var(--fg); }
+.nav button { position: relative; }
+.nav button.on { background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--fg); }
+.nav button.on::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 3px;
+  border-radius: 2px; background: var(--accent); }
+.nav button.on .ic { color: var(--accent); }
+.nav button .ic { display: inline-flex; }
 .nav .ic { width: 18px; text-align: center; }
-.main { flex: 1; min-width: 0; background: var(--surface-0); border-top-left-radius: 18px; overflow: hidden; display: flex; }
+.main { flex: 1; min-width: 0; background: radial-gradient(1100px 480px at 82% -12%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 60%), var(--surface-0); border-top-left-radius: 18px; overflow: hidden; display: flex; }
 .page { flex: 1; overflow: auto; padding: 22px 28px 40px; }
-.page h1 { margin: 0 0 4px; font-size: 24px; }
-.page h2 { margin: 26px 0 10px; font-size: 17px; }
+.page h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+.page h2 { margin: 26px 0 10px; font-size: 18px; letter-spacing: -0.01em; }
 .mut { color: var(--mut); }
 .small { font-size: 12px; }
 .warn { color: var(--warn); }
@@ -33,7 +39,9 @@ body.view-app { margin: 0; background: transparent; color: var(--fg); font: 14px
 .field.hk { cursor: pointer; caret-color: transparent; }
 select.field { appearance: none; }
 textarea.field { resize: vertical; }
-.box { background: var(--surface-1); border-radius: 20px; padding: 14px 16px; margin: 14px 0; box-shadow: inset 0 0 0 1px var(--line); }
+.box { background: var(--surface-1); border-radius: var(--r-l); padding: 16px 18px; margin: 14px 0;
+  box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow 0.2s var(--ease); }
+.box:hover { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent); }
 .box h3 { margin: 0 0 8px; font-size: 15px; }
 .tag { font-size: 11px; padding: 2px 8px; border-radius: 9px; background: var(--soft2); color: var(--mut); white-space: nowrap; }
 .tag.ok { color: var(--ok); background: rgba(53, 208, 127, 0.14); }
@@ -89,19 +97,19 @@ body.view-app .empty { color: var(--mut); text-align: center; padding: 26px; }
 .chatitem.on { background: var(--soft2); color: var(--fg); }
 .chatmain { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .log { flex: 1; overflow: auto; padding: 22px 28px 10px; display: flex; flex-direction: column; gap: 10px; }
-.hello { margin: auto; text-align: center; max-width: 480px; }
-.hello h2 { margin: 4px 0; }
+.hello { margin: auto; text-align: center; max-width: 520px; }
+.hello h2 { margin: 6px 0 4px; font-size: 22px; letter-spacing: -0.02em; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 14px; }
-.chips .chip { cursor: pointer; padding: 7px 12px; border-radius: 14px; font-size: 13px; color: var(--fg); background: var(--soft); transition: transform 0.15s var(--spring), background 0.15s; }
+.chips .chip { cursor: pointer; padding: 9px 14px; border-radius: var(--r-m); font-size: 13px; color: var(--fg); background: var(--surface-1); box-shadow: inset 0 0 0 1px var(--line); transition: transform 0.15s var(--spring), background 0.15s, box-shadow 0.15s; }
 .chips .chip::after { content: "→"; margin-left: 8px; color: var(--accent); opacity: 0; transition: opacity 0.15s; }
-.chips .chip:hover { background: var(--soft2); transform: translateY(-1px); }
+.chips .chip:hover { background: var(--fill-2); transform: translateY(-1px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); }
 .chips .chip:hover::after { opacity: 1; }
 .chips .chip:hover { background: var(--soft2); }
 .msg { display: flex; animation: msgIn 0.35s var(--spring) both; }
 @keyframes msgIn { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: none; } }
 .msg.user { justify-content: flex-end; }
 .bubble { max-width: 76%; padding: 10px 14px; border-radius: 20px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; }
-.msg.user .bubble { background: var(--bubble-user); border-bottom-right-radius: 6px; }
+.msg.user .bubble { background: color-mix(in srgb, var(--accent) 24%, var(--surface-1)); border-bottom-right-radius: 6px; }
 .msg.assistant .bubble { background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); border-bottom-left-radius: 6px; }
 .msg.fail .bubble { box-shadow: inset 0 0 0 1px rgba(255, 90, 95, 0.5); }
 .msg.live .bubble::after { content: "▍"; animation: blink 1s steps(1) infinite; color: var(--accent); }
@@ -118,7 +126,7 @@ body.view-app .empty { color: var(--mut); text-align: center; padding: 26px; }
 .stepline img { max-height: 90px; border-radius: 8px; flex-basis: 100%; object-fit: contain; object-position: left; }
 .stepline details { flex-basis: 100%; }
 .stepline pre { white-space: pre-wrap; max-height: 200px; overflow: auto; font-size: 11.5px; margin: 4px 0 0; user-select: text; }
-.composer { display: flex; gap: 8px; align-items: flex-end; margin: 8px 22px 18px; padding: 8px 8px 8px 16px; border-radius: 24px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow 0.2s; }
+.composer { display: flex; gap: 8px; align-items: flex-end; margin: 8px 22px 18px; padding: 10px 10px 10px 16px; border-radius: var(--r-xl); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow 0.2s; }
 .composer:focus-within { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent), 0 0 24px color-mix(in srgb, var(--accent) 18%, transparent); }
 .composer textarea { flex: 1; background: none; border: 0; outline: 0; color: var(--fg); font: inherit; resize: none; padding: 6px 0; max-height: 200px; }
 .composer .mic.on { background: color-mix(in srgb, var(--accent) 16%, transparent); }

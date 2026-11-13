@@ -142,7 +142,7 @@ const VIEWS = {
     if (on("volume_osd") && S.vol && Date.now() - S.vol.at < 1200) return [el("div", { class: "row pill" }, el("span", { class: "ic" }, S.vol.v ? "🔊" : "🔇"),
       el("span", { class: "vol" }, el("i", { style: { width: S.vol.v + "%" } })), el("span", { class: "mono sub" }, String(S.vol.v)))];
     return [el("div", { class: "row pill tri" },
-      el("span", { class: "side l" }, liquid || !on("orb") ? null : orb(), ...dots()),
+      el("span", { class: "side l" }, on("orb") ? orb() : null, ...dots()),
       el("span", { class: "mid" }, on("clock") ? Object.assign(el("span", { class: "clock" }), { innerHTML: clock() }) : null, bat),
       el("span", { class: "side r" }, !S.online && on("core_status") ? el("span", { class: "chip warn" }, "ядро…") : temp))];
   },

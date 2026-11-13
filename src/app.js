@@ -24,7 +24,7 @@ let main, nav, statusEl;
 // Знак Νοῦς для титлбара и hello-экрана (гайдбук §12.1)
 const titleMark = createNous({ size: 20 });
 titleMark.set("idle");
-const helloMark = createNous({ size: 56 });
+const helloMark = createNous({ size: 76 });
 helloMark.set("idle");
 const mic = new Mic((st) => {
   const b = document.querySelector(".composer .mic");
