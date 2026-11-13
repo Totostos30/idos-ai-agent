@@ -153,8 +153,9 @@ const VIEWS = {
       el("span", { class: "vol" }, el("i", { style: { width: S.vol.v + "%" } })), el("span", { class: "mono sub" }, String(S.vol.v)))];
     return [el("div", { class: "row pill tri" },
       el("span", { class: "side l" }, on("orb") ? orb() : null, ...dots()),
-      el("span", { class: "mid" }, on("clock") ? clockNode() : null, bat),
-      el("span", { class: "side r" }, !S.online && on("core_status") ? el("span", { class: "chip warn" }, "ядро…") : (temp || cityAsk)))];
+      // в центре только часы: батарея и погода живут по краям, чтобы время не съезжало
+      el("span", { class: "mid" }, on("clock") ? clockNode() : null),
+      el("span", { class: "side r" }, bat, !S.online && on("core_status") ? el("span", { class: "chip warn" }, "ядро…") : (temp || cityAsk)))];
   },
   music: () => {
     const kind = musicKind();
@@ -597,6 +598,21 @@ function render() {
   const focusedValue = m === "bar" ? null : undefined;
   isl.replaceChildren(...(VIEWS[m] || VIEWS.idle)().filter(Boolean));
   void focusedValue;
+  // Мини-островок: капсула сжимается и растягивается под набор включённых элементов,
+  // плечи слева и справа делаются равными — часы стоят ровно по центру островка.
+  // Волны флюида читают offsetWidth каждый кадр и следуют за шириной сами.
+  if (m === "idle") {
+    const row = isl.querySelector(".row.tri");
+    if (row && row.children.length >= 3) {
+      isl.style.width = "max-content";
+      const [l, mid, r] = [...row.children].slice(0, 3).map((c) => c.getBoundingClientRect().width);
+      const side = Math.max(l, r);
+      // 12px — паддинг капсулы (6+6), 16px — два гэпа сетки по 8
+      const total = Math.max(150, Math.min(520, Math.ceil(mid + side * 2 + 16 + 12)));
+      isl.style.width = total + "px";
+      root.style.setProperty("--lip-width", total + "px");
+    } else isl.style.width = "";
+  } else if (isl.style.width) isl.style.width = "";
   renderCards();
   scheduleHit();
 }

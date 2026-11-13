@@ -46,6 +46,9 @@ body.view-island.demo { background: linear-gradient(135deg, #3b4c7a, #8a5a8f 55%
 @keyframes pop { 0% { transform: scale(0.96, 0.92); } 60% { transform: scale(1.015, 1.03); } 100% { transform: none; } }
 .island.flash { box-shadow: 0 0 0 2px #fff, 0 10px 40px rgba(255, 255, 255, 0.4); }
 .island[data-mode="music"] { width: 300px; }
+/* мини-островок: идеальная капсула под круглый логотип — 6px до контура со всех сторон;
+   ширина подстраивается под содержимое из island.js (плечи равны → часы по центру) */
+.island[data-mode="idle"] { padding: 6px; }
 .island[data-mode="agent"], .island[data-mode="mic"] { width: 340px; }
 .island[data-mode="rec"], .island[data-mode="timer"] { width: 260px; }
 .island[data-mode="reply"] { width: 460px; border-radius: 28px; padding: 12px 14px; }
@@ -247,8 +250,10 @@ button:disabled { opacity: 0.35; cursor: default; }
 .stage .cards { margin-top: -56px; }
 .island { box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.07); }
 .island[data-edge="on"][data-playing="1"]:is([data-mode="music"], [data-mode="idle"]) { box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.07); }
-/* слегка «висит» с верхнего края экрана: верхние углы меньше */
-.island:is([data-mode="idle"], [data-mode="music"], [data-mode="timer"], [data-mode="rec"], [data-mode="agent"], [data-mode="mic"]) {
+/* слегка «висит» с верхнего края экрана: верхние углы меньше.
+   idle — исключение: там идеальная симметричная капсула под круглый логотип,
+   паддинг 6px со всех сторон (правило выше), радиус 22 как у базы. */
+.island:is([data-mode="music"], [data-mode="timer"], [data-mode="rec"], [data-mode="agent"], [data-mode="mic"]) {
   margin-top: 0; border-top-left-radius: 12px; border-top-right-radius: 12px; padding-top: 7px;
 }
 .island[data-mode="idle"] { width: 200px; }
@@ -257,8 +262,10 @@ button:disabled { opacity: 0.35; cursor: default; }
 .island[data-mode="music"][data-music="wide"][data-lyric="1"] { width: 380px; border-radius: 12px 12px 24px 24px; }
 .island[data-mode="music"][data-music="mini"] { width: 400px; border-radius: 12px 12px 26px 26px; padding: 8px 10px; }
 /* minmax(0,1fr) по краям: левые чипы (vpn, раскладка) не поднимают минимум колонки,
-   и часы стоят ровно по центру при любом наборе включённых элементов */
-.row.tri { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+   и часы стоят ровно по центру при любом наборе включённых элементов.
+   Высота ряда = высоте знака Νοῦς (27): отступы от логотипа до контуров капсулы
+   сверху, снизу и слева одинаковые (по 6px паддинга режима idle). */
+.row.tri { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); height: 27px; }
 .row.tri .side { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .row.tri .side.r { justify-content: flex-end; }
 .row.tri .mid { display: flex; align-items: center; gap: 6px; }

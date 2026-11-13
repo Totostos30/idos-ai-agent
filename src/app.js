@@ -434,10 +434,12 @@ function weatherCityBox() {
   const input = el("input", { class: "field", placeholder: "Город — например, Казань", "aria-label": "Город погоды" });
   const btn = el("button", { class: "btn primary", onclick: async () => {
     const city = input.value.trim();
-    if (!city) return;
-    btn.disabled = true;
-    const r = await core.try("weather.set_city", { city }, 30000);
-    btn.disabled = false;
+    if (!city || btn.disabled) return;
+    btn.disabled = true; const oldLabel = btn.textContent; btn.textContent = "Ищу город…";
+    // геокод до ~30 с (Open-Meteo → Nominatim) + первый прогноз до ~45 с: рычаг длинный,
+    // чтобы ядро успело ответить целиком (короткий таймаут давал «Ядро не ответило»)
+    const r = await core.try("weather.set_city", { city }, 90000);
+    btn.disabled = false; btn.textContent = oldLabel;
     if (!r || r.error || r.ok === false) { toast((r && (r.error || r.reason)) || "Не удалось определить город", "error"); return; }
     toast("Погода: " + (r.city || city) + (r.temp !== undefined && r.temp !== null ? ", " + Math.round(r.temp) + "°" : ""), "ok");
     renderSettings();

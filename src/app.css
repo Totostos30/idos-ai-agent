@@ -507,9 +507,10 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .swatch.auto { background: linear-gradient(135deg, var(--brand-3), var(--brand-1) 55%, var(--brand-2)); }
 
 /* простой режим редактора тем: пикеры ключевых переменных (ревью U3) */
-.var-pickers { display: flex; flex-wrap: wrap; gap: 10px; }
-.var-pick { display: inline-flex; flex-direction: column; align-items: center; gap: 4px;
-  font-size: 11px; color: var(--mut); }
+.var-pickers { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-start; }
+.var-pick { display: inline-flex; flex-direction: column; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--mut); text-align: center; }
+.var-pick > span { white-space: nowrap; line-height: 1.2; }
 .var-picker { width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 50%;
   background: var(--fill-1); cursor: pointer; overflow: hidden; }
 .var-picker::-webkit-color-swatch-wrapper { padding: 2px; }
