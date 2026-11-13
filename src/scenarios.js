@@ -1,10 +1,13 @@
 // Конструктор сценариев: блок-схема действий и таблицы входных/runtime-переменных.
 import { core } from "./rpc.js";
+import { iconNode } from "./icons.js";
 import { el, toast, win } from "./shell.js";
 
-const ICONS = { start: "▶", launch: "🚀", focus: "🪟", click: "👆", type: "⌨", hotkey: "⌘", wait: "⏱", wait_for: "⏳",
-  if_exists: "❓", condition: "⇄", repeat: "🔁", read: "🧪", media: "⏯", open: "📂", say: "🔊", ask: "💬",
-  window: "🗗", scenario: "⧉", end: "■" };
+// иконки узлов сценариев — SVG-набор (гайдбук §3), без эмодзи
+const ICONS = { start: "play", launch: "spark", focus: "expand", click: "pip", type: "keyboard", hotkey: "settings",
+  wait: "clock", wait_for: "clock", if_exists: "info", condition: "convert", repeat: "history", read: "search",
+  media: "play", open: "file", say: "chat", ask: "chat", window: "app", scenario: "scenario", end: "stop" };
+const iconGlyph = (name, size = 12) => iconNode(ICONS[name] || "spark", size);
 const PALETTE = ["launch", "window", "click", "type", "read", "ask", "condition", "repeat", "hotkey", "wait",
   "wait_for", "if_exists", "focus", "media", "open", "say", "scenario", "end"];
 const WINDOW_NAMES = { minimize: "Свернуть", maximize: "Развернуть", restore: "Восстановить", close: "Закрыть",
@@ -211,7 +214,7 @@ function startPaletteDrag(type, row, e) {
   const sx = e.clientX, sy = e.clientY;
   let moved = false;
   const ghost = el("div", { class: "scn-node scn-drag-ghost" },
-    el("div", { class: "scn-node-head" }, el("span", { class: "ic" }, ICONS[type] || "•"), el("span", { class: "tt" }, blockTitle(type))));
+    el("div", { class: "scn-node-head" }, el("span", { class: "ic" }, ICONS[type] ? iconGlyph(type) : "•"), el("span", { class: "tt" }, blockTitle(type))));
   const moveGhost = (ev) => {
     ghost.style.left = `${ev.clientX - ghost.offsetWidth / 2}px`;
     ghost.style.top = `${ev.clientY - ghost.offsetHeight / 2}px`;
@@ -441,7 +444,7 @@ function scenarioSidebar() {
   const nodeRows = PALETTE.map((t) => {
     const title = blockTitle(t);
     const row = el("button", { class: "scn-node-item", title, "data-search": title.toLocaleLowerCase() },
-      el("span", { class: "scn-node-icon" }, ICONS[t]), el("span", { class: "scn-node-label" }, title));
+      el("span", { class: "scn-node-icon" }, iconGlyph(t, 13)), el("span", { class: "scn-node-label" }, title));
     row.addEventListener("pointerdown", (e) => startPaletteDrag(t, row, e));
     return row;
   });
@@ -558,7 +561,7 @@ function nodeView(n) {
     : (Array.isArray(p.targets) && p.targets.length ? p.targets[0] : null);
   const view = el("div", { class: "scn-node t-" + n.type + (S.sel === n.id ? " sel" : ""), "data-id": n.id, style: { left: n.x + "px", top: n.y + "px", width: NODE_W + "px" } },
     n.type !== "start" ? el("span", { class: "scn-in", title: "вход" }) : null,
-    el("div", { class: "scn-node-head" }, el("span", { class: "ic" }, ICONS[n.type] || "•"), el("span", { class: "tt" }, blockTitle(n.type))),
+    el("div", { class: "scn-node-head" }, el("span", { class: "ic" }, ICONS[n.type] ? iconGlyph(n.type) : "•"), el("span", { class: "tt" }, blockTitle(n.type))),
     n.type !== "start" && n.type !== "end" ? el("div", { class: "scn-sum" }, summary(n)) : null,
     t && t.preview ? el("img", { class: "scn-prev", src: t.preview, alt: "" }) : null,
     n.note ? el("div", { class: "mut small" }, n.note) : null,
@@ -873,7 +876,7 @@ function drawInspector() {
   const note = el("input", { class: "field", value: n.note || "", placeholder: "Заметка к блоку" });
   note.addEventListener("input", () => { n.note = note.value; markDirty(); refreshNode(n); });
   inspector.replaceChildren(
-    el("h3", {}, (ICONS[n.type] || "") + " " + blockTitle(n.type)),
+    el("h3", {}, ICONS[n.type] ? iconGlyph(n.type) : "", " " + blockTitle(n.type)),
     ...parts,
     scenarioVariablesEditor(S.cur, true),
     n.type !== "start" ? field("Заметка", note) : el("p", { class: "mut small" }, "Отсюда начинается сценарий. Потяните «далее» к первому действию."),

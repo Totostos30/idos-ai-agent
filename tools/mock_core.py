@@ -189,7 +189,28 @@ def handle(method: str, params: dict):
     if method == "scenarios.save" or method == "scenarios.delete" or method == "scenarios.run" or method == "scenarios.stop" or method == "scenarios.answer" or method == "scenarios.question" or method == "scenarios.pick" or method == "scenarios.probe":
         return {"ok": True}
     if method == "scenarios.blocks":
-        return []
+        def block(title, outs=("next",), params=None):
+            return {"title": title, "outs": list(outs), "params": params or {}}
+        return {"blocks": {
+            "start": block("Старт"), "end": block("Конец"),
+            "launch": block("Запустить программу", params={"app": "", "wait": ""}),
+            "window": block("Окно", params={"title": ""}),
+            "focus": block("Фокус окна", params={"title": ""}),
+            "click": block("Клик", params={"targets": []}),
+            "type": block("Ввести текст", params={"text": ""}),
+            "read": block("Прочитать", params={}),
+            "ask": block("Спросить", params={"text": ""}),
+            "say": block("Сказать", params={"text": ""}),
+            "condition": block("Условие", outs=("yes", "no"), params={"expr": ""}),
+            "if_exists": block("Если существует", outs=("yes", "no"), params={"target": ""}),
+            "repeat": block("Повторить", outs=("next", "break"), params={"count": ""}),
+            "hotkey": block("Горячая клавиша", params={"keys": ""}),
+            "wait": block("Подождать", params={"seconds": ""}),
+            "wait_for": block("Дождаться", params={"target": ""}),
+            "media": block("Медиа", params={}),
+            "open": block("Открыть", params={"url": ""}),
+            "scenario": block("Сценарий", params={"id": ""}),
+        }, "outs": {"next": "далее", "yes": "да", "no": "нет", "break": "прервать"}}
     # остров
     if method == "status.state":
         return STATE
@@ -254,9 +275,9 @@ class WSServer:
         return client
 
     @staticmethod
-    def send(sock: socket.socket, text: str) -> None:
+    def send(sock: socket.socket, text: str, opcode: int = 1) -> None:
         payload = text.encode("utf-8")
-        header = bytearray([0x81])
+        header = bytearray([0x80 | opcode])
         n = len(payload)
         if n < 126:
             header.append(n)
@@ -269,29 +290,45 @@ class WSServer:
         sock.sendall(bytes(header) + payload)
 
     @staticmethod
-    def recv(sock: socket.socket) -> str | None:
-        header = sock.recv(2)
-        if not header or len(header) < 2:
+    def recv_exact(sock: socket.socket, n: int) -> bytes | None:
+        buf = b""
+        while len(buf) < n:
+            chunk = sock.recv(n - len(buf))
+            if not chunk:
+                return None
+            buf += chunk
+        return buf
+
+    @classmethod
+    def recv(cls, sock: socket.socket) -> str | None:
+        header = cls.recv_exact(sock, 2)
+        if not header:
             return None
         opcode = header[0] & 0x0F
         masked = header[1] & 0x80
         n = header[1] & 0x7F
         if n == 126:
-            n = struct.unpack(">H", sock.recv(2))[0]
-        elif n == 127:
-            n = struct.unpack(">Q", sock.recv(8))[0]
-        mask = sock.recv(4) if masked else b"\0\0\0\0"
-        payload = b""
-        while len(payload) < n:
-            chunk = sock.recv(n - len(payload))
-            if not chunk:
+            ext = cls.recv_exact(sock, 2)
+            if ext is None:
                 return None
-            payload += chunk
+            n = struct.unpack(">H", ext)[0]
+        elif n == 127:
+            ext = cls.recv_exact(sock, 8)
+            if ext is None:
+                return None
+            n = struct.unpack(">Q", ext)[0]
+        mask = cls.recv_exact(sock, 4) if masked else b"\x00\x00\x00\x00"
+        if mask is None:
+            return None
+        payload = cls.recv_exact(sock, n) if n else b""
+        if payload is None:
+            return None
         if masked:
             payload = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
         if opcode == 8:
             return None
-        if opcode in (9, 10):  # ping/pong
+        if opcode == 9:  # ping → настоящий pong тем же телом
+            cls.send(sock, "", opcode=10)
             return ""
         return payload.decode("utf-8")
 
@@ -326,8 +363,9 @@ def serve_client(sock: socket.socket) -> None:
             result = handle(str(msg.get("method")), msg.get("params") or {})
             with lock:
                 server.send(sock, json.dumps({"id": msg.get("id"), "result": result}, ensure_ascii=False))
-        except (OSError, ValueError):
-            break
+        except Exception as exc:
+            import sys as _sys
+            print("ошибка обработки", msg.get("method") if isinstance(msg, dict) else "?", repr(exc), file=_sys.stderr, flush=True)
     server.drop(sock)
 
 
