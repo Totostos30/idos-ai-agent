@@ -269,7 +269,12 @@ button:disabled { opacity: 0.35; cursor: default; }
 .row.tri .side { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .row.tri .side.r { justify-content: flex-end; }
 .row.tri .mid { display: flex; align-items: center; gap: 6px; }
-.temp { font-size: 12px; font-weight: 600; color: var(--fg); opacity: 0.85; }
+/* температура — свой невидимый круглый контур (27px = высота ряда капсулы):
+   значение по центру круга, соседи и край капсулы не прижимают её вплотную;
+   с иконкой погоды круг растягивается в капсулу (min-width + padding) */
+.temp { font-size: 12px; font-weight: 600; color: var(--fg); opacity: 0.85;
+  display: inline-grid; place-items: center; min-width: 27px; height: 27px;
+  padding: 0 5px; margin-left: 3px; border-radius: 999px; box-sizing: border-box; }
 .bat-mini { position: relative; display: inline-grid; place-items: center; width: 24px; height: 12px; border-radius: 4px;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35); overflow: hidden; }
 .bat-mini i { position: absolute; left: 1.5px; top: 1.5px; bottom: 1.5px; border-radius: 2.5px; background: rgba(255, 255, 255, 0.85); max-width: calc(100% - 3px); }
