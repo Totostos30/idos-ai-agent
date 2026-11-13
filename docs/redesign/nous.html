@@ -524,6 +524,62 @@
       <span class="map">island.pet = ${p.id}</span>
     </article>`).join("");
 
+  // Часы ровно посередине между визуальным краем питомца и батареей.
+  // У каждого питомца контент занимает разную ширину внутри 40x40 бокса, поэтому
+  // растеризуем символ в canvas, находим пиксельную правую границу и центрируем
+  // часы между ней и батареей. Подстраховка от метрик шрифта: два прохода замера
+  // через getBoundingClientRect (фактические глифы, не anchor-точка).
+  const clockCenter = (svg) => {
+    const text = svg.querySelector("text");
+    const r = text.getBoundingClientRect();
+    const m = svg.getScreenCTM().inverse();
+    const a = svg.createSVGPoint(); a.x = r.left; a.y = r.top;
+    const b = svg.createSVGPoint(); b.x = r.right; b.y = r.bottom;
+    const left = a.matrixTransform(m).x, right = b.matrixTransform(m).x;
+    return (left + right) / 2;
+  };
+  const contentRight = (petId) => new Promise((resolve) => {
+    const symbol = document.getElementById("pet-" + petId);
+    const src = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">`
+      + `<defs>${symbol.outerHTML}</defs><use href="#pet-${petId}" width="80" height="80"/></svg>`;
+    const url = URL.createObjectURL(new Blob([src], { type: "image/svg+xml" }));
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas"); c.width = 80; c.height = 80;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      const data = ctx.getImageData(0, 0, 80, 80).data;
+      let right = 0;
+      for (let y = 0; y < 80; y += 1) {
+        for (let x = 79; x >= 0; x -= 1) {
+          if (data[(y * 80 + x) * 4 + 3] > 8) { right = Math.max(right, x + 1); break; }
+        }
+      }
+      URL.revokeObjectURL(url);
+      resolve((right / 80) * 40); // в координатах символа 0..40
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(40); };
+    img.src = url;
+  });
+  (async () => {
+    const batLeft = 68.5, petLeft = 16, petSize = 20;
+    const cards = [...document.querySelectorAll('#pets-grid .card[data-variant^="pet-"]')];
+    for (const cardEl of cards) {
+      const id = cardEl.dataset.variant.replace("pet-", "");
+      const svg = cardEl.querySelector(".stage svg");
+      const text = svg.querySelector("text");
+      if (!svg || !text) continue;
+      const vr = await contentRight(id);
+      const petRight = petLeft + (vr / 40) * petSize;
+      const mid = (petRight + batLeft) / 2;
+      let shift = 0;
+      for (let pass = 0; pass < 2; pass += 1) {
+        shift += mid - clockCenter(svg);
+        text.setAttribute("transform", `translate(${shift.toFixed(2)} 0)`);
+      }
+    }
+  })();
+
   // ---------- Демо: сессия агента в реальном темпе ----------
   const demoStage = document.getElementById("demoStage");
   const demoLabel = document.getElementById("demoLabel");
