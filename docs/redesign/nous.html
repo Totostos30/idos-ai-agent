@@ -57,6 +57,22 @@
   .map { display: inline-block; margin-top: 6px; padding: 3px 9px; border-radius: 999px; background: rgba(124, 140, 255, .12);
     box-shadow: inset 0 0 0 1px rgba(124, 140, 255, .35); color: var(--ink); font: 600 11px ui-monospace, Consolas, monospace; }
 
+  /* демо-сессия: слои состояний с кроссфейдом, как смена s-* классов в острове */
+  .demo-wrap { margin-top: 40px; }
+  .demo-stage {
+    position: relative; height: 280px; border-radius: 16px; overflow: hidden;
+    background: radial-gradient(320px 150px at 50% 40%, #0e0e14 0%, transparent 70%), var(--stage);
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .demo-layer { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transition: opacity .4s var(--ease); }
+  .demo-layer.on { opacity: 1; }
+  .demo-bar { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+  .dbtn { padding: 8px 16px; border-radius: 12px; background: var(--stage); box-shadow: inset 0 0 0 1px var(--line);
+    color: var(--ink); font: 600 13px inherit; cursor: pointer; transition: box-shadow .2s; }
+  .dbtn:hover { box-shadow: inset 0 0 0 1px rgba(124, 140, 255, .55); }
+  #demoLabel { color: var(--mut); font-size: 13px; font-family: ui-monospace, Consolas, monospace; }
+  #demoLabel b { color: var(--ink); font-family: inherit; }
+
   .changes { margin: 18px 0 0; padding: 16px 18px; border-radius: 16px; background: var(--stage); box-shadow: inset 0 0 0 1px var(--line); }
   .changes h3 { margin: 0 0 8px; font-size: 15px; }
   .changes li { margin: 5px 0; color: var(--mut); font-size: 13px; }
@@ -95,6 +111,16 @@
   <h2 class="sec" id="states"><span class="gr">Κινήσεις</span>Состояния и действия</h2>
   <p class="sec-lead">Каждый блок — живая анимация знака в конкретном состоянии Эйдоса. В коде состояние маппится на существующие классы орба (s-idle, s-thinking…) — питомец/знак меняет только темп и состав колец.</p>
   <div class="grid" id="states-grid"></div>
+
+  <section class="demo-wrap">
+    <h2 class="sec"><span class="gr">Δεῖγμα</span>Сессия как в приложении</h2>
+    <p class="sec-lead">Знак проходит реальный цикл агента: покой → слушает (ядро и свечение реагируют на уровень голоса, как на --lvl) → думает → ищет → работает → говорит (масштаб ядра в такт фразам) → готово. Смена состояний — кроссфейд 0.4 с, ровно как переключение s-* классов орба в острове.</p>
+    <div class="demo-stage" id="demoStage"></div>
+    <div class="demo-bar">
+      <button id="demoBtn" type="button" class="dbtn">Пауза</button>
+      <div id="demoLabel">—</div>
+    </div>
+  </section>
 
   <h2 class="sec" id="pets"><span class="gr">Θηρία</span>Мини-питомцы островка</h2>
   <p class="sec-lead">Замена орба-персонажа в капсуле: тот же язык (точка + кольца брендовых цветов, monoline), но с характером. Сцена показывает питомца внутри островка-пилюли (покой: часы справа), рядом — чистый знак 24/16 px. Ставится настройкой «Персонаж островка»; состояния подключаются тем же набором, что и у знака.</p>
@@ -460,13 +486,15 @@
     card("st-" + s.id, s.gr, s.title, s.ref, "st-" + s.id, s.note, s.map)).join("");
 
   // ---------- Питомцы ----------
+  // Сцена: всё центрировано на оптической оси y=32, боковые поля 6-7px, зазоры равномерные.
   const capsule = '<rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>';
   const scene = (pet) => `${capsule}
-    <use href="#pet-${pet}" x="15" y="15" width="26" height="26"/>
-    <text x="55" y="35.5" font-family="ui-monospace, Consolas, monospace" font-size="11" font-weight="600"
+    <use href="#pet-${pet}" x="16" y="22" width="20" height="20"/>
+    <text x="52.5" y="35.5" font-family="ui-monospace, Consolas, monospace" font-size="10" font-weight="600"
           fill="var(--ink)" text-anchor="middle" opacity=".92">21:47</text>
-    <rect x="70" y="25.5" width="11" height="7.5" rx="3.75" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1"/>
-    <rect x="71.6" y="27" width="5.6" height="4.5" rx="1.6" fill="var(--ok)" opacity=".85"/>`;
+    <rect x="68.5" y="29" width="10.5" height="6" rx="3" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1.1"/>
+    <rect x="79.4" y="30.6" width="1.5" height="2.8" rx=".75" fill="rgba(255,255,255,.45)"/>
+    <rect x="70" y="30.3" width="5.4" height="3.4" rx="1.3" fill="var(--ok)" opacity=".85"/>`;
 
   const pets = [
     { id: "cat", gr: "Νόξ", title: "Кот Нокс", ref: "Хвост-кольцо виляет, моргает вразнобой ушами-дугами бренда.",
@@ -495,12 +523,104 @@
       <p class="note">${p.note}</p>
       <span class="map">island.pet = ${p.id}</span>
     </article>`).join("");
+
+  // ---------- Демо: сессия агента в реальном темпе ----------
+  const demoStage = document.getElementById("demoStage");
+  const demoLabel = document.getElementById("demoLabel");
+  const demoBtn = document.getElementById("demoBtn");
+  const listenLayer = `${capsule}
+    <circle cx="48" cy="32" r="4.5" fill="none" stroke="var(--b1)" stroke-width="1.7">
+      <animate attributeName="r" values="4.5;11.8" dur="1.8s" begin="0s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".75;0" dur="1.8s" begin="0s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="48" cy="32" r="4.5" fill="none" stroke="var(--b2)" stroke-width="1.7">
+      <animate attributeName="r" values="4.5;11.8" dur="1.8s" begin=".6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".75;0" dur="1.8s" begin=".6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="48" cy="32" r="4.5" fill="none" stroke="var(--b3)" stroke-width="1.7">
+      <animate attributeName="r" values="4.5;11.8" dur="1.8s" begin="1.2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".75;0" dur="1.8s" begin="1.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle id="dLvlGlow" cx="48" cy="32" r="7" fill="url(#caveglow)" opacity=".2"/>
+    <g transform="translate(48 32)"><g id="dLvlCore"><circle r="3.1" fill="var(--ink)"/><circle r="3.1" fill="url(#sph)"/></g></g>`;
+  const speakLayer = `${capsule}
+    <circle cx="48" cy="32" r="5" fill="none" stroke="var(--b1)" stroke-width="1.4" opacity="0">
+      <animate attributeName="r" values="4.5;10" dur="1.3s" begin="0s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".6;0" dur="1.3s" begin="0s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="48" cy="32" r="5" fill="none" stroke="var(--b2)" stroke-width="1.4" opacity="0">
+      <animate attributeName="r" values="4.5;10" dur="1.3s" begin=".45s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".6;0" dur="1.3s" begin=".45s" repeatCount="indefinite"/>
+    </circle>
+    <g transform="translate(48 32)"><g id="dSpeakCore"><circle r="2.9" fill="var(--ink)"/><circle r="2.9" fill="url(#sph)"/></g></g>`;
+
+  const SEQ = [
+    { sym: "st-idle", gr: "Ἠρεμία", name: "Покой", map: ".orb.s-idle", ms: 2600 },
+    { sym: "listen", gr: "Ἀκρόασις", name: "Слушает", map: ".orb.s-listening · --lvl", ms: 3800, html: listenLayer, live: "listen" },
+    { sym: "st-thinking", gr: "Διάνοια", name: "Думает", map: ".orb.s-thinking", ms: 2200 },
+    { sym: "st-searching", gr: "Ζήτησις", name: "Ищет", map: ".orb.s-searching", ms: 2400 },
+    { sym: "st-working", gr: "Ἐνέργεια", name: "Работает", map: ".orb.s-working · .s-acting", ms: 2600 },
+    { sym: "speak", gr: "Φωνή", name: "Говорит", map: ".orb.s-speaking", ms: 3400, html: speakLayer, live: "speak" },
+    { sym: "st-done", gr: "Τέλος", name: "Готово", map: ".step.ok", ms: 2200 },
+  ];
+  demoStage.innerHTML = SEQ.map((s) =>
+    `<div class="demo-layer" data-sym="${s.sym}"><svg class="hero" viewBox="0 0 96 64">${s.html || `<use href="#${s.sym}"/>`}</svg></div>`).join("");
+  const layers = Object.fromEntries([...demoStage.querySelectorAll(".demo-layer")].map((l) => [l.dataset.sym, l]));
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let demoIdx = 0, demoTimer = null, running = false;
+  let lvl = 0, lvlTarget = 0, speakScale = 1, speakTarget = 1, lvlTick = null, speakTick = null;
+
+  const stopLvl = () => { if (lvlTick) { clearInterval(lvlTick); lvlTick = null; } };
+  const stopSpeak = () => { if (speakTick) { clearInterval(speakTick); speakTick = null; } };
+  const startLvl = () => { stopLvl(); lvlTick = setInterval(() => {
+      if (Math.random() < .18) lvlTarget = Math.random() * .25;       // пауза между словами
+      else if (Math.random() < .3) lvlTarget = .45 + Math.random() * .55; // всплеск речи
+      lvl += (lvlTarget - lvl) * .35;
+      const core = document.getElementById("dLvlCore"), glow = document.getElementById("dLvlGlow");
+      if (!core || !glow) return;
+      core.setAttribute("transform", `scale(${(1 + lvl * .4).toFixed(3)})`);
+      glow.setAttribute("opacity", (.15 + lvl * .6).toFixed(3));
+      glow.setAttribute("r", (6 + lvl * 3.5).toFixed(2));
+    }, 110); };
+  const startSpeak = () => { stopSpeak(); speakTick = setInterval(() => {
+      speakTarget *= .82;                                             // затухание слога
+      if (Math.random() < .3) speakTarget = .5 + Math.random() * .7;  // новый слог
+      speakScale += (speakTarget - speakScale) * .45;
+      const core = document.getElementById("dSpeakCore");
+      if (core) core.setAttribute("transform", `scale(${speakScale.toFixed(3)})`);
+    }, 70); };
+
+  const show = (idx) => {
+    demoIdx = idx;
+    const s = SEQ[idx];
+    Object.values(layers).forEach((l) => l.classList.toggle("on", l.dataset.sym === s.sym));
+    demoLabel.innerHTML = `<b>${s.gr} ${s.name}</b> · ${s.map}`;
+    if (s.live === "listen") startLvl(); else stopLvl();
+    if (s.live === "speak") startSpeak(); else stopSpeak();
+  };
+  const next = () => { if (!running) return; show((demoIdx + 1) % SEQ.length); demoTimer = setTimeout(next, SEQ[demoIdx].ms); };
+  const play = () => {
+    running = true;
+    demoBtn.textContent = "Пауза";
+    document.querySelectorAll("#demoStage svg").forEach((s) => { try { s.unpauseAnimations(); } catch (e) { /* */ } });
+    show(demoIdx);
+    demoTimer = setTimeout(next, SEQ[demoIdx].ms);
+  };
+  const pause = () => { running = false; clearTimeout(demoTimer); stopLvl(); stopSpeak(); demoBtn.textContent = "Продолжить"; };
+  demoBtn.addEventListener("click", () => (running ? pause() : play()));
+  // Демо — основной контент страницы: проигрывается всегда; reduced-motion
+  // гасит только декоративные циклы карточек (см. скрипт-паузу ниже).
+  play();
 </script>
 
 <script>
-  // Полная статика для reduced-motion: SMIL-анимации ставятся на паузу.
+  // Reduced motion: гасим декоративные SMIL-циклы карточек, но не трогаем демо-плеер —
+  // его анимации и есть содержимое, он управляется собственной кнопкой Пауза.
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    document.querySelectorAll("svg").forEach((s) => { try { s.pauseAnimations(); } catch (e) { /* */ } });
+    document.querySelectorAll("svg").forEach((s) => {
+      if (s.closest("#demoStage")) return;
+      try { s.pauseAnimations(); } catch (e) { /* */ }
+    });
   }
 </script>
 </body>
