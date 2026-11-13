@@ -6,6 +6,7 @@ import { invoke, listen, el, fmtTime, inTauri, micIcon, setMicState } from "./sh
 import { Mic } from "./voice.js";
 import { createNous } from "./nous.js";
 import { iconNode } from "./icons.js";
+import { t, locale } from "./i18n.js";
 import { Fluid } from "./fluid.js";
 import { PARTS, TAB_LIST, TOOL_LIST, partOn, listOn, partValues, RESET_VALUES, applyValues } from "./parts.js";
 
@@ -45,7 +46,7 @@ let root, isl, cardsBox, fluid, lip, leaveTimer = null, barTimer = null;
 let clipLoadRequest = 0, clipOpenRequest = 0;
 // автоскрытие: полоска → (навели) капсула → (держишь курсор) большая панель
 let quietSince = Date.now(), tuckTimer = null, peeked = false, lastSig = "";
-const mic = new Mic((st) => { S.mic = st; document.querySelectorAll("button.mic").forEach((b) => setMicState(b, st)); if (st.state === "error") pushCard({ title: "Микрофон", text: st.text, kind: "error" }); render(); });
+const mic = new Mic((st) => { S.mic = st; document.querySelectorAll("button.mic").forEach((b) => setMicState(b, st)); if (st.state === "error") pushCard({ title: t("Микрофон"), text: st.text, kind: "error" }); render(); });
 
 // ------------------------------------------------------------------ mode selection
 
@@ -147,8 +148,8 @@ const VIEWS = {
       ? el("span", { class: "temp" }, (S.weather.icon || "") + Math.round(S.weather.temp) + "°") : null;
     // Погода без города не исчезает молча: справа появляется чип «город?» → настройки.
     const cityAsk = on("weather") && !temp && S.online
-      ? el("button", { class: "chip w-ask", title: (S.weather && S.weather.reason) || "Погоде нужен город — Настройки · Погода",
-        onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "settings" }); } }, "город?") : null;
+      ? el("button", { class: "chip w-ask", title: (S.weather && S.weather.reason) || t("Погоде нужен город — Настройки · Погода"),
+        onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "settings" }); } }, t("город?")) : null;
     if (on("volume_osd") && S.vol && Date.now() - S.vol.at < 1200) return [el("div", { class: "row pill" }, el("span", { class: "ic" }, S.vol.v ? "🔊" : "🔇"),
       el("span", { class: "vol" }, el("i", { style: { width: S.vol.v + "%" } })), el("span", { class: "mono sub" }, String(S.vol.v)))];
     return [el("div", { class: "row pill tri" },
@@ -185,19 +186,19 @@ const VIEWS = {
     el("div", { class: "row pill" }, orb("big"),
       el("span", { class: "label" }, S.agent.label || stateLabel(S.agent.state)),
       el("span", { class: "grow" }),
-      on("agent_stop") ? el("button", { class: "icon stop", title: "Остановить", onclick: (e) => { e.stopPropagation(); stopAll(); } }, iconNode("stop", 13)) : null),
+      on("agent_stop") ? el("button", { class: "icon stop", title: t("Остановить"), onclick: (e) => { e.stopPropagation(); stopAll(); } }, iconNode("stop", 13)) : null),
     on("agent_steps") ? stepsMini() : null,
   ],
   reply: () => [
-    el("div", { class: "row" }, orb("big"), el("span", { class: "label" }, S.agent.state === "speaking" ? "Говорю…" : "Ответ"),
+    el("div", { class: "row" }, orb("big"), el("span", { class: "label" }, S.agent.state === "speaking" ? t("Говорю…") : t("Ответ")),
       el("span", { class: "grow" }),
-      el("button", { class: "icon", title: "Открыть диалог", onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "chat" }); } }, "↗"),
-      el("button", { class: "icon", title: "Закрыть", onclick: (e) => { e.stopPropagation(); S.agent.showReply = false; core.try("voice.stop"); render(); } }, "✕")),
+      el("button", { class: "icon", title: t("Открыть диалог"), onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "chat" }); } }, "↗"),
+      el("button", { class: "icon", title: t("Закрыть"), onclick: (e) => { e.stopPropagation(); S.agent.showReply = false; core.try("voice.stop"); render(); } }, "✕")),
     on("reply_text") ? el("div", { class: "reply-text" }, S.agent.text || S.agent.lastReply) : null,
   ],
   mic: () => [
     el("div", { class: "row pill" }, orb("big"),
-      el("span", { class: "label" }, S.mic.state === "transcribing" ? "Распознаю…" : S.mic.mode === "dictation" ? "Диктовка…" : "Слушаю…"),
+      el("span", { class: "label" }, S.mic.state === "transcribing" ? t("Распознаю…") : S.mic.mode === "dictation" ? t("Диктовка…") : t("Слушаю…")),
       el("span", { class: "grow" }), on("mic_meter") ? meter(S.mic.level || 0) : null),
   ],
   rec: () => [
@@ -212,22 +213,22 @@ const VIEWS = {
     return [el("div", { class: "row pill" }, el("span", { class: "ic" }, icon("timer")),
       el("span", { class: "label mono" }, fmtTime(left)), el("span", { class: "sub" }, t.label || ""),
       el("span", { class: "grow" }),
-      el("button", { class: "icon", title: "Отменить", onclick: (e) => { e.stopPropagation(); core.try("island.cancel_timer", { timer_id: t.id }); } }, "✕"))];
+      el("button", { class: "icon", title: t("Отменить"), onclick: (e) => { e.stopPropagation(); core.try("island.cancel_timer", { timer_id: t.id }); } }, "✕"))];
   },
   confirm: () => {
     const c = S.agent.confirm;
     return [
-      el("div", { class: "row" }, orb("big"), el("span", { class: "label" }, "Разрешить действие?")),
+      el("div", { class: "row" }, orb("big"), el("span", { class: "label" }, t("Разрешить действие?"))),
       el("div", { class: "confirm-text" }, c.label || c.tool || ""),
       c.preview ? el("pre", { class: "preview" }, typeof c.preview === "string" ? c.preview : JSON.stringify(c.preview, null, 1)) : null,
       el("div", { class: "row actions" },
-        el("button", { class: "btn ghost", onclick: () => answerConfirm(false) }, "Отклонить"),
-        el("button", { class: "btn primary", onclick: () => answerConfirm(true) }, "Разрешить")),
+        el("button", { class: "btn ghost", onclick: () => answerConfirm(false) }, t("Отклонить")),
+        el("button", { class: "btn primary", onclick: () => answerConfirm(true) }, t("Разрешить"))),
     ];
   },
   bar: () => {
     const input = el("input", {
-      class: "bar-input", placeholder: "Спросите Эйдос, найдите приложение, посчитайте…", value: S.bar.text,
+      class: "bar-input", placeholder: t("Спросите Эйдос, найдите приложение, посчитайте…"), value: S.bar.text,
       spellcheck: "false", autocomplete: "off",
     });
     input.addEventListener("input", () => { S.bar.text = input.value; S.bar.sel = 0; queryBar(); });
@@ -267,8 +268,8 @@ function dots() {
 }
 
 function stateLabel(s) {
-  return ({ thinking: "Думаю…", working: "Работаю…", acting: "Действую…", searching: "Ищу…", speaking: "Говорю…",
-    waiting: "Жду подтверждения", stopping: "Останавливаюсь…" })[s] || "Готов";
+  return ({ thinking: t("Думаю…"), working: t("Работаю…"), acting: t("Действую…"), searching: t("Ищу…"), speaking: t("Говорю…"),
+    waiting: t("Жду подтверждения"), stopping: t("Останавливаюсь…") })[s] || t("Готов");
 }
 
 function meter(level) {
@@ -304,13 +305,13 @@ function panel() {
   if (S.tab !== "edit" && !tabs.some(([id]) => id === S.tab)) S.tab = tabs[0][0];
   const editing = S.tab === "edit";
   const head = el("div", { class: "row tabs" }, on("h_orb") ? orb() : null,
-    editing ? el("span", { class: "label" }, "Настройка островка")
-      : tabs.length > 1 ? tabs.map(([id, name]) => el("button", { class: "tab" + (S.tab === id ? " on" : ""), title: name, onclick: (e) => { e.stopPropagation(); S.tab = id; if (id === "clip") loadClip(); render(); } }, name))
-      : el("span", { class: "label" }, tabs[0][1]),
+    editing ? el("span", { class: "label" }, t("Настройка островка"))
+      : tabs.length > 1 ? tabs.map(([id, name]) => el("button", { class: "tab" + (S.tab === id ? " on" : ""), title: t(name), onclick: (e) => { e.stopPropagation(); S.tab = id; if (id === "clip") loadClip(); render(); } }, t(name)))
+      : el("span", { class: "label" }, t(tabs[0][1])),
     el("span", { class: "grow" }),
-    on("h_edit") || editing ? el("button", { class: "icon" + (editing ? " on" : ""), title: editing ? "Готово" : "Настроить: что показывать", onclick: (e) => { e.stopPropagation(); toggleEdit(); } }, editing ? iconNode("check", 13) : iconNode("edit", 13)) : null,
-    on("h_pin") && !editing ? el("button", { class: "icon" + (S.pinned ? " on" : ""), title: "Закрепить", onclick: (e) => { e.stopPropagation(); S.pinned = !S.pinned; render(); } }, iconNode("home", 13)) : null,
-    on("h_open") && !editing ? el("button", { class: "icon", title: "Окно Эйдоса", onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "chat" }); } }, "↗") : null);
+    on("h_edit") || editing ? el("button", { class: "icon" + (editing ? " on" : ""), title: editing ? t("Готово") : t("Настроить: что показывать"), onclick: (e) => { e.stopPropagation(); toggleEdit(); } }, editing ? iconNode("check", 13) : iconNode("edit", 13)) : null,
+    on("h_pin") && !editing ? el("button", { class: "icon" + (S.pinned ? " on" : ""), title: t("Закрепить"), onclick: (e) => { e.stopPropagation(); S.pinned = !S.pinned; render(); } }, iconNode("home", 13)) : null,
+    on("h_open") && !editing ? el("button", { class: "icon", title: t("Окно Эйдоса"), onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "chat" }); } }, "↗") : null);
   const body = ({ now: panelNow, tools: panelTools, clip: panelClip, agent: panelAgent, edit: panelEdit })[S.tab]();
   return [head, el("div", { class: "panel-body" + (editing ? " edit" : "") }, body)];
 }
@@ -319,7 +320,7 @@ async function saveValues(values) {
   applyValues(S.cfg, values);
   render();
   const r = await core.try("settings.update", { values });
-  if (r && r.error) toastCard("Не удалось сохранить", r.error);
+  if (r && r.error) toastCard(t("Не удалось сохранить"), r.error);
 }
 
 function toastCard(title, text) {
@@ -346,24 +347,25 @@ function panelEdit() {
   const I = S.cfg.island;
   const groups = new Map();
   for (const [key, label, group] of PARTS) {
-    if (!groups.has(group)) groups.set(group, []);
+    const g = t(group);
+    if (!groups.has(g)) groups.set(g, []);
     const shown = partOn(I, key);
-    groups.get(group).push(chipT(label, shown, () => saveValues(partValues(key, !shown))));
+    groups.get(g).push(chipT(t(label), shown, () => saveValues(partValues(key, !shown))));
   }
-  const out = [el("div", { class: "sub edit-hint" }, "Нажмите на элемент, чтобы скрыть или показать его. Капсула меняется сразу.")];
-  out.push(editGroup("Вкладки панели", TAB_LIST.map(([id, name]) => {
+  const out = [el("div", { class: "sub edit-hint" }, t("Нажмите на элемент, чтобы скрыть или показать его. Капсула меняется сразу."))];
+  out.push(editGroup(t("Вкладки панели"), TAB_LIST.map(([id, name]) => {
     const shown = listOn(I, "tabs", id);
-    return chipT(name, shown, () => saveValues(hiddenList("tabs", id, !shown)));
+    return chipT(t(name), shown, () => saveValues(hiddenList("tabs", id, !shown)));
   })));
   for (const [group, chips] of groups) out.push(editGroup(group, chips));
-  out.push(editGroup("Кнопки на вкладке «Инструменты»", TOOL_LIST.map(([id, name]) => {
+  out.push(editGroup(t("Кнопки на вкладке «Инструменты»"), TOOL_LIST.map(([id, name]) => {
     const shown = listOn(I, "tools", id);
-    return chipT(name, shown, () => saveValues(hiddenList("tools", id, !shown)));
+    return chipT(t(name), shown, () => saveValues(hiddenList("tools", id, !shown)));
   })));
   out.push(el("div", { class: "row actions" },
-    el("button", { class: "btn ghost", onclick: (e) => { e.stopPropagation(); saveValues(RESET_VALUES); } }, "Показать всё"),
+    el("button", { class: "btn ghost", onclick: (e) => { e.stopPropagation(); saveValues(RESET_VALUES); } }, t("Показать всё")),
     el("span", { class: "grow" }),
-    el("button", { class: "btn primary", onclick: (e) => { e.stopPropagation(); toggleEdit(); } }, "Готово")));
+    el("button", { class: "btn primary", onclick: (e) => { e.stopPropagation(); toggleEdit(); } }, t("Готово"))));
   return out;
 }
 
@@ -375,7 +377,7 @@ function panelNow() {
     blocks.push(el("div", { class: "player", style: m.accent ? { "--accent": m.accent } : {} },
       cover("l"),
       el("div", { class: "meta" },
-        el("div", { class: "title" }, m.title || "Без названия"), el("div", { class: "artist" }, [m.artist, m.app].filter(Boolean).join(" · ")),
+        el("div", { class: "title" }, m.title || t("Без названия")), el("div", { class: "artist" }, [m.artist, m.app].filter(Boolean).join(" · ")),
         on("p_lyrics") && S.lyric ? el("div", { class: "lyric" }, S.lyric) : null,
         dur && on("p_progress") ? el("div", { class: "progress", onclick: (e) => { if (!m.can_seek) return; const r = e.currentTarget.getBoundingClientRect(); core.try("media.control", { action: "seek", position: ((e.clientX - r.left) / r.width) * dur }); } },
           el("i", { style: { width: Math.min(100, (pos / dur) * 100).toFixed(1) + "%" } })) : null,
@@ -399,19 +401,19 @@ function panelNow() {
         el("div", { class: "sub" }, w.reason || w.error || "Укажите город в Настройках")));
   }
   if (on("w_clock")) widgets.append(el("div", { class: "widget" }, el("div", { class: "big mono" }, clockNode()),
-    el("div", { class: "sub" }, new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" }))));
+    el("div", { class: "sub" }, new Date().toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" }))));
   if (on("w_battery") && batInfo())
     widgets.append(el("div", { class: "widget" }, el("div", { class: "big" }, (batInfo().charging ? "⚡ " : "") + Math.round(batInfo().percent) + "%"),
-      el("div", { class: "sub" }, batInfo().charging ? "Заряжается" : "Батарея")));
+      el("div", { class: "sub" }, batInfo().charging ? t("Заряжается") : t("Батарея"))));
   for (const t of on("w_timers") ? S.timers.values() : []) {
     const left = t.state === "running" && t.ends_at ? t.ends_at - Date.now() / 1000 : 0;
     widgets.append(el("div", { class: "widget timer " + t.state },
-      el("div", { class: "big mono" }, t.state === "done" ? "Готово" : fmtTime(left)),
-      el("div", { class: "sub" }, t.label || "Таймер"),
+      el("div", { class: "big mono" }, t.state === "done" ? t("Готово") : fmtTime(left)),
+      el("div", { class: "sub" }, t.label || t("Таймер")),
       el("button", { class: "x", onclick: () => { core.try("island.cancel_timer", { timer_id: t.id }); S.timers.delete(t.id); render(); } }, "✕")));
   }
   if (widgets.children.length) blocks.push(widgets);
-  if (!blocks.length) blocks.push(el("div", { class: "empty" }, "Здесь всё скрыто — нажмите ✎, чтобы вернуть элементы"));
+  if (!blocks.length) blocks.push(el("div", { class: "empty" }, t("Здесь всё скрыто — нажмите ✎, чтобы вернуть элементы")));
   return blocks;
 }
 
@@ -430,12 +432,12 @@ const TOOL_BUTTONS = [
 
 function panelTools() {
   const grid = el("div", { class: "grid" }, TOOL_BUTTONS.filter(([id]) => listOn(S.cfg.island, "tools", id)).map(([, ic, name, fn]) =>
-    el("button", { class: "tile", onclick: (e) => { e.stopPropagation(); S.expanded = false; S.pinned = false; render(); fn(); } }, el("span", { class: "ic" }, iconNode(ic, 18)), el("span", {}, name))));
+    el("button", { class: "tile", onclick: (e) => { e.stopPropagation(); S.expanded = false; S.pinned = false; render(); fn(); } }, el("span", { class: "ic" }, iconNode(ic, 18)), el("span", {}, t(name)))));
   const out = [grid];
   if (on("obs") && S.obs && S.obs.connected) {
     out.push(el("div", { class: "row obs" }, el("span", { class: "sub" }, "OBS"),
-      el("button", { class: "btn" + (S.obs.recording ? " danger" : ""), onclick: () => core.try("obs.record", { command: "toggle" }) }, S.obs.recording ? "Остановить запись" : "Запись экрана"),
-      el("button", { class: "btn" + (S.obs.streaming ? " danger" : ""), onclick: () => core.try("obs.stream", { command: "toggle" }) }, S.obs.streaming ? "Эфир" : "Эфир"),
+      el("button", { class: "btn" + (S.obs.recording ? " danger" : ""), onclick: () => core.try("obs.record", { command: "toggle" }) }, S.obs.recording ? t("Остановить запись") : t("Запись экрана")),
+      el("button", { class: "btn" + (S.obs.streaming ? " danger" : ""), onclick: () => core.try("obs.stream", { command: "toggle" }) }, t("Эфир")),
       (S.obs.scenes || []).slice(0, 4).map((sc) => el("button", { class: "btn ghost" + (sc === S.obs.scene ? " on" : ""), onclick: () => core.try("obs.set_scene", { name: sc }) }, sc))));
   }
   return out;
@@ -447,7 +449,7 @@ async function loadClip() {
   if (request !== clipLoadRequest) return;
   const items = Array.isArray(res) ? res : res && Array.isArray(res.items) ? res.items : null;
   if (!items) {
-    if (res && res.error) toastCard("Буфер обмена", res.error);
+    if (res && res.error) toastCard(t("Буфер обмена"), res.error);
     return;
   }
   S.clip = items;
@@ -472,7 +474,7 @@ async function toggleClip(itemId) {
   if (request !== clipOpenRequest || !S.clipExpanded || S.clipExpanded.id !== itemId) return;
   if (!item || item.error || typeof item.text !== "string") {
     S.clipExpanded = null;
-    toastCard("Буфер обмена", item && item.error || "Не удалось загрузить полный текст записи");
+    toastCard(t("Буфер обмена"), item && item.error || t("Не удалось загрузить полный текст записи"));
   } else {
     S.clipExpanded = { id: itemId, loading: false, text: item.text };
   }
@@ -482,7 +484,7 @@ async function toggleClip(itemId) {
 async function pasteClip(itemId) {
   const result = await core.try("clipboard.paste", { item_id: itemId });
   if (!result || result.error || result.ok === false) {
-    toastCard("Буфер обмена", result && result.error || "Не удалось вставить запись");
+    toastCard(t("Буфер обмена"), result && result.error || t("Не удалось вставить запись"));
     return;
   }
   await loadClip();
@@ -491,7 +493,7 @@ async function pasteClip(itemId) {
 async function setClipPinned(itemId, pinned) {
   const result = await core.try("clipboard.pin", { item_id: itemId, pinned });
   if (!result || result.error || !result.ok) {
-    toastCard("Буфер обмена", result && result.error || "Не удалось изменить закрепление записи");
+    toastCard(t("Буфер обмена"), result && result.error || t("Не удалось изменить закрепление записи"));
     return;
   }
   await loadClip();
@@ -500,31 +502,31 @@ async function setClipPinned(itemId, pinned) {
 async function deleteClip(itemId) {
   const result = await core.try("clipboard.delete", { item_id: itemId });
   if (!result || result.error || !result.ok) {
-    toastCard("Буфер обмена", result && result.error || "Не удалось удалить запись");
+    toastCard(t("Буфер обмена"), result && result.error || t("Не удалось удалить запись"));
     return;
   }
   await loadClip();
 }
 
 function panelClip() {
-  if (!S.clip.length) return [el("div", { class: "empty" }, "История буфера пуста")];
+  if (!S.clip.length) return [el("div", { class: "empty" }, t("История буфера пуста"))];
   return [el("div", { class: "clip-list" }, S.clip.map((c) => {
     const expanded = S.clipExpanded && S.clipExpanded.id === c.id;
     const preview = String(c.preview || c.text || "");
-    const text = expanded ? S.clipExpanded.loading ? "Загрузка полного текста…" : S.clipExpanded.text : preview.slice(0, 160);
+    const text = expanded ? S.clipExpanded.loading ? t("Загрузка полного текста…") : S.clipExpanded.text : preview.slice(0, 160);
     return el("div", { class: "clip" + (c.pinned ? " pinned" : "") + (expanded ? " expanded" : "") },
       el("button", { class: "clip-content", type: "button", "aria-expanded": !!expanded,
-        "aria-label": expanded ? "Свернуть запись буфера обмена" : `Раскрыть запись буфера обмена, ${c.length || preview.length} символов`,
-        title: expanded ? "Свернуть" : "Показать полностью", onclick: () => toggleClip(c.id) },
+        "aria-label": expanded ? t("Свернуть запись буфера обмена") : t("Раскрыть запись буфера обмена") + ", " + (c.length || preview.length) + " " + t("симв."),
+        title: expanded ? t("Свернуть запись буфера обмена") : t("Показать полностью"), onclick: () => toggleClip(c.id) },
         c.kind === "image" && c.preview && !expanded ? el("img", { src: c.preview, alt: "Предпросмотр изображения" }) : el("span", { class: "t" }, text)),
-      el("button", { class: "btn ghost clip-paste", type: "button", title: "Вставить запись", onclick: () => pasteClip(c.id) }, "Вставить"),
-      el("button", { class: "icon", type: "button", title: c.pinned ? "Открепить" : "Закрепить", "aria-label": c.pinned ? "Открепить запись" : "Закрепить запись", onclick: () => setClipPinned(c.id, !c.pinned) }, c.pinned ? "★" : "☆"),
-      el("button", { class: "icon", type: "button", title: "Удалить", "aria-label": "Удалить запись", onclick: () => deleteClip(c.id) }, "✕"));
+      el("button", { class: "btn ghost clip-paste", type: "button", title: t("Вставить"), onclick: () => pasteClip(c.id) }, t("Вставить")),
+      el("button", { class: "icon", type: "button", title: c.pinned ? t("Открепить") : t("Закрепить"), "aria-label": c.pinned ? t("Открепить запись") : t("Закрепить запись"), onclick: () => setClipPinned(c.id, !c.pinned) }, c.pinned ? "★" : "☆"),
+      el("button", { class: "icon", type: "button", title: t("Удалить"), "aria-label": t("Удалить запись"), onclick: () => deleteClip(c.id) }, "✕"));
   }))];
 }
 
 function panelAgent() {
-  const input = el("input", { class: "bar-input small", placeholder: "Задача для Эйдоса…" });
+  const input = el("input", { class: "bar-input small", placeholder: t("Задача для Эйдоса…") });
   input.addEventListener("focus", () => invoke("island_focus", { focus: true }));
   input.addEventListener("blur", () => invoke("island_focus", { focus: false }));
   input.addEventListener("keydown", (e) => {
@@ -534,7 +536,7 @@ function panelAgent() {
   return [
     el("div", { class: "row" }, el("span", { class: "label" }, stateLabel(S.agent.state)), el("span", { class: "grow" }),
       on("pa_model") ? el("span", { class: "chip" }, S.router || "") : null,
-      BUSY.has(S.agent.state) ? el("button", { class: "btn danger", onclick: stopAll }, iconNode("stop", 13), " Стоп") : null),
+      BUSY.has(S.agent.state) ? el("button", { class: "btn danger", onclick: stopAll }, iconNode("stop", 13), t(" Стоп")) : null),
     on("pa_steps") ? stepsMini() : null,
     on("pa_reply") && S.agent.lastReply ? el("div", { class: "reply-text" }, S.agent.lastReply) : null,
     on("pa_input") ? el("div", { class: "row" }, input) : null,
@@ -641,7 +643,7 @@ function scheduleHit() {
 // ------------------------------------------------------------------ actions
 
 function micButton(onclick) {
-  const b = el("button", { class: "icon mic", title: "Голосом", onclick: () => (mic.active ? mic.stop() : onclick()) }, micIcon());
+  const b = el("button", { class: "icon mic", title: t("Голосом"), onclick: () => (mic.active ? mic.stop() : onclick()) }, micIcon());
   setMicState(b, S.mic);
   return b;
 }
@@ -655,7 +657,7 @@ function stopAll() {
   mic.cancel();
   core.try("agent.stop");
   core.try("voice.stop");
-  pushCard({ title: "Остановлено", text: "Агент прервал текущую задачу", kind: "warn", timeout: 3 });
+  pushCard({ title: t("Остановлено"), text: t("Агент прервал текущую задачу"), kind: "warn", timeout: 3 });
 }
 
 function answerConfirm(approve) {
@@ -714,7 +716,7 @@ async function runBar(i) {
   }
   closeBar();
   const res = await core.try("commandbar.run", { action: it.action, key: it.key });
-  if (res && res.error) pushCard({ title: "Не получилось", text: res.error, kind: "error" });
+  if (res && res.error) pushCard({ title: t("Не получилось"), text: res.error, kind: "error" });
 }
 
 function barKey(e) {
@@ -773,14 +775,14 @@ async function applyConfig(cfg) {
     if (!v) continue;
     const parts = String(v).split("+").map((part) => part.trim().toLowerCase());
     if (parts.includes("*") || parts.includes("numpadmultiply") || (parts.includes("shift") && parts.includes("8"))) {
-      invalid.push(`${k}: сочетание «${v}» не поддерживается (клавиша * недоступна). Выберите другое сочетание.`);
+      invalid.push(k + ": " + t("сочетание «{v}» не поддерживается (клавиша * недоступна). Выберите другое сочетание.", { v }));
       continue;
     }
     map[k] = String(v);
   }
   const res = await invoke("register_hotkeys", { map });
   const errors = invalid.concat(res && res.errors ? Object.values(res.errors) : []);
-  if (errors.length) pushCard({ title: "Горячие клавиши", text: errors.join("\n"), kind: "warn", timeout: 10 });
+  if (errors.length) pushCard({ title: t("Горячие клавиши"), text: errors.join("\n"), kind: "warn", timeout: 10 });
   render();
 }
 
@@ -868,7 +870,7 @@ export function mountIsland() {
     }
     if (!inside && S.expanded && !S.pinned) { leaveTimer = setTimeout(() => { S.expanded = false; render(); }, 420); }
   });
-  listen("core-restarted", () => pushCard({ title: "Ядро перезапущено", kind: "ok", timeout: 3 }));
+  listen("core-restarted", () => pushCard({ title: t("Ядро перезапущено"), kind: "ok", timeout: 3 }));
 
   core.on("core.connected", async () => {
     S.online = true;
@@ -884,7 +886,7 @@ export function mountIsland() {
     await applyConfig(cfg && !cfg.error ? cfg : {});
   });
   core.on("core.lost", () => { S.online = false; render(); });
-  core.on("core.waiting", (info) => { S.online = false; if (info && info.error && !S.coreErrShown) { S.coreErrShown = true; pushCard({ title: "Ядро не запущено", text: info.error, kind: "error", timeout: 0 }); } render(); });
+  core.on("core.waiting", (info) => { S.online = false; if (info && info.error && !S.coreErrShown) { S.coreErrShown = true; pushCard({ title: t("Ядро не запущено"), text: info.error, kind: "error", timeout: 0 }); } render(); });
 
   core.on("settings.changed", async ({ key }) => { if (/^(island|hotkeys|audio)/.test(key || "")) applyConfig(await core.try("settings.get")); });
   core.on("agent.state", (d) => {
@@ -923,7 +925,7 @@ export function mountIsland() {
   core.on("island.clear", () => { S.cards = []; render(); });
   core.on("island.timer", (t) => {
     S.timers.set(t.id, t);
-    if (t.state === "done") { pushCard({ title: "Время вышло", text: t.label || "Таймер", kind: "ok", icon: "timer", timeout: 12 }); setTimeout(() => { S.timers.delete(t.id); render(); }, 15000); }
+    if (t.state === "done") { pushCard({ title: t("Время вышло"), text: t.label || t("Таймер"), kind: "ok", icon: "timer", timeout: 12 }); setTimeout(() => { S.timers.delete(t.id); render(); }, 15000); }
     if (t.state === "cancelled") S.timers.delete(t.id);
     render();
   });
@@ -949,7 +951,7 @@ export function mountIsland() {
     S.lyricAt = now;
     if (d && d.duration) S.lyricDur = d.duration;
     S.lyric = (d && (d.line || d.text)) || ""; if (mode() === "panel" || mode() === "music") render(); });
-  core.on("recorder.state", (r) => { const was = S.rec.recording; S.rec = r || {}; if (was && !S.rec.recording && S.rec.path) pushCard({ title: "Запись сохранена", text: S.rec.path, kind: "ok", icon: "rec" }); render(); });
+  core.on("recorder.state", (r) => { const was = S.rec.recording; S.rec = r || {}; if (was && !S.rec.recording && S.rec.path) pushCard({ title: t("Запись сохранена"), text: S.rec.path, kind: "ok", icon: "rec" }); render(); });
   core.on("obs.state", (o) => { S.obs = o || {}; render(); });
   core.on("status.state", (s) => { S.status = s || {}; render(); });
   core.on("status.charging", (s) => {
@@ -970,22 +972,23 @@ export function mountIsland() {
   core.on("status.away", (d) => { S.away = !!(d && d.away); render(); });
   core.on("capture.flash", () => { if (fluid) fluid.bead(0.8); S.flash = Date.now(); render(); setTimeout(render, 520); });
   core.on("capture.color_pick", (d) => {
-    if (d.state === "armed") pushCard({ id: "color-pick", title: "Пипетка", text: "Наведите курсор на нужный цвет и нажмите Ctrl · Esc — отмена", kind: "info", icon: "pip", timeout: 0 });
+    if (d.state === "armed") pushCard({ id: "color-pick", title: t("Пипетка"), text: t("Наведите курсор на нужный цвет и нажмите Ctrl · Esc — отмена"), kind: "info", icon: "pip", timeout: 0 });
     else if (d.state === "preview") {
       const c = S.cards.find((x) => x.id === "color-pick");
-      if (c) { c.title = "Пипетка · " + d.hex; c.text = "Нажмите Ctrl, чтобы взять этот цвет · Esc — отмена"; c.swatch = d.hex; renderCards(); }
+      if (c) { c.title = t("Пипетка") + " · " + d.hex; c.text = t("Нажмите Ctrl, чтобы взять этот цвет · Esc — отмена"); c.swatch = d.hex; renderCards(); }
     } else {
       dropCard("color-pick");
-      if (d.state === "cancel") pushCard({ title: "Пипетка", text: "Отменена", kind: "info", icon: "pip", timeout: 2 });
+      if (d.state === "cancel") pushCard({ title: t("Пипетка"), text: t("Отменена"), kind: "info", icon: "pip", timeout: 2 });
     }
   });
-  core.on("capture.color", (c) => pushCard({ title: "Цвет " + (c.hex || ""), text: "Скопировано в буфер", kind: "info", icon: "pip", timeout: 4 }));
+  core.on("capture.color", (c) => pushCard({ title: t("Цвет ") + (c.hex || ""), text: t("Скопировано в буфер"), kind: "info", icon: "pip", timeout: 4 }));
   core.on("commandbar.open", (d) => openBar((d && d.text) || ""));
   core.on("clipboard.added", () => { if (S.tab === "clip" && mode() === "panel") loadClip(); });
   core.on("voice.stt", (d) => { if (d && d.partial && S.mic.state === "listening") { S.mic.partial = d.partial; } });
 
   // Часы, таймеры и счётчик записи тикают раз в секунду без лишних перерисовок сложных режимов.
   setInterval(() => { const m = mode(); if (m === "idle" || m === "timer" || m === "rec" || (m === "panel" && S.tab === "now")) render(); }, 1000);
+  window.addEventListener("idos.lang", render);
   if (!inTauri) document.body.classList.add("demo");
   render();
 }
