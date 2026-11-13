@@ -39,6 +39,7 @@ const S = {
   away: false,
   hover: false,
   stick: false,
+  near: false,
   kbd: {},
   privacy: {},
 };
@@ -555,6 +556,16 @@ function renderCards() {
       el("button", { class: "icon x", onclick: () => dropCard(c.id) }, "✕"))));
 }
 
+// Островок не прячется, пока курсор рядом с капсулой (но не на ней) — в пределах 64px от контура.
+function updateNear(x, y) {
+  if (!isl) return;
+  const r = isl.getBoundingClientRect();
+  const dx = Math.max(r.left - x, 0, x - r.right);
+  const dy = Math.max(r.top - y, 0, y - r.bottom);
+  const near = Math.hypot(dx, dy) <= 64;
+  if (near !== S.near) { S.near = near; render(); }
+}
+
 function tucked(m) {
   const I = S.cfg.island;
   // Смена режима, трека или состояния воспроизведения запускает новый короткий показ.
@@ -563,7 +574,8 @@ function tucked(m) {
   // Обычные задачи не скрываем. Автоскрытие действует только для покоя и музыки.
   const transient = m === "idle" || m === "music";
   // S.stick: капсула раскрыта по клику на полоске и не прячется, пока не откроют панель
-  const quiet = !!I.auto_hide && !S.hover && !S.stick && !S.expanded && !S.pinned && transient && !S.cards.length && !S.bar.open;
+  // S.near: курсор рядом с капсулой — не прячем, пусть человек успеет навести
+  const quiet = !!I.auto_hide && !S.hover && !S.near && !S.stick && !S.expanded && !S.pinned && transient && !S.cards.length && !S.bar.open;
   if (!quiet) { quietSince = Date.now(); clearTimeout(tuckTimer); tuckTimer = null; return false; }
   const idleDelay = Number(I.auto_hide_delay);
   const wait = m === "music" ? 3000 : (Number.isFinite(idleDelay) && idleDelay >= 0 ? idleDelay : 1) * 1000;
@@ -815,6 +827,7 @@ export function mountIsland() {
   }, wideDrops);
   const onCursor = (x, y) => {
     fluid.setCursor(x, y);
+    updateNear(x, y);
     const r = isl.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     isl.style.setProperty("--px", Math.max(-1, Math.min(1, (x - cx) / 260)).toFixed(3));
