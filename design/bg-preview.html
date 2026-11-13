@@ -59,7 +59,7 @@
   .frame { position: fixed; inset: 18px; display: flex; flex-direction: column; border-radius: 14px; z-index: 1;
            background: color-mix(in srgb, var(--surface-frame) 40%, transparent);
            box-shadow: inset 0 0 0 1px var(--line), 0 18px 60px rgba(0, 0, 0, 0.35);
-           backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); overflow: hidden; }
+           backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); overflow: hidden; }
   .titlebar { height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 14px; flex: none;
               background: color-mix(in srgb, var(--surface-1) 27%, transparent); border-bottom: 1px solid var(--line); }
   .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; }
@@ -75,7 +75,7 @@
   .lang button.on { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--fg); }
   .body { flex: 1; display: flex; min-height: 0; }
   .nav { width: 196px; flex: none; padding: 8px 10px 14px; display: flex; flex-direction: column; gap: 2px;
-         background: color-mix(in srgb, var(--surface-1) 27%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+         background: color-mix(in srgb, var(--surface-1) 27%, transparent); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
   .nav button { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; border: 0;
                 background: transparent; color: var(--mut); text-align: left; font: inherit; font-weight: 600; cursor: pointer; width: 100%; }
   .nav button:hover { background: var(--fill-1); color: var(--fg); }
@@ -89,7 +89,7 @@
   .small { font-size: 12px; }
   .box { background: color-mix(in srgb, var(--surface-1) 27%, transparent);
          box-shadow: inset 0 0 0 1px var(--line); border-radius: var(--r-l); padding: 16px 18px; margin: 14px 0;
-         backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+         backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
   .box h3 { margin: 0 0 8px; font-size: 15px; }
   .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .field-mock { background: color-mix(in srgb, var(--fill-1) 100%, transparent); border-radius: 12px; padding: 9px 12px;
