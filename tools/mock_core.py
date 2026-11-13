@@ -179,13 +179,13 @@ def handle(method: str, params: dict):
     if method == "themes.delete":
         return {"deleted": True}
     if method == "scenarios.list":
-        return [{"id": "sc1", "name": "Утренний брифинг", "desc": "Погода и курс по утрам"},
-                {"id": "sc2", "name": "Разбор скриншота", "desc": "Что на экране и почему"}]
+        return [{"id": "sc1", "name": "Утренний брифинг", "desc": "Погода и курс по утрам", "triggers": ["08:00"], "vars": []},
+                {"id": "sc2", "name": "Разбор скриншота", "desc": "Что на экране и почему", "triggers": [], "vars": []}]
     if method == "scenarios.get":
-        return {"id": params.get("id", "sc1"), "name": "Утренний брифинг", "triggers": "08:00 ежедневно",
-                "nodes": [{"id": "n1", "type": "start", "label": "Старт"},
-                          {"id": "n2", "type": "weather", "label": "Погода", "sum": "Казань"},
-                          {"id": "n3", "type": "end", "label": "Сказать сводку"}], "vars": []}
+        return {"id": params.get("id", "sc1"), "name": "Утренний брифинг", "triggers": ["08:00"], "desc": "Погода и курс по утрам",
+                "nodes": [{"id": "n1", "type": "start", "x": 60, "y": 60, "params": {}, "links": {"next": "n2"}},
+                          {"id": "n2", "type": "launch", "x": 60, "y": 180, "params": {"app": "Яндекс Музыка", "wait": "3"}, "links": {"next": "n3"}},
+                          {"id": "n3", "type": "end", "x": 60, "y": 300, "params": {}, "links": {}}], "vars": []}
     if method == "scenarios.save" or method == "scenarios.delete" or method == "scenarios.run" or method == "scenarios.stop" or method == "scenarios.answer" or method == "scenarios.question" or method == "scenarios.pick" or method == "scenarios.probe":
         return {"ok": True}
     if method == "scenarios.blocks":
