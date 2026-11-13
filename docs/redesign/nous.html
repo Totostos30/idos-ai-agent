@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="ru" data-zcode-design>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Эйдос · Νοῦς: знак, состояния, питомцы</title>
+<style>
+  :root {
+    --b1: #7c8cff; --b2: #b46cff; --b3: #4fd1ff; --b4: #e07cff;
+    --ok: #35d07f; --warn: #ffb547; --err: #ff5a5f;
+    --bg: #0a0a0c; --stage: #060609; --ink: #f5f5f7; --mut: #9a9aa2;
+    --line: rgba(255, 255, 255, .09); --capsule: rgba(255, 255, 255, .14);
+    --spring: cubic-bezier(.34, 1.36, .5, 1);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--ink);
+    font: 14px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 75% -10%, #14141d 0%, var(--bg) 55%);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 52px 0 90px; }
+  .eyebrow { color: var(--b3); font: 600 11px/1 ui-monospace, Consolas, monospace; letter-spacing: .22em; margin: 0 0 10px; }
+  h1 { margin: 0 0 8px; font-size: 34px; letter-spacing: -.02em; }
+  h1 .gr { color: var(--b1); }
+  .lead { margin: 0; max-width: 760px; color: var(--mut); }
+  h2.sec { margin: 46px 0 4px; font-size: 21px; }
+  h2.sec .gr { color: var(--b2); margin-right: 8px; }
+  .sec-lead { margin: 0 0 6px; color: var(--mut); max-width: 720px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 18px; margin-top: 18px; }
+  .card {
+    background: var(--stage); border-radius: 20px; padding: 18px 18px 16px;
+    box-shadow: inset 0 0 0 1px var(--line);
+    transition: transform .25s var(--spring), box-shadow .25s;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1px rgba(124, 140, 255, .5), 0 14px 34px rgba(0, 0, 0, .5); }
+  .card h3 { margin: 0 0 2px; font-size: 16px; font-weight: 650; }
+  .card h3 .gr { color: var(--b2); font-weight: 700; margin-right: 8px; }
+  .card .ref { margin: 0 0 12px; color: var(--mut); font-size: 12px; }
+  .stage {
+    display: grid; place-items: center; min-height: 172px; padding: 14px;
+    background: radial-gradient(320px 150px at 50% 40%, #0e0e14 0%, transparent 70%), var(--stage);
+    box-shadow: inset 0 0 0 1px var(--line); border-radius: 16px;
+  }
+  .hero { width: 224px; height: 149px; }
+  .sizes { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+  .sizes svg { display: block; }
+  .sizes .m48 { width: 48px; height: 32px; }
+  .sizes .m24 { width: 24px; height: 16px; }
+  .sizes .m24p { width: 24px; height: 24px; }
+  .sizes .m16 { width: 16px; height: 10.67px; }
+  .sizes .m16p { width: 16px; height: 16px; }
+  .sizes span { color: var(--mut); font-size: 11px; margin-left: 2px; }
+  .note { margin: 8px 0 0; color: var(--mut); font-size: 12.5px; }
+  .note b { color: var(--ink); font-weight: 600; }
+  .map { display: inline-block; margin-top: 6px; padding: 3px 9px; border-radius: 999px; background: rgba(124, 140, 255, .12);
+    box-shadow: inset 0 0 0 1px rgba(124, 140, 255, .35); color: var(--ink); font: 600 11px ui-monospace, Consolas, monospace; }
+
+  .changes { margin: 18px 0 0; padding: 16px 18px; border-radius: 16px; background: var(--stage); box-shadow: inset 0 0 0 1px var(--line); }
+  .changes h3 { margin: 0 0 8px; font-size: 15px; }
+  .changes li { margin: 5px 0; color: var(--mut); font-size: 13px; }
+  .changes b { color: var(--ink); }
+  .final {
+    margin-top: 26px; padding: 18px 20px; border-radius: 20px;
+    background: linear-gradient(135deg, rgba(124, 140, 255, .10), rgba(228, 124, 255, .08) 60%, transparent);
+    box-shadow: inset 0 0 0 1px rgba(124, 140, 255, .35);
+  }
+  .final h2 { margin: 0 0 6px; font-size: 16px; }
+  .final p { margin: 4px 0; color: var(--mut); font-size: 13px; }
+  .final b { color: var(--ink); }
+  footer { margin-top: 30px; color: #6b6b75; font-size: 11.5px; }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } .hero { width: 190px; } }
+  @media (prefers-reduced-motion: reduce) { .card { transition: none !important; transform: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">IDOS / REDESIGN · ΝΟΥΣ</p>
+  <h1><span class="gr">Νοῦς</span> — знак, состояния и питомцы</h1>
+  <p class="lead">Доработка выбранного концепта «Неподвижный двигатель»: один знак для всех состояний Эйдоса, живые блоки-анимации под каждое действие и шесть мини-питомцев на место орба в островке. Всё — рабочий SVG с SMIL-анимацией.</p>
+
+  <h2 class="sec" id="mark"><span class="gr">Σημεῖον</span>Знак v2 — что изменилось</h2>
+  <p class="sec-lead">v1: три кольца расходятся наружу — живо, но беспокойно и на грани капсулы. v2: двигатель собран из трёх точных частей, каждая со своей ролью — структура, мысль, дыхание.</p>
+  <div class="grid" id="mark-grid"></div>
+  <ul class="changes">
+    <li><b>Ядро</b> — точка покоя (текст/инк) с мягким бликом: то, что никогда не движется.</li>
+    <li><b>Структура</b> — тонкое сплошное кольцо r5.6, цвет бренда-1: «бытие», всегда на месте.</li>
+    <li><b>Мысль</b> — пунктирное кольцо r8.6, бренда-2, медленно вращается: работа ума. В состояниях меняет только скорость и направление.</li>
+    <li><b>Дыхание</b> — едва заметное кольцо r11.6, бренда-3, редкий вздох 4.4 с: связь с миром.</li>
+    <li>Все радиусы ≤12.6 — знак никогда не выходит за капсулу (в v1 кольца доходили до r24).</li>
+    <li>Скорости движений: покой 12–14 с, работа 1–2 с — состояние читается по темпу, а не по цвету.</li>
+  </ul>
+
+  <h2 class="sec" id="states"><span class="gr">Κινήσεις</span>Состояния и действия</h2>
+  <p class="sec-lead">Каждый блок — живая анимация знака в конкретном состоянии Эйдоса. В коде состояние маппится на существующие классы орба (s-idle, s-thinking…) — питомец/знак меняет только темп и состав колец.</p>
+  <div class="grid" id="states-grid"></div>
+
+  <h2 class="sec" id="pets"><span class="gr">Θηρία</span>Мини-питомцы островка</h2>
+  <p class="sec-lead">Замена орба-персонажа в капсуле: тот же язык (точка + кольца брендовых цветов, monoline), но с характером. Сцена показывает питомца внутри островка-пилюли (покой: часы справа), рядом — чистый знак 24/16 px. Ставится настройкой «Персонаж островка»; состояния подключаются тем же набором, что и у знака.</p>
+  <div class="grid" id="pets-grid"></div>
+
+  <section class="final">
+    <h2>Как это встраивается</h2>
+    <p><b>Знак v2</b> — замена <code>.logo</code> в титлбаре главного окна и hero-логотип hello-экрана; состояния — замена <code>.orb.s-*</code> классов (CSS-переменные --lvl/--bass уже питают существующие анимации, питомцы потребляют те же сигналы).</p>
+    <p><b>Питомцы</b> — новая настройка <code>island.pet</code> (none | nous | cat | fish | snail | planet | firefly | eye); рендер вместо <code>.orb</code> в idle/music-режимах, при agent-активности питомец переходит в состояние знака. Blink/моргание — SMIL, реакция на звук — те же --lvl/--bass через CSS.</p>
+    <p>Положение точки покоя никогда не анимируется — она на месте даже в error: «перводвигатель движет всё, оставаясь неподвижным».</p>
+  </section>
+
+  <footer>Эйдос · ветка re-design-ui · файл самодостаточен (file://) · SMIL-анимации ставятся на паузу при prefers-reduced-motion</footer>
+</div>
+
+<!-- общие градиенты: brand (bbox) + brandUS (userSpace для линий) + блики -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="var(--b1)"/><stop offset=".38" stop-color="var(--b2)"/>
+      <stop offset=".72" stop-color="var(--b3)"/><stop offset="1" stop-color="var(--b4)"/>
+    </linearGradient>
+    <linearGradient id="brandUS" gradientUnits="userSpaceOnUse" x1="12" y1="14" x2="84" y2="50">
+      <stop offset="0" stop-color="var(--b1)"/><stop offset=".38" stop-color="var(--b2)"/>
+      <stop offset=".72" stop-color="var(--b3)"/><stop offset="1" stop-color="var(--b4)"/>
+    </linearGradient>
+    <radialGradient id="sph" cx=".35" cy=".3" r=".9">
+      <stop offset="0" stop-color="rgba(255,255,255,.45)"/><stop offset=".5" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+    <radialGradient id="caveglow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="rgba(124,140,255,.85)"/><stop offset="1" stop-color="rgba(124,140,255,0)"/>
+    </radialGradient>
+  </defs>
+</svg>
+
+<!-- ================= СИМВОЛЫ СОСТОЯНИЙ (96x64, знак в капсуле) ================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- ядро знака: ядро + структура + мысль + дыхание; состояния меняют темп/цвет -->
+    <symbol id="st-idle" viewBox="0 0 96 64">
+      <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+      <circle cx="48" cy="32" r="11.6" fill="none" stroke="var(--b3)" stroke-width="1.2" opacity=".24">
+        <animate attributeName="r" values="11;12.2;11" dur="4.4s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values=".18;.34;.18" dur="4.4s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="8.6" fill="none" stroke="var(--b2)" stroke-width="1.3" stroke-dasharray="4.2 4.2" opacity=".55">
+        <animateTransform attributeName="transform" type="rotate" from="0 48 32" to="360 48 32" dur="14s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="5.6" fill="none" stroke="var(--b1)" stroke-width="1.5" opacity=".9"/>
+      <circle cx="48" cy="32" r="2.8" fill="var(--ink)"/>
+      <circle cx="48" cy="32" r="2.8" fill="url(#sph)"/>
+    </symbol>
+
+    <symbol id="st-thinking" viewBox="0 0 96 64">
+      <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+      <circle cx="48" cy="32" r="11.6" fill="none" stroke="var(--b3)" stroke-width="1.2" opacity=".3"/>
+      <circle cx="48" cy="32" r="8.6" fill="none" stroke="var(--b2)" stroke-width="1.4" stroke-dasharray="3.6 3.2" opacity=".8">
+        <animateTransform attributeName="transform" type="rotate" from="0 48 32" to="360 48 32" dur="1.15s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="5.6" fill="none" stroke="var(--b1)" stroke-width="1.4" stroke-dasharray="2.1 2.6" opacity=".8">
+        <animateTransform attributeName="transform" type="rotate" from="360 48 32" to="0 48 32" dur="1.9s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="2.8" fill="var(--ink)">
+        <animate attributeName="r" values="2.7;3.3;2.7" dur="1.15s" repeatCount="indefinite"/>
+      </circle>
+    </symbol>
+
+    <symbol id="st-searching" viewBox="0 0 96 64">
+      <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+      <path id="orbPath" d="M59.6 32A11.6 11.6 0 1 1 36.4 32A11.6 11.6 0 1 1 59.6 32" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
+      <circle r="1.8" fill="var(--b3)">
+        <animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#orbPath"/></animateMotion>
+      </circle>
+      <circle cx="59.6" cy="32" r="1.3" fill="var(--b2)" opacity=".8">
+        <animateMotion dur="2.2s" begin="1.1s" repeatCount="indefinite"><mpath href="#orbPath"/></animateMotion>
+      </circle>
+      <circle cx="48" cy="32" r="5.6" fill="none" stroke="var(--b1)" stroke-width="1.5" opacity=".9"/>
+      <circle cx="48" cy="32" r="2.8" fill="var(--ink)"/>
+      <circle cx="48" cy="32" r="2.8" fill="url(#sph)"/>
+    </symbol>
+
+    <symbol id="st-working" viewBox="0 0 96 64">
+      <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+      <circle cx="48" cy="32" r="4" fill="none" stroke="var(--b1)" stroke-width="1.6" opacity="0">
+        <animate attributeName="r" values="3.5;11.5" dur="1.5s" begin="0s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values=".8;0" dur="1.5s" begin="0s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="4" fill="none" stroke="var(--b2)" stroke-width="1.6" opacity="0">
+        <animate attributeName="r" values="3.5;11.5" dur="1.5s" begin=".5s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values=".8;0" dur="1.5s" begin=".5s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="4" fill="none" stroke="var(--b3)" stroke-width="1.6" opacity="0">
+        <animate attributeName="r" values="3.5;11.5" dur="1.5s" begin="1s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values=".8;0" dur="1.5s" begin="1s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="5.6" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="1.4"/>
+      <circle cx="48" cy="32" r="2.8" fill="var(--ink)"/>
+      <circle cx="48" cy="32" r="2.8" fill="url(#sph)"/>
+    </symbol>
+
+    <symbol id="st-speaking" viewBox="0 0 96 64">
+      <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+      <circle cx="48" cy="32" r="5" fill="none" stroke="var(--b1)" stroke-width="1.4" opacity="0">
+        <animate attributeName="r" values="4.5;10" dur="1.3s" begin="0s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values=".6;0" dur="1.3s" begin="0s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="5" fill="none" stroke="var(--b2)" stroke-width="1.4" opacity="0">
+        <animate attributeName="r" values="4.5;10" dur="1.3s" begin=".45s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values=".6;0" dur="1.3s" begin=".45s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="5.6" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="1.2"/>
+      <g transform="translate(48 32)">
+        <circle r="2.9" fill="var(--ink)">
+          <animateTransform attributeName="transform" type="scale" values="1;1.5;1" dur="0.84s" repeatCount="indefinite"/>
+        </circle>
+        <circle r="2.9" fill="url(#sph)"/>
+      </g>
+    </symbol>
+
+    <symbol id="st-listening" viewBox="0 0 96 64">
+      <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+      <circle cx="48" cy="32" r="4.5" fill="none" stroke="var(--b1)" stroke-width="1.7">
+        <animate attributeName="r" values="4.5;11.8" dur="1.8s" begin="0s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values=".75;0" dur="1.8s" begin="0s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="4.5" fill="none" stroke="var(--b2)" stroke-width="1.7">
+        <animate attributeName="r" values="4.5;11.8" dur="1.8s" begin=".6s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values=".75;0" dur="1.8s" begin=".6s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="4.5" fill="none" stroke="var(--b3)" stroke-width="1.7">
+        <animate attributeName="r" values="4.5;11.8" dur="1.8s" begin="1.2s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values=".75;0" dur="1.8s" begin="1.2s" repeatCount="indefinite"/>
+      </circle>
+      <g transform="translate(48 32)">
+        <circle r="3.1" fill="var(--ink)">
+          <animateTransform attributeName="transform" type="scale" values="1;1.28;1" dur="1s" repeatCount="indefinite"/>
+        </circle>
+        <circle r="3.1" fill="url(#sph)"/>
+      </g>
+    </symbol>
+
+    <symbol id="st-waiting" viewBox="0 0 96 64">
+      <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+      <circle cx="48" cy="32" r="11.6" fill="none" stroke="var(--b3)" stroke-width="1.2" stroke-dasharray="2.5 4" opacity=".35">
+        <animate attributeName="opacity" values=".2;.45;.2" dur="2.4s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="8.6" fill="none" stroke="var(--b2)" stroke-width="1.3" stroke-dasharray="4.2 4.2" opacity=".5">
+        <animateTransform attributeName="transform" type="rotate" from="0 48 32" to="360 48 32" dur="6s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="5.6" fill="none" stroke="var(--b1)" stroke-width="1.5" opacity=".9"/>
+      <circle cx="48" cy="31.4" r="2.8" fill="var(--ink)">
+        <animate attributeName="cy" values="31.4;30.4;31.4" dur="1.6s" repeatCount="indefinite"/>
+      </circle>
+    </symbol>
+
+    <symbol id="st-error" viewBox="0 0 96 64">
+      <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+      <circle cx="48" cy="32" r="11.6" fill="none" stroke="var(--err)" stroke-width="1.2" opacity=".25">
+        <animate attributeName="opacity" values=".15;.4;.15" dur="1.6s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="5.6" fill="none" stroke="var(--err)" stroke-width="1.5" opacity=".85"/>
+      <g transform="translate(48 32)">
+        <g>
+          <animateTransform attributeName="transform" type="translate"
+            values="0 0;-1.7 0;1.7 0;-1 0;0 0;0 0;0 0;0 0" keyTimes="0;.08;.16;.24;.32;.5;.75;1" dur="2.6s" repeatCount="indefinite"/>
+          <circle r="2.8" fill="var(--err)"/>
+          <circle r="2.8" fill="url(#sph)"/>
+        </g>
+      </g>
+    </symbol>
+
+    <symbol id="st-done" viewBox="0 0 96 64">
+      <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+      <circle cx="48" cy="32" r="4" fill="none" stroke="var(--ok)" stroke-width="1.6" opacity="0">
+        <animate attributeName="r" values="11.5;3.2" dur="1.4s" begin="0s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values=".7;0" dur="1.4s" begin="0s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="32" r="6.4" fill="none" stroke="var(--ok)" stroke-width="1.5" opacity=".9"/>
+      <path d="M45.4 32.2l1.9 2 3.5-3.9" fill="none" stroke="var(--ok)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="48" cy="32" r="2.8" fill="var(--ink)" opacity="0"/>
+    </symbol>
+
+    <symbol id="st-transcribing" viewBox="0 0 96 64">
+      <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+      <g transform="translate(48 32)">
+        <g>
+          <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="0.9s" repeatCount="indefinite"/>
+          <circle r="9.5" fill="none" stroke="var(--b1)" stroke-width="2.4" stroke-dasharray="14.9 44.8"/>
+          <circle r="9.5" fill="none" stroke="var(--b2)" stroke-width="2.4" stroke-dasharray="14.9 44.8" transform="rotate(90)"/>
+          <circle r="9.5" fill="none" stroke="var(--b3)" stroke-width="2.4" stroke-dasharray="14.9 44.8" transform="rotate(180)"/>
+          <circle r="9.5" fill="none" stroke="var(--b4)" stroke-width="2.4" stroke-dasharray="14.9 44.8" transform="rotate(270)"/>
+        </g>
+        <circle r="2.5" fill="var(--ink)" opacity=".85"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ================= ПИТОМЦЫ (40x40) И СЦЕНЫ ОСТРОВКА (96x64) ================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- Кот Нокс: кольцо-хвост виляет, ушки, моргание -->
+    <symbol id="pet-cat" viewBox="0 0 40 40">
+      <circle cx="20" cy="21" r="9.5" fill="none" stroke="var(--b2)" stroke-width="1.3" stroke-dasharray="10 14" opacity=".7">
+        <animateTransform attributeName="transform" type="rotate" values="-8 20 21;8 20 21;-8 20 21" dur="2.8s" repeatCount="indefinite"/>
+      </circle>
+      <path d="M13.6 14.6L16.2 8.4L19.2 12.4" fill="none" stroke="var(--b1)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M26.4 14.6L23.8 8.4L20.8 12.4" fill="none" stroke="var(--b1)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="20" cy="21" r="6.4" fill="var(--ink)"/>
+      <circle cx="20" cy="21" r="6.4" fill="url(#sph)"/>
+      <ellipse cx="17.7" cy="20.6" rx="1.05" ry="1.3" fill="#0d0d11">
+        <animate attributeName="ry" values="1.3;1.3;.12;1.3" keyTimes="0;.86;.92;1" dur="4.6s" repeatCount="indefinite"/>
+      </ellipse>
+      <ellipse cx="22.3" cy="20.6" rx="1.05" ry="1.3" fill="#0d0d11">
+        <animate attributeName="ry" values="1.3;1.3;.12;1.3" keyTimes="0;.86;.92;1" dur="4.6s" begin=".08s" repeatCount="indefinite"/>
+      </ellipse>
+      <circle cx="20" cy="23.8" r=".9" fill="var(--b4)"/>
+    </symbol>
+
+    <!-- Рыбка Идейя: хвост машет, пузырь поднимается, тело покачивается -->
+    <symbol id="pet-fish" viewBox="0 0 40 40">
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0 0;0 1.3;0 0" dur="2.6s" repeatCount="indefinite"/>
+        <path d="M11.5 20Q7.5 15.5 5.5 14.5Q7.5 20 5.5 25.5Q7.5 24.5 11.5 20Z" fill="none" stroke="var(--b3)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <animateTransform attributeName="transform" type="rotate" values="0 11.5 20;-9 11.5 20;0 11.5 20" dur="1.9s" repeatCount="indefinite"/>
+        </path>
+        <path d="M18.5 13.2Q20.5 9.4 23.8 11.8" fill="none" stroke="var(--b2)" stroke-width="1.5" stroke-linecap="round"/>
+        <circle cx="20" cy="20" r="6.8" fill="url(#brand)"/>
+        <circle cx="20" cy="20" r="6.8" fill="url(#sph)"/>
+        <circle cx="23" cy="18.6" r="1.05" fill="#0d0d11"/>
+        <circle cx="29.5" cy="12.5" r="1.3" fill="none" stroke="var(--b3)" stroke-width="1">
+          <animate attributeName="cy" values="12.5;7.5" dur="3.2s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values=".75;0" dur="3.2s" repeatCount="indefinite"/>
+        </circle>
+      </g>
+    </symbol>
+
+    <!-- Улитка Космо: спиральная ракушка, рожки, медленно ползёт -->
+    <symbol id="pet-snail" viewBox="0 0 40 40">
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0 0;-2 0;0 0" dur="5.5s" repeatCount="indefinite"/>
+        <path d="M7.5 27.5Q20 31.5 31.5 27.5" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M31.5 27.5Q34 23 32.3 19.6" fill="none" stroke="var(--ink)" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M32.3 19.6L30.6 15.8M32.3 19.6L34.8 16" fill="none" stroke="var(--ink)" stroke-width="1.2" stroke-linecap="round"/>
+        <circle cx="30.2" cy="14.9" r="1.05" fill="var(--b2)"/>
+        <circle cx="35.4" cy="15.3" r="1.05" fill="var(--b3)"/>
+        <circle cx="22.5" cy="21" r="6.2" fill="none" stroke="var(--b1)" stroke-width="1.6" stroke-dasharray="24 15" opacity=".9">
+          <animateTransform attributeName="transform" type="rotate" from="0 22.5 21" to="360 22.5 21" dur="12s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="22.5" cy="21" r="3.6" fill="none" stroke="var(--b2)" stroke-width="1.5" stroke-dasharray="13 10" opacity=".85">
+          <animateTransform attributeName="transform" type="rotate" from="360 22.5 21" to="0 22.5 21" dur="8s" repeatCount="indefinite"/>
+        </circle>
+      </g>
+    </symbol>
+
+    <!-- Планета Луна: наклонное кольцо, спутник облетает -->
+    <symbol id="pet-planet" viewBox="0 0 40 40">
+      <g transform="rotate(-16 20 20)">
+        <ellipse cx="20" cy="20" rx="11" ry="4.4" fill="none" stroke="var(--b1)" stroke-width="1.3" opacity=".85"/>
+        <circle r="1.7" fill="var(--ink)">
+          <animateMotion dur="5.5s" repeatCount="indefinite" path="M31 20a11 4.4 0 1 1 -22 0a11 4.4 0 1 1 22 0"/>
+        </circle>
+      </g>
+      <circle cx="20" cy="20" r="6" fill="url(#brand)"/>
+      <circle cx="20" cy="20" r="6" fill="url(#sph)"/>
+    </symbol>
+
+    <!-- Светлячок Фос: крылья машут, свечение пульсирует, след из точек -->
+    <symbol id="pet-firefly" viewBox="0 0 40 40">
+      <circle cx="20" cy="22" r="8.5" fill="url(#caveglow)">
+        <animate attributeName="opacity" values=".35;.9;.35" dur="2.3s" repeatCount="indefinite"/>
+      </circle>
+      <ellipse cx="15.8" cy="13.2" rx="4.6" ry="2.1" fill="none" stroke="var(--b3)" stroke-width="1.3">
+        <animateTransform attributeName="transform" type="rotate" values="-40 15.8 13.2;-26 15.8 13.2;-40 15.8 13.2" dur="0.55s" repeatCount="indefinite"/>
+      </ellipse>
+      <ellipse cx="24.2" cy="13.2" rx="4.6" ry="2.1" fill="none" stroke="var(--b3)" stroke-width="1.3">
+        <animateTransform attributeName="transform" type="rotate" values="40 24.2 13.2;26 24.2 13.2;40 24.2 13.2" dur="0.55s" repeatCount="indefinite"/>
+      </ellipse>
+      <circle cx="20" cy="22" r="4.6" fill="url(#brand)"/>
+      <circle cx="20" cy="22" r="4.6" fill="url(#sph)"/>
+      <circle cx="12.5" cy="27.5" r=".95" fill="var(--b2)">
+        <animate attributeName="opacity" values=".6;0;.6" dur="2.3s" begin=".4s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="10" cy="30.5" r=".7" fill="var(--b2)">
+        <animate attributeName="opacity" values=".5;0;.5" dur="2.3s" begin=".9s" repeatCount="indefinite"/>
+      </circle>
+    </symbol>
+
+    <!-- Оракул: глаз с орбитой-веком, зрачок оглядывается, моргает -->
+    <symbol id="pet-eye" viewBox="0 0 40 40">
+      <circle cx="20" cy="20" r="11" fill="none" stroke="var(--b1)" stroke-width="1.2" stroke-dasharray="7 9" opacity=".5">
+        <animateTransform attributeName="transform" type="rotate" from="0 20 20" to="360 20 20" dur="16s" repeatCount="indefinite"/>
+      </circle>
+      <ellipse cx="20" cy="20" rx="8" ry="6.4" fill="var(--ink)">
+        <animate attributeName="ry" values="6.4;6.4;.5;6.4" keyTimes="0;.9;.94;1" dur="5.4s" repeatCount="indefinite"/>
+      </ellipse>
+      <g>
+        <animate attributeName="opacity" values="1;1;0;1" keyTimes="0;.9;.94;1" dur="5.4s" repeatCount="indefinite"/>
+        <animateTransform attributeName="transform" type="translate" values="0 0;2.4 -1.4;-2.2 1.2;1.6 1.6;0 0" keyTimes="0;.3;.55;.8;1" dur="8s" repeatCount="indefinite"/>
+        <circle cx="20" cy="20" r="3.6" fill="none" stroke="var(--b2)" stroke-width="1.4"/>
+        <circle cx="20" cy="20" r="1.5" fill="#0d0d11"/>
+      </g>
+    </symbol>
+
+    <!-- Сцена островка-пилюли с питомцем -->
+    <symbol id="scene" viewBox="0 0 96 64">
+      <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+      <text x="55" y="35.5" font-family="ui-monospace, Consolas, monospace" font-size="11" font-weight="600" fill="var(--ink)" text-anchor="middle" opacity=".92">21:47</text>
+      <rect x="70" y="25.5" width="11" height="7.5" rx="3.75" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1"/>
+      <rect x="71.6" y="27" width="5.6" height="4.5" rx="1.6" fill="var(--ok)" opacity=".85"/>
+    </symbol>
+  </defs>
+</svg>
+
+<script>
+  // Карточки собираются из данных: один и тот же формат блока, как в logos.html.
+  const card = (v, gr, title, ref, sym, note, map) => `
+    <article class="card" data-variant="${v}">
+      <h3><span class="gr">${gr}</span>${title}</h3>
+      <p class="ref">${ref}</p>
+      <div class="stage"><svg class="hero" viewBox="0 0 96 64"><use href="#${sym}"/></svg></div>
+      <div class="sizes">
+        <svg class="m48" viewBox="0 0 96 64"><use href="#${sym}"/></svg>
+        <svg class="m24" viewBox="0 0 96 64"><use href="#${sym}"/></svg>
+        <span>48 · 24 px</span>
+      </div>
+      <p class="note">${note}</p>
+      ${map ? `<span class="map">${map}</span>` : ""}
+    </article>`;
+
+  // ---------- Знак v2 ----------
+  document.getElementById("mark-grid").innerHTML =
+    card("mark-v2", "Νοῦς v2", "Доработанный знак",
+      "Сборка: ядро (точка покоя) · структура r5.6 · мысль r8.6 (пунктир, 14 с) · дыхание r11.6 (4.4 с).",
+      "st-idle",
+      "<b>Три кольца — три роли</b> и три скорости: состояние выражается темпом, а не сменой фигуры. В покое знак почти неподвижен — «двигатель, который движет всё, сам оставаясь в покое».",
+      null);
+
+  // ---------- Состояния ----------
+  const states = [
+    { id: "idle", gr: "Ἠρεμία", title: "Покой", ref: "Нет задач, остров спит.",
+      note: "Мысль вращается медленно (14 с), дыхание редкое (4.4 с). Знак «спит», но не гаснет — точка покоя всегда видна.", map: ".orb.s-idle" },
+    { id: "thinking", gr: "Διάνοια", title: "Думает", ref: "Агент планирует шаги, строит план.",
+      note: "Мысль ускоряется до 1.15 с, второе пунктирное кольцо крутится в контрвращении, ядро пульсирует в такт. Суета мысли — но ядро неподвижно.", map: ".orb.s-thinking" },
+    { id: "searching", gr: "Ζήτησις", title: "Ищет", ref: "Поиск в интернете, чтение страницы.",
+      note: "Два «зонда» летят по внешней орбите следом друг за другом — сбор информации по кругу. Ядро и структура не двигаются.", map: ".orb.s-searching" },
+    { id: "working", gr: "Ἐνέργεια", title: "Работает", ref: "Выполнение шага: инструменты, автоматизации, сценарии.",
+      note: "Три импульса поочерёдно расходятся от ядра — такты работы. Внешняя пунктирная окружность-«рельс» едва видна.", map: ".orb.s-working · .s-acting" },
+    { id: "speaking", gr: "Φωνή", title: "Говорит", ref: "Озвучка ответа (TTS).",
+      note: "Ядро «разговаривает»: масштаб тактует с частотой фразы (0.84 с), мягкие волны расходятся синхронно.", map: ".orb.s-speaking" },
+    { id: "listening", gr: "Ἀκρόασις", title: "Слушает", ref: "Микрофон активен, запись голоса.",
+      note: "Три кольца расходятся непрерывно, как круги gwaves микрофона; ядро дышит в такт уровню звука (--lvl).", map: ".orb.s-listening" },
+    { id: "waiting", gr: "Ἀναμονή", title: "Ждёт подтверждения", ref: "Агент просит разрешить действие (confirm).",
+      note: "Ядро мягко подпрыгивает — «нуль?»; пунктир дыхания мигает. Ничего не вращается быстро: ожидание спокойное, но заметное.", map: "confirm-режим" },
+    { id: "error", gr: "Ἀπορία", title: "Ошибка", ref: "Шаг упал, отказ инструмента, нет связи.",
+      note: "Ядро краснеет и встряхивается (короткая дрожь с паузой), кольца красные. Точка покоя на месте — сбой не разрушает двигатель.", map: ".step.error" },
+    { id: "done", gr: "Τέλος", title: "Готово", ref: "Шаг завершён, таймер вышел, задача выполнена.",
+      note: "Кольца сворачиваются внутрь ядра, зелёная галка держится в кольце структуры — «форма достигнута».", map: ".step.ok" },
+    { id: "transcribing", gr: "Γραφή", title: "Распознаёт речь", ref: "STT обрабатывает запись (GigaSTT).",
+      note: "Четырёхцветное кольцо бренда вращается (наследник .gspin микрофона), ядро сжато и приглушено: слышу — записываю.", map: "mic.state = transcribing" },
+  ];
+  document.getElementById("states-grid").innerHTML = states.map((s) =>
+    card("st-" + s.id, s.gr, s.title, s.ref, "st-" + s.id, s.note, s.map)).join("");
+
+  // ---------- Питомцы ----------
+  const capsule = '<rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>';
+  const scene = (pet) => `${capsule}
+    <use href="#pet-${pet}" x="15" y="15" width="26" height="26"/>
+    <text x="55" y="35.5" font-family="ui-monospace, Consolas, monospace" font-size="11" font-weight="600"
+          fill="var(--ink)" text-anchor="middle" opacity=".92">21:47</text>
+    <rect x="70" y="25.5" width="11" height="7.5" rx="3.75" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1"/>
+    <rect x="71.6" y="27" width="5.6" height="4.5" rx="1.6" fill="var(--ok)" opacity=".85"/>`;
+
+  const pets = [
+    { id: "cat", gr: "Νόξ", title: "Кот Нокс", ref: "Хвост-кольцо виляет, моргает вразнобой ушами-дугами бренда.",
+      note: "Характер: наблюдает. Хвост — то самое пунктирное «кольцо мысли», при thinking виляет чаще. Ядро-голова с бликом, нос бренда-4." },
+    { id: "fish", gr: "Ἰδέα", title: "Рыбка Идейя", ref: "Идея, что вечно плавает в голове; хвост машет, пузырь уходит вверх.",
+      note: "Характер: любопытная. Тело — фирменный градиент, пузырь = «мысль всплыла» — при new card/уведомлении пузырь учащается." },
+    { id: "snail", gr: "Κόσμος", title: "Улитка Космо", ref: "Ракушка из двух спиральных колец, ползёт медленно и целенаправленно.",
+      note: "Характер: невозмутимый. Спирали вращаются в противоход — та же пара «мысль/дыхание». Ползёт только в покое; при working останавливается." },
+    { id: "planet", gr: "Σελήνη", title: "Планета Луна", ref: "Наклонное кольцо и спутник на орбите — ближайший родич самого знака Νοῦς.",
+      note: "Характер: методичный. Спутник облетает за 5.5 с; при thinking ускоряется, при waiting — застывает над планетой." },
+    { id: "firefly", gr: "Φῶς", title: "Светлячок Фос", ref: "Крылья-кольца машут, свечение пульсирует, позади гаснущий след.",
+      note: "Характер: живой. Свет — caveglow бренда; при listening свет дышит громче (уровень звука), след удлиняется." },
+    { id: "eye", gr: "Ὦψις", title: "Оракул", ref: "Глаз с орбитой-веком: зрачок оглядывается, моргает, кольцо-веко вращается.",
+      note: "Характер: всевидящий. Прямой наследник существующих .eyes острова; зрачок смотрит на курсор (--px/--py уже есть в island.js)." },
+  ];
+  document.getElementById("pets-grid").innerHTML = pets.map((p) => `
+    <article class="card" data-variant="pet-${p.id}">
+      <h3><span class="gr">${p.gr}</span>${p.title}</h3>
+      <p class="ref">${p.ref}</p>
+      <div class="stage"><svg class="hero" viewBox="0 0 96 64">${scene(p.id)}</svg></div>
+      <div class="sizes">
+        <svg class="m24p" viewBox="0 0 40 40"><use href="#pet-${p.id}"/></svg>
+        <svg class="m16p" viewBox="0 0 40 40"><use href="#pet-${p.id}"/></svg>
+        <span>24 · 16 px</span>
+      </div>
+      <p class="note">${p.note}</p>
+      <span class="map">island.pet = ${p.id}</span>
+    </article>`).join("");
+</script>
+
+<script>
+  // Полная статика для reduced-motion: SMIL-анимации ставятся на паузу.
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    document.querySelectorAll("svg").forEach((s) => { try { s.pauseAnimations(); } catch (e) { /* */ } });
+  }
+</script>
+</body>
+</html>
