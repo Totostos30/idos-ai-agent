@@ -1,0 +1,207 @@
+<!doctype html>
+<!-- ПРЕВЬЮ фона «бегущие греческие слова» (Γλῶτта §фон): слова мифов и философов
+     бегут в цвете темы, все несущие блоки полупрозрачны (альфа ≈ 80/255 ≈ 31%).
+     Самодостаточный файл: токены обеих тем инлайн, переключатель внизу титлбара. -->
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Эйдос — превью фона «греческие слова»</title>
+<style>
+  /* --- токены (тёмная + светлая), вырезка из src/tokens.css --- */
+  :root {
+    --surface-0: #000;
+    --surface-frame: #0b0b0d;
+    --surface-1: #111114;
+    --surface-2: #141417;
+    --fg: #f5f5f7;
+    --mut: #9a9aa2;
+    --line: rgba(255, 255, 255, 0.09);
+    --fill-1: rgba(255, 255, 255, 0.07);
+    --accent: #7c8cff;
+    --accent-contrast: #000;
+    --ok: #35d07f;
+    --r-l: 16px;
+  }
+  [data-theme="light"] {
+    --surface-0: #fbfbfd;
+    --surface-frame: #f0f0f3;
+    --surface-1: #f4f4f6;
+    --surface-2: #f3f3f5;
+    --fg: #111114;
+    --mut: #6b6b75;
+    --line: rgba(0, 0, 0, 0.08);
+    --fill-1: rgba(0, 0, 0, 0.05);
+    --accent: #5b6ee0;
+    --accent-contrast: #fff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; height: 100vh; overflow: hidden; background: var(--surface-0); color: var(--fg);
+         font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+
+  /* --- поле бегущих слов: фиксировано за окном приложения --- */
+  .field { position: fixed; inset: 0; overflow: hidden; pointer-events: none; user-select: none; }
+  .row { position: absolute; left: 0; width: 200%; display: flex; gap: 56px; white-space: nowrap;
+         will-change: transform; animation: run linear infinite; }
+  .row span { color: var(--accent); font-weight: 600; letter-spacing: 0.06em; }
+  .row span.dim { opacity: 0.45; }
+  .row:nth-child(odd) { animation-direction: reverse; }
+  @keyframes run { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .giant { position: fixed; right: 2%; bottom: -3%; font-size: clamp(120px, 22vw, 260px); font-weight: 800;
+           letter-spacing: 0.02em; color: var(--accent); opacity: 0.055; pointer-events: none; user-select: none;
+           animation: breathe 9s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: 0.09; transform: translateY(-8px); } }
+  .glow { position: fixed; inset: 0; pointer-events: none;
+          background: radial-gradient(1100px 480px at 82% -12%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%); }
+
+  /* --- макет главного окна: несущие блоки с альфой ≈ 80/255 --- */
+  .frame { position: fixed; inset: 18px; display: flex; flex-direction: column; border-radius: 14px; z-index: 1;
+           background: color-mix(in srgb, var(--surface-frame) 55%, transparent);
+           box-shadow: inset 0 0 0 1px var(--line), 0 18px 60px rgba(0, 0, 0, 0.35);
+           backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); overflow: hidden; }
+  .titlebar { height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 14px; flex: none;
+              background: color-mix(in srgb, var(--surface-1) 31%, transparent); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .logo { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--accent); display: inline-grid; place-items: center; }
+  .logo i { width: 6px; height: 6px; border-radius: 50%; background: var(--fg); }
+  .state { font-size: 12px; color: var(--ok); padding: 2px 9px; border-radius: 10px; background: color-mix(in srgb, var(--fill-1) 60%, transparent); }
+  .grow { flex: 1; }
+  .wbtn { width: 38px; height: 30px; border-radius: 8px; color: var(--mut); display: inline-grid; place-items: center;
+          background: transparent; border: 0; cursor: pointer; font-size: 13px; }
+  .wbtn:hover { background: var(--fill-1); color: var(--fg); }
+  .lang { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-right: 10px; }
+  .lang button { border: 0; background: transparent; color: var(--mut); font: inherit; font-size: 11.5px; padding: 4px 10px; cursor: pointer; }
+  .lang button.on { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--fg); }
+  .body { flex: 1; display: flex; min-height: 0; }
+  .nav { width: 196px; flex: none; padding: 8px 10px 14px; display: flex; flex-direction: column; gap: 2px;
+         background: color-mix(in srgb, var(--surface-1) 31%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+  .nav button { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 12px; border: 0;
+                background: transparent; color: var(--mut); text-align: left; font: inherit; font-weight: 600; cursor: pointer; width: 100%; }
+  .nav button:hover { background: var(--fill-1); color: var(--fg); }
+  .nav button.on { background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--fg); }
+  .nav button.on::before { content: ""; width: 3px; height: 18px; border-radius: 2px; background: var(--accent); margin-right: -4px; }
+  .main { flex: 1; min-width: 0; padding: 24px 30px; overflow: auto;
+          background: radial-gradient(1100px 480px at 82% -12%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 60%); }
+  .eyebrow { color: var(--accent); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; margin: 0 0 6px; }
+  h1 { margin: 0 0 8px; font-size: 26px; letter-spacing: -0.02em; }
+  .mut { color: var(--mut); }
+  .small { font-size: 12px; }
+  .box { background: color-mix(in srgb, var(--surface-1) 31%, transparent);
+         box-shadow: inset 0 0 0 1px var(--line); border-radius: var(--r-l); padding: 16px 18px; margin: 14px 0;
+         backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  .box h3 { margin: 0 0 8px; font-size: 15px; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .field-mock { background: color-mix(in srgb, var(--fill-1) 100%, transparent); border-radius: 12px; padding: 9px 12px;
+                color: var(--mut); font-size: 13px; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 9px; background: var(--fill-1); color: var(--mut); white-space: nowrap; }
+  .tag.ok { color: var(--ok); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+  .legend b { font-weight: 600; color: var(--accent); }
+  .legend span { color: var(--mut); }
+  @media (prefers-reduced-motion: reduce) { .row, .giant { animation: none; } }
+</style>
+</head>
+<body>
+  <div class="field" id="field" aria-hidden="true"></div>
+  <div class="giant" aria-hidden="true">Νοῦς</div>
+  <div class="glow" aria-hidden="true"></div>
+
+  <div class="frame">
+    <div class="titlebar">
+      <div class="brand"><span class="logo"><i></i></span> Эйдос</div>
+      <div class="state">готов</div>
+      <div class="grow"></div>
+      <div class="lang">
+        <button class="on" onclick="setTheme('dark')">Тёмная</button>
+        <button onclick="setTheme('light')">Светлая</button>
+      </div>
+      <button class="wbtn">■</button>
+      <button class="wbtn">—</button>
+      <button class="wbtn">▢</button>
+      <button class="wbtn">✕</button>
+    </div>
+    <div class="body">
+      <div class="nav">
+        <button class="on">◈ Диалог</button>
+        <button>▣ Память</button>
+        <button>⚿ Ключи и модели</button>
+        <button>⚙ Инструменты</button>
+        <button>✦ Сценарии</button>
+        <button>⚙ Настройки</button>
+      </div>
+      <div class="main">
+        <p class="eyebrow">Λόγος · превью фона</p>
+        <h1>Бегущие слова мифов</h1>
+        <p class="mut">Фон — поток греческих слов в цвете темы. Несущие блоки полупрозрачны
+        (альфа ≈ 80/255) со стеклянным размытием: слова просвечивают, текст остаётся читаемым.</p>
+        <div class="grid2">
+          <div class="box">
+            <h3>Ἀλήθεια</h3>
+            <p class="mut small">Карточка с альфа-каналом ≈ 80. Слова за ней размываются стеклом и не мешают чтению.</p>
+            <div class="field-mock">поле ввода тоже полупрозрачное</div>
+          </div>
+          <div class="box">
+            <h3>Μνήμη</h3>
+            <p class="mut small">Переключите тему кнопкой в титлбаре — слова перекрашиваются в цвет темы.</p>
+            <p><span class="tag ok">νῦν</span> <span class="tag">Λόγος</span> <span class="tag">Μοῦσα</span></p>
+          </div>
+        </div>
+        <div class="box">
+          <h3>Γλῶτта · слова фона</h3>
+          <div class="legend">
+            <span><b>Νοῦς</b> — ум-перводвигатель, Анаксагор</span>
+            <span><b>Λόγος</b> — слово и разум, Гераклит</span>
+            <span><b>Κόσμος</b> — мир-порядок, пифагорейцы</span>
+            <span><b>Μνήμη</b> — Мнемозина, память</span>
+            <span><b>Μοῖρα</b> — мойры, нити судьбы</span>
+            <span><b>Ἀρετή</b> — добродетель, Сократ</span>
+            <span><b>Φύσις</b> — природа, досократики</span>
+            <span><b>Θάλασσα</b> — море, Фалес</span>
+            <span><b>Πῦρ</b> — огонь, Гераклит</span>
+            <span><b>Χάος</b> — первозданный Хаос, Гесиод</span>
+            <span><b>Ἠχώ</b> — нимфа Эхо</span>
+            <span><b>Ὕπνος</b> — бог сна</span>
+            <span><b>Ἔρως</b> — первородная сила, Гесиод</span>
+            <span><b>Θέμις</b> — Фемида, порядок</span>
+            <span><b>Μοῦσα</b> — музы</span>
+            <span><b>Τύχη</b> — случай и удача</span>
+            <span><b>Δύναμις</b> — возможность, Аристотель</span>
+            <span><b>Μίμησις</b> — подражание, Платон</span>
+            <span><b>Σοφία</b> — мудрость</span>
+            <span><b>Ἀκάδημα</b> — Академия Платона</span>
+            <span><b>Λύκειον</b> — Ликей Аристотеля</span>
+            <span><b>Στοά</b> — Стоя Зенона</span>
+            <span><b>Προμηθεύς</b> — Прометей</span>
+            <span><b>Ἀλήθεια</b> — истина</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // слова фона: греческие термины и имена, отсылки к мифам и философам
+    const WORDS = ["Νοῦς", "Λόγος", "Ἀλήθεια", "Μνήμη", "Κόσμος", "Ἀρετή", "Φύσις", "Τύχη", "Μοῖρα",
+      "Ὕπνος", "Ἔρως", "Θέμις", "Μοῦσα", "Χάος", "Σοφία", "Γνῶσις", "Ἠχώ", "Δύναμις", "Μίμησις",
+      "Θάλασσα", "Πῦρ", "Ἀκάδημα", "Λύκειον", "Στοά", "Προμηθεύς", "Ὠκεανός", "Ἀθήνη", "Ἀπόλλων"];
+    const field = document.getElementById("field");
+    const ROWS = 8;
+    for (let r = 0; r < ROWS; r++) {
+      const row = document.createElement("div");
+      row.className = "row";
+      // половина набора на строку, дублируем для бесшовного цикла translateX(-50%)
+      const pick = WORDS.filter((_, i) => i % ROWS === r % ROWS);
+      const seq = pick.concat(pick);
+      row.innerHTML = seq.map((w, i) => `<span${i % 3 === 1 ? ' class="dim"' : ""}>${w}</span>`).join("");
+      row.style.top = (3 + r * 12) + "%";
+      row.style.fontSize = (15 + (r % 3) * 5) + "px";
+      row.style.animationDuration = (70 + (r % 4) * 22) + "s";
+      row.style.animationDelay = (-r * 13) + "s";
+      field.appendChild(row);
+    }
+    function setTheme(t) {
+      document.documentElement.dataset.theme = t;
+      document.querySelectorAll(".lang button").forEach((b, i) => b.classList.toggle("on", (i === 0) === (t === "dark")));
+    }
+  </script>
+</body>
+</html>
