@@ -138,8 +138,8 @@ async function renderChat() {
     el("button", { class: "btn primary wide", onclick: async () => { const c = await core.try("agent.new_chat"); if (c && c.chat_id) { A.chat = c.chat_id; A.messages = []; } renderChat(); } }, "+ Новый диалог"),
     A.chats.map((c) => el("div", { class: "chatitem" + (c.id === A.chat ? " on" : ""), onclick: async () => { A.chat = c.id; await core.try("agent.select_chat", { chat_id: c.id }); renderChat(); } },
       el("span", { class: "t" }, c.title || "Без названия"),
-      el("button", { class: "icon", title: "Переименовать", onclick: async (e) => { e.stopPropagation(); const t = prompt("Название диалога", c.title || ""); if (t !== null) { await core.try("agent.rename_chat", { chat_id: c.id, title: t }); renderChat(); } } }, iconNode("edit", 13)),
-      el("button", { class: "icon", title: "Удалить", onclick: (e) => { e.stopPropagation(); confirmClick(e.currentTarget, async () => { await core.try("agent.delete_chat", { chat_id: c.id }); if (A.chat === c.id) A.chat = null; renderChat(); }); } }, iconNode("close", 13)))));
+      el("button", { class: "icon", title: "Переименовать", onclick: async (e) => { e.stopPropagation(); const t = prompt("Название диалога", c.title || ""); if (t !== null) { await core.try("agent.rename_chat", { chat_id: c.id, title: t }); renderChat(); } } }, iconNode("edit", 14)),
+      el("button", { class: "icon", title: "Удалить", onclick: (e) => { e.stopPropagation(); confirmClick(e.currentTarget, async () => { await core.try("agent.delete_chat", { chat_id: c.id }); if (A.chat === c.id) A.chat = null; renderChat(); }); } }, iconNode("close", 14)))));
   const log = el("div", { class: "log" },
     A.messages.length ? A.messages.filter((m) => m.role === "user" || m.role === "assistant").map(msgView)
       : el("div", { class: "hello" }, helloMark.el, el("h2", {}, "Привет! Я Эйдос."),
@@ -246,7 +246,7 @@ async function renderMemory(query = "") {
         m.kind ? el("span", { class: "tag" }, m.kind) : null,
         [].concat(m.tags || []).filter(Boolean).map((t) => el("span", { class: "tag ok" }, t)),
         m.created ? el("span", {}, new Date((m.created > 1e12 ? m.created : m.created * 1000)).toLocaleString("ru-RU")) : null),
-      el("button", { class: "icon", title: "Удалить", onclick: async () => { await core.try("memory.delete", { mid: m.id }); renderMemory(query); } }, iconNode("close", 13))))
+      el("button", { class: "icon", title: "Удалить", onclick: async () => { await core.try("memory.delete", { mid: m.id }); renderMemory(query); } }, iconNode("close", 14))))
       : el("div", { class: "empty" }, "Пока ничего не запомнено"))));
 }
 
@@ -346,7 +346,7 @@ async function renderModels() {
               if (r && r.ok) toast(r.env ? "Ключ скрыт. Он записан в .env — уберите его оттуда, чтобы удалить совсем" : "Ключ удалён", "ok");
               else toast((r && r.error) || "Не удалось удалить ключ", "error");
               renderModels();
-            }) }, iconNode("close", 13))] : null),
+            }) }, iconNode("close", 14))] : null),
         Object.entries(a.buckets || {}).map(([m, b]) => bucketLine(m, b))))
         : el("div", { class: "empty" }, iconNode("key", 15), " Ключей пока нет. Добавьте хотя бы один ключ Groq — console.groq.com/keys")),
     Array.isArray(keys) && keys.length > accounts.length ? el("div", { class: "mut small" }, "В хранилище ключей: " + keys.length) : null));
@@ -429,6 +429,24 @@ function field(path, value) {
   return ta;
 }
 
+// Погода: город задаётся здесь — ядро само геокодирует и включает обновление (weather.set_city).
+function weatherCityBox() {
+  const input = el("input", { class: "field", placeholder: "Город — например, Казань", "aria-label": "Город погоды" });
+  const btn = el("button", { class: "btn primary", onclick: async () => {
+    const city = input.value.trim();
+    if (!city) return;
+    btn.disabled = true;
+    const r = await core.try("weather.set_city", { city }, 30000);
+    btn.disabled = false;
+    if (!r || r.error || r.ok === false) { toast((r && (r.error || r.reason)) || "Не удалось определить город", "error"); return; }
+    toast("Погода: " + (r.city || city) + (r.temp !== undefined && r.temp !== null ? ", " + Math.round(r.temp) + "°" : ""), "ok");
+    renderSettings();
+  } }, "Сохранить");
+  return el("section", { class: "box" }, el("h3", {}, "Погода"),
+    el("p", { class: "mut small" }, "Город показывает температуру в острове — справа в капсуле и виджетом в панели «Сейчас». Ядро само найдёт координаты и включит обновление."),
+    el("div", { class: "row2" }, input, btn));
+}
+
 async function renderSettings() {
   const cfg = await core.try("settings.get", {}, UI_TIMEOUT);
   if (A.tab !== "settings") return;
@@ -457,6 +475,7 @@ async function renderSettings() {
     voiceBox(),
     islandPartsBox(cfg),
     waveSettingsBox(cfg),
+    weatherCityBox(),
     body));
 }
 

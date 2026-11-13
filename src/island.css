@@ -85,7 +85,7 @@ button:disabled { opacity: 0.35; cursor: default; }
 .actions { justify-content: flex-end; flex-wrap: wrap; }
 
 /* персонаж: жидкая сфера, меняет цвет и движение по состоянию агента */
-.orb { position: relative; width: 18px; height: 18px; flex: none; border-radius: 50%; filter: saturate(1.2); }
+.orb { position: relative; width: 27px; height: 27px; flex: none; border-radius: 50%; filter: saturate(1.2); }
 .orb.big { width: 22px; height: 22px; }
 .orb i { position: absolute; inset: 0; border-radius: 45% 55% 50% 50%; background: var(--c1, var(--brand-1)); mix-blend-mode: screen; opacity: 0.85; animation: blob 6s linear infinite; }
 .orb i:nth-child(2) { background: var(--c2, var(--brand-2)); animation-duration: 7.5s; animation-direction: reverse; }
@@ -256,7 +256,9 @@ button:disabled { opacity: 0.35; cursor: default; }
 .island[data-mode="music"][data-music="wide"] { width: 320px; }
 .island[data-mode="music"][data-music="wide"][data-lyric="1"] { width: 380px; border-radius: 12px 12px 24px 24px; }
 .island[data-mode="music"][data-music="mini"] { width: 400px; border-radius: 12px 12px 26px 26px; padding: 8px 10px; }
-.row.tri { display: grid; grid-template-columns: 1fr auto 1fr; }
+/* minmax(0,1fr) по краям: левые чипы (vpn, раскладка) не поднимают минимум колонки,
+   и часы стоят ровно по центру при любом наборе включённых элементов */
+.row.tri { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
 .row.tri .side { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .row.tri .side.r { justify-content: flex-end; }
 .row.tri .mid { display: flex; align-items: center; gap: 6px; }
@@ -272,7 +274,14 @@ button:disabled { opacity: 0.35; cursor: default; }
 .dot.mic.muted { background: var(--err); box-shadow: 0 0 6px var(--err); }
 .dot.cam { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
 .chip.caps, .chip.lay, .chip.vpn { padding: 1px 6px; font-weight: 700; font-size: 10.5px; }
-.chip.vpn { color: var(--b3, #4fd1ff); }
+/* vpn теперь монолинейный щит в общем стиле иконок, а не текстовая плашка */
+.chip.vpn { display: inline-flex; align-items: center; color: var(--b3, #4fd1ff); }
+/* чип «город?» в капсуле: подсказка вместо спрятанной погоды */
+.chip.w-ask { cursor: pointer; color: var(--mut); transition: color 0.15s; }
+.chip.w-ask:hover { color: var(--accent); }
+/* виджет погоды без данных — кликабельная заглушка */
+.widget.hint { text-align: left; transition: background 0.15s; }
+.widget.hint:hover { background: var(--soft2); }
 .chip.lay { animation: lyricIn 0.3s var(--ease) both; }
 .vol { flex: 1; height: 5px; border-radius: 3px; background: var(--soft2); overflow: hidden; }
 .vol i { display: block; height: 100%; background: var(--fg); border-radius: 3px; transition: width 0.12s; }

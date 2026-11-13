@@ -12,7 +12,7 @@ import { PARTS, TAB_LIST, TOOL_LIST, partOn, listOn, partValues, RESET_VALUES, a
 // видна ли часть интерфейса (настраивается в панели кнопкой ✎ или в настройках)
 const on = (key) => partOn(S.cfg.island, key);
 
-const icon = (name, size = 14) => iconNode(name, size);
+const icon = (name, size = 15) => iconNode(name, size);
 
 const S = {
   cfg: { island: {}, hotkeys: {} },
@@ -77,7 +77,8 @@ function timerLeft(t) {
 // ------------------------------------------------------------------ rendering
 
 // Знак Νοῦς вместо орба-персонажа (гайдбук §12): морфинг-движок, состояние → set().
-const nous = createNous({ size: 18, getLevel: () => S.mic.level || 0 });
+// 27px — в 1.5 раза крупнее прежних 18: логотип заметнее в капсуле (просьба юзера).
+const nous = createNous({ size: 27, getLevel: () => S.mic.level || 0 });
 const nousBig = createNous({ size: 22, getLevel: () => S.mic.level || 0 });
 
 function nousState() {
@@ -144,12 +145,16 @@ const VIEWS = {
         el("i", { style: { width: Math.max(8, Math.min(100, batInfo().percent)) + "%" } }), el("b", {}, Math.round(batInfo().percent))) : null;
     const temp = on("weather") && S.weather && S.weather.temp !== undefined && S.weather.temp !== null
       ? el("span", { class: "temp" }, (S.weather.icon || "") + Math.round(S.weather.temp) + "°") : null;
+    // Погода без города не исчезает молча: справа появляется чип «город?» → настройки.
+    const cityAsk = on("weather") && !temp && S.online
+      ? el("button", { class: "chip w-ask", title: (S.weather && S.weather.reason) || "Погоде нужен город — Настройки · Погода",
+        onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "settings" }); } }, "город?") : null;
     if (on("volume_osd") && S.vol && Date.now() - S.vol.at < 1200) return [el("div", { class: "row pill" }, el("span", { class: "ic" }, S.vol.v ? "🔊" : "🔇"),
       el("span", { class: "vol" }, el("i", { style: { width: S.vol.v + "%" } })), el("span", { class: "mono sub" }, String(S.vol.v)))];
     return [el("div", { class: "row pill tri" },
       el("span", { class: "side l" }, on("orb") ? orb() : null, ...dots()),
       el("span", { class: "mid" }, on("clock") ? clockNode() : null, bat),
-      el("span", { class: "side r" }, !S.online && on("core_status") ? el("span", { class: "chip warn" }, "ядро…") : temp))];
+      el("span", { class: "side r" }, !S.online && on("core_status") ? el("span", { class: "chip warn" }, "ядро…") : (temp || cityAsk)))];
   },
   music: () => {
     const kind = musicKind();
@@ -171,9 +176,9 @@ const VIEWS = {
         lyricOn ? el("span", { class: "sung", key: S.lyric }, S.lyric) : on("music_title") ? el("span", { class: "a" }, m.artist || m.app || "") : null,
         thin()),
       !on("music_controls") ? null : el("span", { class: "mini-ctl" },
-        el("button", { class: "icon", disabled: !m.can_prev, onclick: (e) => { e.stopPropagation(); core.try("media.control", { action: "previous" }); } }, iconNode("prev", 13)),
-        el("button", { class: "icon", onclick: (e) => { e.stopPropagation(); core.try("media.control", { action: "play_pause" }); } }, iconNode(m.playing ? "pause" : "play", 13)),
-        el("button", { class: "icon", disabled: !m.can_next, onclick: (e) => { e.stopPropagation(); core.try("media.control", { action: "next" }); } }, iconNode("next", 13))))];
+        el("button", { class: "icon", disabled: !m.can_prev, onclick: (e) => { e.stopPropagation(); core.try("media.control", { action: "previous" }); } }, iconNode("prev", 14)),
+        el("button", { class: "icon", onclick: (e) => { e.stopPropagation(); core.try("media.control", { action: "play_pause" }); } }, iconNode(m.playing ? "pause" : "play", 14)),
+        el("button", { class: "icon", disabled: !m.can_next, onclick: (e) => { e.stopPropagation(); core.try("media.control", { action: "next" }); } }, iconNode("next", 14))))];
   },
   agent: () => [
     el("div", { class: "row pill" }, orb("big"),
@@ -256,7 +261,7 @@ function dots() {
   if (on("privacy") && p.camera) out.push(el("span", { class: "dot cam", title: p.camera_app ? "Камера: " + p.camera_app : "Камера включена" }));
   if (on("caps") && S.kbd.caps) out.push(el("span", { class: "chip caps" }, "⇪"));
   if (on("layout") && S.kbd.layout && S.kbdShow) out.push(el("span", { class: "chip lay" }, S.kbd.layout));
-  if (on("vpn") && S.status && S.status.vpn && S.status.vpn.on) out.push(el("span", { class: "chip vpn", title: S.status.vpn.name || "VPN" }, "VPN"));
+  if (on("vpn") && S.status && S.status.vpn && S.status.vpn.on) out.push(el("span", { class: "chip vpn", title: (S.status.vpn.name || "VPN") + " — защищённое соединение" }, iconNode("shield", 12)));
   return out;
 }
 
@@ -375,15 +380,23 @@ function panelNow() {
           el("i", { style: { width: Math.min(100, (pos / dur) * 100).toFixed(1) + "%" } })) : null,
         dur && on("p_progress") ? el("div", { class: "times mono" }, el("span", {}, fmtTime(pos)), el("span", {}, fmtTime(dur))) : null,
         el("div", { class: "controls" },
-          el("button", { class: "icon", disabled: !m.can_prev, onclick: () => core.try("media.control", { action: "previous" }) }, iconNode("prev", 13)),
-          el("button", { class: "icon big", onclick: () => core.try("media.control", { action: "play_pause" }) }, iconNode(m.playing ? "pause" : "play", 15)),
-          el("button", { class: "icon", disabled: !m.can_next, onclick: () => core.try("media.control", { action: "next" }) }, iconNode("next", 13)),
+          el("button", { class: "icon", disabled: !m.can_prev, onclick: () => core.try("media.control", { action: "previous" }) }, iconNode("prev", 14)),
+          el("button", { class: "icon big", onclick: () => core.try("media.control", { action: "play_pause" }) }, iconNode(m.playing ? "pause" : "play", 16)),
+          el("button", { class: "icon", disabled: !m.can_next, onclick: () => core.try("media.control", { action: "next" }) }, iconNode("next", 14)),
           on("p_eq") ? eq(9) : null))));
   }
   const widgets = el("div", { class: "widgets" });
-  if (on("w_weather") && S.weather && S.weather.temp !== undefined)
-    widgets.append(el("div", { class: "widget" }, el("div", { class: "big" }, (S.weather.icon || "") + " " + Math.round(S.weather.temp) + "°"),
-      el("div", { class: "sub" }, [S.weather.city, S.weather.text].filter(Boolean).join(" · "))));
+  // Погода в панели всегда на месте: без данных — кликабельная заглушка «укажите город».
+  if (on("w_weather")) {
+    const w = S.weather || {};
+    const hasTemp = w.temp !== undefined && w.temp !== null;
+    widgets.append(hasTemp
+      ? el("div", { class: "widget" }, el("div", { class: "big" }, (w.icon || "") + " " + Math.round(w.temp) + "°"),
+        el("div", { class: "sub" }, [w.city, w.text || w.desc].filter(Boolean).join(" · ")))
+      : el("button", { class: "widget hint", title: "Открыть настройки погоды", onclick: () => invoke("show_main", { tab: "settings" }) },
+        el("div", { class: "big" }, "Погода"),
+        el("div", { class: "sub" }, w.reason || w.error || "Укажите город в Настройках")));
+  }
   if (on("w_clock")) widgets.append(el("div", { class: "widget" }, el("div", { class: "big mono" }, clockNode()),
     el("div", { class: "sub" }, new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" }))));
   if (on("w_battery") && batInfo())
@@ -402,10 +415,10 @@ function panelNow() {
 }
 
 const TOOL_BUTTONS = [
-  ["shot_area", "▢", "Область", () => hotkey("shot_area")],
-  ["shot_screen", "▭", "Экран", () => hotkey("shot_screen")],
-  ["ocr", "T", "Текст (OCR)", () => hotkey("ocr")],
-  ["qr", "▦", "QR-код", () => hotkey("qr")],
+  ["shot_area", "crop", "Область", () => hotkey("shot_area")],
+  ["shot_screen", "monitor", "Экран", () => hotkey("shot_screen")],
+  ["ocr", "ocr", "Текст (OCR)", () => hotkey("ocr")],
+  ["qr", "qr", "QR-код", () => hotkey("qr")],
   ["color", "pip", "Пипетка", () => hotkey("color")],
   ["record", "rec", "Запись экрана", () => hotkey("record")],
   ["record_area", "shot", "Запись области", () => invoke("open_selector", { purpose: "record" })],

@@ -115,10 +115,14 @@ ACCOUNTS = [
 ]
 
 STATE = {"mic": False, "cam": False, "volume": 0.4, "muted": False,
-         "battery": {"percent": 76, "charging": False, "saver": False}}
+         "battery": {"percent": 76, "charging": False, "saver": False},
+         "vpn": {"on": True, "name": "WireGuard"}}
 MEDIA = {"playing": False, "title": "Kiasmos — Blurred", "artist": "Kiasmos", "cover": "", "position": 42, "duration": 214,
          "can_prev": True, "can_next": True, "accent": ""}
 TIMERS = []
+# Погода: по умолчанию город не задан (как в живом ядре с включённым островом) —
+# остров показывает чип «город?» и виджет-заглушку; weather.set_city «настраивает» её.
+WEATHER = {"ok": False, "reason": "укажите город в настройках погоды"}
 
 
 def handle(method: str, params: dict):
@@ -242,7 +246,12 @@ def handle(method: str, params: dict):
     if method == "media.control":
         return {"ok": True}
     if method == "weather.state":
-        return {"temp": 12, "desc": "облачно", "city": "Казань"}
+        return WEATHER
+    if method == "weather.set_city":
+        WEATHER.clear()
+        WEATHER.update({"ok": True, "temp": 9, "text": "небольшой дождь",
+                        "city": (params or {}).get("city") or "Казань"})
+        return dict(WEATHER)
     if method == "clipboard.list":
         return {"items": []}
     if method == "clipboard.get" or method == "clipboard.paste" or method == "clipboard.paste_plain" or method == "clipboard.pin" or method == "clipboard.delete":

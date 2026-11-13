@@ -46,12 +46,22 @@ const P = {
   bell: '<path d="M12 4.5a5 5 0 0 1 5 5v3.6l1.6 2.6H5.4L7 13.1V9.5a5 5 0 0 1 5-5Z"/><path d="M10.2 18.6a2 2 0 0 0 3.6 0"/>',
   system: '<circle cx="12" cy="12" r="7.5"/><path d="M12 4.5V11"/>',
   info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v4.4"/><circle cx="12" cy="8" r=".6" fill="currentColor" stroke="none"/>',
+  // — новые (островок и инструменты): щит, кадр, экран, распознавание, QR, батарея, камера, звук, сеть —
+  shield: '<path d="M12 3.5 19 6.2v5.6c0 4.4-3 7.1-7 8.7-4-1.6-7-4.3-7-8.7V6.2L12 3.5Z"/><path d="M9.3 11.7l1.9 1.9 3.5-3.5"/>',
+  crop: '<path d="M6.5 2.5v13a2 2 0 0 0 2 2h13"/><path d="M2.5 6.5h13a2 2 0 0 1 2 2v13"/>',
+  monitor: '<rect x="3" y="4.5" width="18" height="11.5" rx="2"/><path d="M8.5 20h7M12 16v4"/>',
+  ocr: '<path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8.5 8.5h7M12 8.5V15"/>',
+  qr: '<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2.5v2.5M20 14v.01M20 17v.01M20 20v.01M14 20v.01M17 17v.01"/>',
+  battery: '<rect x="2.5" y="8" width="16" height="8.5" rx="2"/><path d="M21.5 11v2.5M6 11v2.5M9.5 11v2.5"/>',
+  cam: '<path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.6L8.7 5h6.6l1.6 2h2.6A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5Z"/><circle cx="12" cy="12.8" r="3.2"/>',
+  volume: '<path d="M11 5.2 6.6 8.9H3.6v6.2h3L11 18.8V5.2Z"/><path d="M14.8 9.6a3.5 3.5 0 0 1 0 4.8M17.6 7.2a7 7 0 0 1 0 9.6"/>',
+  wifi: '<path d="M3.5 9.6a12.6 12.6 0 0 1 17 0"/><path d="M6.6 13a8.6 8.6 0 0 1 10.8 0"/><path d="M9.6 16.3a4.6 4.6 0 0 1 4.8 0"/><circle cx="12" cy="19.2" r=".9" fill="currentColor" stroke="none"/>',
 };
 
 export function icon(name, size = 16) {
   const body = P[name] || P.spark;
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" `
-    + `stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+    + `stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 }
 
 export function iconNode(name, size = 16) {
