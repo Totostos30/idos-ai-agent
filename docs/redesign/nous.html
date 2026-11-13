@@ -61,6 +61,7 @@
   .demo-wrap { margin-top: 40px; }
   .demo-stage {
     position: relative; height: 280px; border-radius: 16px; overflow: hidden;
+    display: grid; place-items: center;
     background: radial-gradient(320px 150px at 50% 40%, #0e0e14 0%, transparent 70%), var(--stage);
     box-shadow: inset 0 0 0 1px var(--line);
   }
@@ -72,6 +73,11 @@
   .dbtn:hover { box-shadow: inset 0 0 0 1px rgba(124, 140, 255, .55); }
   #demoLabel { color: var(--mut); font-size: 13px; font-family: ui-monospace, Consolas, monospace; }
   #demoLabel b { color: var(--ink); font-family: inherit; }
+  .trans-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 6px; margin-top: 16px; }
+  .trans { display: flex; gap: 9px; align-items: baseline; padding: 7px 11px; border-radius: 10px;
+    background: var(--stage); box-shadow: inset 0 0 0 1px var(--line); font-size: 12.5px; color: var(--mut); }
+  .trans b { color: var(--ink); font-weight: 600; white-space: nowrap; }
+  .trans .arr { color: var(--b2); font-weight: 700; }
 
   .changes { margin: 18px 0 0; padding: 16px 18px; border-radius: 16px; background: var(--stage); box-shadow: inset 0 0 0 1px var(--line); }
   .changes h3 { margin: 0 0 8px; font-size: 15px; }
@@ -114,12 +120,13 @@
 
   <section class="demo-wrap">
     <h2 class="sec"><span class="gr">Δεῖγμα</span>Сессия как в приложении</h2>
-    <p class="sec-lead">Знак проходит реальный цикл агента: покой → слушает (ядро и свечение реагируют на уровень голоса, как на --lvl) → думает → ищет → работает → говорит (масштаб ядра в такт фразам) → готово. Смена состояний — кроссфейд 0.4 с, ровно как переключение s-* классов орба в острове.</p>
+    <p class="sec-lead">Знак — один живой организм: состояния не сменяются кадрами, а <b>перетекают</b> — кольца меняют радиус, цвет, пунктир и темп, лишние элементы растворяются, ядро перекрашивается. Ниже движок проигрывает все переходы, возможные в сценариях, затем полная таблица переходов.</p>
     <div class="demo-stage" id="demoStage"></div>
     <div class="demo-bar">
       <button id="demoBtn" type="button" class="dbtn">Пауза</button>
       <div id="demoLabel">—</div>
     </div>
+    <div class="trans-list" id="transList"></div>
   </section>
 
   <h2 class="sec" id="pets"><span class="gr">Θηρία</span>Мини-питомцы островка</h2>
@@ -316,6 +323,28 @@
         <circle r="2.5" fill="var(--ink)" opacity=".85"/>
       </g>
     </symbol>
+
+    <symbol id="st-scn" viewBox="0 0 96 64">
+      <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+      <path d="M48 20.4L56.2 23.8L59.6 32L56.2 40.2L48 43.6L39.8 40.2L36.4 32L39.8 23.8Z"
+            fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
+      <circle cx="48" cy="20.4" r="1.7" fill="var(--ok)"/>
+      <circle cx="56.2" cy="23.8" r="1.7" fill="var(--ok)"/>
+      <circle cx="59.6" cy="32" r="1.7" fill="var(--ok)"/>
+      <circle cx="56.2" cy="40.2" r="1.7" fill="var(--b1)">
+        <animate attributeName="r" values="1.7;2.3;1.7" dur="1.2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="48" cy="43.6" r="1.7" fill="rgba(255,255,255,.18)"/>
+      <circle cx="39.8" cy="40.2" r="1.7" fill="rgba(255,255,255,.18)"/>
+      <circle cx="36.4" cy="32" r="1.7" fill="rgba(255,255,255,.18)"/>
+      <circle cx="39.8" cy="23.8" r="1.7" fill="rgba(255,255,255,.18)"/>
+      <circle r="2.3" fill="var(--b3)">
+        <animateMotion dur="4.8s" repeatCount="indefinite"
+          path="M48 20.4L56.2 23.8L59.6 32L56.2 40.2L48 43.6L39.8 40.2L36.4 32L39.8 23.8Z"/>
+      </circle>
+      <circle cx="48" cy="32" r="2.8" fill="var(--ink)"/>
+      <circle cx="48" cy="32" r="2.8" fill="url(#sph)"/>
+    </symbol>
   </defs>
 </svg>
 
@@ -481,6 +510,8 @@
       note: "Кольца сворачиваются внутрь ядра, зелёная галка держится в кольце структуры — «форма достигнута».", map: ".step.ok" },
     { id: "transcribing", gr: "Γραφή", title: "Распознаёт речь", ref: "STT обрабатывает запись (GigaSTT).",
       note: "Четырёхцветное кольцо бренда вращается (наследник .gspin микрофона), ядро сжато и приглушено: слышу — записываю.", map: "mic.state = transcribing" },
+    { id: "scn", gr: "Μίμησις", title: "Играет сценарий", ref: "Воспроизведение сценария из редактора: узел за узлом.",
+      note: "Кольцо-мысль превращается в дорожку из восьми узлов: бегунок бежит по маршруту, пройденные узлы зеленеют, текущий пульсирует брендом. Упавший узел краснеет — и знак переходит в Ἀπορία.", map: "scenarios · run-running" },
   ];
   document.getElementById("states-grid").innerHTML = states.map((s) =>
     card("st-" + s.id, s.gr, s.title, s.ref, "st-" + s.id, s.note, s.map)).join("");
@@ -580,93 +611,232 @@
     }
   })();
 
-  // ---------- Демо: сессия агента в реальном темпе ----------
+  // ---------- Демо: живой двигатель — состояния перетекают друг в друга ----------
   const demoStage = document.getElementById("demoStage");
   const demoLabel = document.getElementById("demoLabel");
   const demoBtn = document.getElementById("demoBtn");
-  const listenLayer = `${capsule}
-    <circle cx="48" cy="32" r="4.5" fill="none" stroke="var(--b1)" stroke-width="1.7">
-      <animate attributeName="r" values="4.5;11.8" dur="1.8s" begin="0s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values=".75;0" dur="1.8s" begin="0s" repeatCount="indefinite"/>
-    </circle>
-    <circle cx="48" cy="32" r="4.5" fill="none" stroke="var(--b2)" stroke-width="1.7">
-      <animate attributeName="r" values="4.5;11.8" dur="1.8s" begin=".6s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values=".75;0" dur="1.8s" begin=".6s" repeatCount="indefinite"/>
-    </circle>
-    <circle cx="48" cy="32" r="4.5" fill="none" stroke="var(--b3)" stroke-width="1.7">
-      <animate attributeName="r" values="4.5;11.8" dur="1.8s" begin="1.2s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values=".75;0" dur="1.8s" begin="1.2s" repeatCount="indefinite"/>
-    </circle>
-    <circle id="dLvlGlow" cx="48" cy="32" r="7" fill="url(#caveglow)" opacity=".2"/>
-    <g transform="translate(48 32)"><g id="dLvlCore"><circle r="3.1" fill="var(--ink)"/><circle r="3.1" fill="url(#sph)"/></g></g>`;
-  const speakLayer = `${capsule}
-    <circle cx="48" cy="32" r="5" fill="none" stroke="var(--b1)" stroke-width="1.4" opacity="0">
-      <animate attributeName="r" values="4.5;10" dur="1.3s" begin="0s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values=".6;0" dur="1.3s" begin="0s" repeatCount="indefinite"/>
-    </circle>
-    <circle cx="48" cy="32" r="5" fill="none" stroke="var(--b2)" stroke-width="1.4" opacity="0">
-      <animate attributeName="r" values="4.5;10" dur="1.3s" begin=".45s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values=".6;0" dur="1.3s" begin=".45s" repeatCount="indefinite"/>
-    </circle>
-    <g transform="translate(48 32)"><g id="dSpeakCore"><circle r="2.9" fill="var(--ink)"/><circle r="2.9" fill="url(#sph)"/></g></g>`;
+  demoStage.innerHTML = `<svg class="hero" viewBox="0 0 96 64">${capsule}
+    <circle id="mRing3" cx="48" cy="32" fill="none"/>
+    <circle id="mRing2" cx="48" cy="32" fill="none"/>
+    <circle id="mRing1" cx="48" cy="32" fill="none"/>
+    <g id="xComets" style="opacity:0">
+      <circle cx="48" cy="32" r="11.6" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
+      <circle id="xCometA" r="1.8" fill="var(--b3)"/>
+      <circle id="xCometB" r="1.3" fill="var(--b2)"/>
+    </g>
+    <g id="xWaves" style="opacity:0">
+      <circle class="xw" cx="48" cy="32" fill="none" stroke="var(--b1)" stroke-width="1.7"/>
+      <circle class="xw" cx="48" cy="32" fill="none" stroke="var(--b2)" stroke-width="1.7"/>
+      <circle class="xw" cx="48" cy="32" fill="none" stroke="var(--b3)" stroke-width="1.7"/>
+    </g>
+    <g id="xPulses" style="opacity:0">
+      <circle class="xp" cx="48" cy="32" fill="none" stroke="var(--b1)" stroke-width="1.6"/>
+      <circle class="xp" cx="48" cy="32" fill="none" stroke="var(--b2)" stroke-width="1.6"/>
+      <circle class="xp" cx="48" cy="32" fill="none" stroke="var(--b3)" stroke-width="1.6"/>
+    </g>
+    <g id="xQuad" style="opacity:0">
+      <g>
+        <animateTransform attributeName="transform" type="rotate" from="0 48 32" to="360 48 32" dur="0.9s" repeatCount="indefinite"/>
+        <circle cx="48" cy="32" r="9.5" fill="none" stroke="var(--b1)" stroke-width="2.4" stroke-dasharray="14.9 44.8"/>
+        <circle cx="48" cy="32" r="9.5" fill="none" stroke="var(--b2)" stroke-width="2.4" stroke-dasharray="14.9 44.8" transform="rotate(90 48 32)"/>
+        <circle cx="48" cy="32" r="9.5" fill="none" stroke="var(--b3)" stroke-width="2.4" stroke-dasharray="14.9 44.8" transform="rotate(180 48 32)"/>
+        <circle cx="48" cy="32" r="9.5" fill="none" stroke="var(--b4)" stroke-width="2.4" stroke-dasharray="14.9 44.8" transform="rotate(270 48 32)"/>
+      </g>
+    </g>
+    <g id="xScn" style="opacity:0">
+      <path d="M48 20.4L56.2 23.8L59.6 32L56.2 40.2L48 43.6L39.8 40.2L36.4 32L39.8 23.8Z" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1"/>
+      <g id="xNodes"><circle class="xn" r="1.7"/><circle class="xn" r="1.7"/><circle class="xn" r="1.7"/><circle class="xn" r="1.7"/><circle class="xn" r="1.7"/><circle class="xn" r="1.7"/><circle class="xn" r="1.7"/><circle class="xn" r="1.7"/></g>
+      <circle id="xRunner" r="2.3" fill="var(--b3)"/>
+    </g>
+    <path id="xTick" d="M45.4 32.2l1.9 2 3.5-3.9" fill="none" stroke="var(--ok)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="opacity:0"/>
+    <circle id="mGlow" cx="48" cy="32" r="7" fill="url(#caveglow)" opacity="0"/>
+    <g id="mCore"><circle id="mDot" r="2.8"/><circle id="mDotHi" r="2.8" fill="url(#sph)"/></g></svg>`;
 
-  const SEQ = [
-    { sym: "st-idle", gr: "Ἠρεμία", name: "Покой", map: ".orb.s-idle", ms: 2600 },
-    { sym: "listen", gr: "Ἀκρόασις", name: "Слушает", map: ".orb.s-listening · --lvl", ms: 3800, html: listenLayer, live: "listen" },
-    { sym: "st-thinking", gr: "Διάνοια", name: "Думает", map: ".orb.s-thinking", ms: 2200 },
-    { sym: "st-searching", gr: "Ζήτησις", name: "Ищет", map: ".orb.s-searching", ms: 2400 },
-    { sym: "st-working", gr: "Ἐνέργεια", name: "Работает", map: ".orb.s-working · .s-acting", ms: 2600 },
-    { sym: "speak", gr: "Φωνή", name: "Говорит", map: ".orb.s-speaking", ms: 3400, html: speakLayer, live: "speak" },
-    { sym: "st-done", gr: "Τέλος", name: "Готово", map: ".step.ok", ms: 2200 },
+  const rgb = (v) => { v = v.trim();
+    if (v.startsWith("#")) return [parseInt(v.slice(1, 3), 16), parseInt(v.slice(3, 5), 16), parseInt(v.slice(5, 7), 16)];
+    return v.match(/\d+/g).slice(0, 3).map(Number); };
+  const css0 = getComputedStyle(document.documentElement);
+  const C = { b1: rgb(css0.getPropertyValue("--b1")), b2: rgb(css0.getPropertyValue("--b2")),
+    b3: rgb(css0.getPropertyValue("--b3")), b4: rgb(css0.getPropertyValue("--b4")),
+    ok: rgb(css0.getPropertyValue("--ok")), err: rgb(css0.getPropertyValue("--err")),
+    ink: rgb(css0.getPropertyValue("--ink")), white: [245, 245, 247] };
+  const R = (r, c, w, op, dA, dB, spd) => ({ r, c, w, op, dA, dB, spd: spd || 0 });
+  const D = (r, c, op, amp) => ({ r, c, op, amp: amp || 0 });
+  const STATES = {
+    idle:         { r1: R(5.6, C.b1, 1.5, .9, 1, 0), r2: R(8.6, C.b2, 1.3, .55, 4.2, 4.2, 25.7), r3: R(11.6, C.b3, 1.2, .24, 1, 0), dot: D(2.8, C.ink, 1), glow: .12 },
+    listen:       { r1: R(5.6, C.b1, 1.5, .9, 1, 0), r2: R(8.6, C.b2, 1.3, .4, 4.2, 4.2, 25.7), r3: R(11.6, C.b3, 1.2, .2, 1, 0), dot: D(2.9, C.ink, 1), glow: .55, x: { waves: 1 }, lvl: 1 },
+    thinking:     { r1: R(5.6, C.b1, 1.4, .8, 2.1, 2.6, -190), r2: R(8.6, C.b2, 1.4, .8, 3.6, 3.2, 313), r3: R(11.6, C.b3, 1.2, .3, 1, 0), dot: D(2.8, C.ink, 1, .55), glow: .12 },
+    searching:    { r1: R(5.6, C.b1, 1.5, .9, 1, 0), r2: R(8.6, C.b2, 1.3, 0, 4.2, 4.2, 25.7), r3: R(11.6, C.white, 1.2, .12, 1, 0), dot: D(2.8, C.ink, 1), glow: .12, x: { comets: 1 } },
+    working:      { r1: R(5.6, C.ink, 1.4, .16, 1, 0), r2: R(8.6, C.b2, 1.3, 0, 4.2, 4.2, 25.7), r3: R(11.6, C.b3, 1.2, 0, 1, 0), dot: D(2.8, C.ink, 1), glow: .12, x: { pulses: 1 } },
+    speaking:     { r1: R(5.6, C.b1, 1.5, .9, 1, 0), r2: R(8.6, C.b2, 1.3, .4, 4.2, 4.2, 25.7), r3: R(11.6, C.b3, 1.2, .2, 1, 0), dot: D(2.9, C.ink, 1), glow: .18, x: { waves: 1 }, speak: 1 },
+    waiting:      { r1: R(5.6, C.b1, 1.5, .9, 1, 0), r2: R(8.6, C.b2, 1.3, .5, 4.2, 4.2, 60), r3: R(11.6, C.b3, 1.2, .35, 2.5, 4), dot: D(2.8, C.ink, 1), glow: .12, bounce: 1, blink: 1 },
+    error:        { r1: R(5.6, C.err, 1.5, .85, 1, 0), r2: R(8.6, C.err, 1.3, 0, 4.2, 4.2, 25.7), r3: R(11.6, C.err, 1.2, .25, 1, 0), dot: D(2.8, C.err, 1), glow: .1, shake: 1, blink: 1 },
+    done:         { r1: R(6.4, C.ok, 1.5, .9, 1, 0), r2: R(6.4, C.ok, 1.3, 0, 4.2, 4.2, 25.7), r3: R(3.2, C.ok, 1.2, 0, 1, 0), dot: D(2.8, C.ink, 0), glow: 0, x: { tick: 1 } },
+    transcribing: { r1: R(5.6, C.b1, 1.5, 0, 1, 0), r2: R(8.6, C.b2, 1.3, 0, 4.2, 4.2, 25.7), r3: R(11.6, C.b3, 1.2, 0, 1, 0), dot: D(2.5, C.ink, .85), glow: 0, x: { quad: 1 } },
+    scn:          { r1: R(5.6, C.b1, 1.5, 0, 1, 0), r2: R(8.6, C.b2, 1.3, 0, 4.2, 4.2, 25.7), r3: R(11.6, C.b3, 1.2, 0, 1, 0), dot: D(2.8, C.ink, 1), glow: .12, x: { scn: 1 } },
+  };
+  const GR = { idle: "Ἠρεμία", listen: "Ἀκρόασις", thinking: "Διάνοια", searching: "Ζήτησις",
+    working: "Ἐνέργεια", speaking: "Φωνή", waiting: "Ἀναμονή", error: "Ἀπορία", done: "Τέλος",
+    transcribing: "Γραφή", scn: "Μίμησις" };
+  const TRANS = [
+    { a: "idle", b: "listen", why: "голос разбудил детектор" },
+    { a: "listen", b: "transcribing", why: "запись окончена — распознаём" },
+    { a: "transcribing", b: "thinking", why: "текст готов" },
+    { a: "thinking", b: "searching", why: "нужен поиск" },
+    { a: "searching", b: "thinking", why: "результаты собраны" },
+    { a: "thinking", b: "working", why: "план готов — выполняем" },
+    { a: "working", b: "waiting", why: "шаг требует подтверждения" },
+    { a: "waiting", b: "working", why: "действие подтверждено" },
+    { a: "working", b: "error", why: "шаг упал" },
+    { a: "error", b: "working", why: "повтор после сбоя" },
+    { a: "working", b: "speaking", why: "ответ готов — озвучиваем" },
+    { a: "speaking", b: "idle", why: "ответ завершён" },
+    { a: "thinking", b: "scn", why: "запущен сценарий" },
+    { a: "scn", b: "done", why: "сценарий завершён" },
+    { a: "scn", b: "error", why: "узел сценария упал" },
+    { a: "error", b: "scn", why: "повтор узла сценария" },
   ];
-  demoStage.innerHTML = SEQ.map((s) =>
-    `<div class="demo-layer" data-sym="${s.sym}"><svg class="hero" viewBox="0 0 96 64">${s.html || `<use href="#${s.sym}"/>`}</svg></div>`).join("");
-  const layers = Object.fromEntries([...demoStage.querySelectorAll(".demo-layer")].map((l) => [l.dataset.sym, l]));
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let demoIdx = 0, demoTimer = null, running = false;
-  let lvl = 0, lvlTarget = 0, speakScale = 1, speakTarget = 1, lvlTick = null, speakTick = null;
+  document.getElementById("transList").innerHTML = TRANS.map((t) =>
+    `<div class="trans"><b>${GR[t.a]} <span class="arr">→</span> ${GR[t.b]}</b><span>${t.why}</span></div>`).join("");
 
-  const stopLvl = () => { if (lvlTick) { clearInterval(lvlTick); lvlTick = null; } };
-  const stopSpeak = () => { if (speakTick) { clearInterval(speakTick); speakTick = null; } };
-  const startLvl = () => { stopLvl(); lvlTick = setInterval(() => {
-      if (Math.random() < .18) lvlTarget = Math.random() * .25;       // пауза между словами
-      else if (Math.random() < .3) lvlTarget = .45 + Math.random() * .55; // всплеск речи
-      lvl += (lvlTarget - lvl) * .35;
-      const core = document.getElementById("dLvlCore"), glow = document.getElementById("dLvlGlow");
-      if (!core || !glow) return;
-      core.setAttribute("transform", `scale(${(1 + lvl * .4).toFixed(3)})`);
-      glow.setAttribute("opacity", (.15 + lvl * .6).toFixed(3));
-      glow.setAttribute("r", (6 + lvl * 3.5).toFixed(2));
-    }, 110); };
-  const startSpeak = () => { stopSpeak(); speakTick = setInterval(() => {
-      speakTarget *= .82;                                             // затухание слога
-      if (Math.random() < .3) speakTarget = .5 + Math.random() * .7;  // новый слог
-      speakScale += (speakTarget - speakScale) * .45;
-      const core = document.getElementById("dSpeakCore");
-      if (core) core.setAttribute("transform", `scale(${speakScale.toFixed(3)})`);
-    }, 70); };
+  const SCN = [...Array(8)].map((_, k) => {
+    const a = (k * 45 - 90) * Math.PI / 180;
+    return [48 + 11.6 * Math.cos(a), 32 + 11.6 * Math.sin(a)];
+  });
+  demoStage.querySelectorAll("#xNodes .xn").forEach((n, k) => {
+    n.setAttribute("cx", SCN[k][0]); n.setAttribute("cy", SCN[k][1]);
+  });
 
-  const show = (idx) => {
-    demoIdx = idx;
-    const s = SEQ[idx];
-    Object.values(layers).forEach((l) => l.classList.toggle("on", l.dataset.sym === s.sym));
-    demoLabel.innerHTML = `<b>${s.gr} ${s.name}</b> · ${s.map}`;
-    if (s.live === "listen") startLvl(); else stopLvl();
-    if (s.live === "speak") startSpeak(); else stopSpeak();
+  // живой морфинг: текущие параметры плавно едут к целевому состоянию
+  const cloneState = (s) => {
+    const c = JSON.parse(JSON.stringify(s));
+    c.x = Object.assign({ comets: 0, waves: 0, pulses: 0, quad: 0, tick: 0, scn: 0 }, c.x || {});
+    return c;
   };
-  const next = () => { if (!running) return; show((demoIdx + 1) % SEQ.length); demoTimer = setTimeout(next, SEQ[demoIdx].ms); };
-  const play = () => {
-    running = true;
-    demoBtn.textContent = "Пауза";
-    document.querySelectorAll("#demoStage svg").forEach((s) => { try { s.unpauseAnimations(); } catch (e) { /* */ } });
-    show(demoIdx);
-    demoTimer = setTimeout(next, SEQ[demoIdx].ms);
+  const cur = cloneState(STATES.idle);
+  const els = { r1: document.getElementById("mRing1"), r2: document.getElementById("mRing2"),
+    r3: document.getElementById("mRing3"), dot: document.getElementById("mDot"),
+    hi: document.getElementById("mDotHi"), core: document.getElementById("mCore"),
+    glow: document.getElementById("mGlow"), comets: document.getElementById("xComets"),
+    cA: document.getElementById("xCometA"), cB: document.getElementById("xCometB"),
+    waves: document.getElementById("xWaves"), pulses: document.getElementById("xPulses"),
+    quad: document.getElementById("xQuad"), scn: document.getElementById("xScn"),
+    nodes: [...document.getElementById("xNodes").children], runner: document.getElementById("xRunner"),
+    tick: document.getElementById("xTick") };
+  let target = STATES.idle;
+  let ang1 = 0, ang2 = 0, lvl = 0, lvlT = 0, env = 0;
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const lerpC = (a, b, k) => [0, 1, 2].map((i) => Math.round(lerp(a[i], b[i], k)));
+  const strC = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const k = 1 - Math.exp(-dt * 7);
+    for (const key of ["r1", "r2", "r3"]) {
+      const c = cur[key], t = target[key];
+      c.r = lerp(c.r, t.r, k); c.w = lerp(c.w, t.w, k); c.op = lerp(c.op, t.op, k);
+      c.dA = lerp(c.dA, t.dA, k); c.dB = lerp(c.dB, t.dB, k); c.spd = lerp(c.spd, t.spd || 0, k);
+      c.c = lerpC(c.c, t.c, k);
+      const e = els[key];
+      e.setAttribute("r", c.r.toFixed(2));
+      e.setAttribute("stroke", strC(c.c));
+      e.setAttribute("stroke-width", c.w.toFixed(2));
+      e.setAttribute("stroke-dasharray", `${c.dA.toFixed(2)} ${c.dB.toFixed(2)}`);
+      let op = c.op;
+      if (key === "r3" && cur.blink > .01) op *= 1 - cur.blink * .35 * (.5 - .5 * Math.cos(now * .0163));
+      e.setAttribute("opacity", op.toFixed(3));
+    }
+    ang1 += cur.r1.spd * dt; ang2 += cur.r2.spd * dt;
+    els.r1.setAttribute("transform", `rotate(${ang1.toFixed(1)} 48 32)`);
+    els.r2.setAttribute("transform", `rotate(${ang2.toFixed(1)} 48 32)`);
+    for (const key of ["glow", "shake", "bounce", "lvl", "speak", "blink"]) {
+      cur[key] = lerp(cur[key] || 0, target[key] || 0, k);
+    }
+    for (const key of ["comets", "waves", "pulses", "quad", "tick", "scn"]) {
+      cur.x[key] = lerp(cur.x[key] || 0, (target.x || {})[key] || 0, k);
+    }
+    cur.dot.r = lerp(cur.dot.r, target.dot.r, k);
+    cur.dot.op = lerp(cur.dot.op, target.dot.op, k);
+    cur.dot.amp = lerp(cur.dot.amp || 0, target.dot.amp || 0, k);
+    cur.dot.c = lerpC(cur.dot.c, target.dot.c, k);
+    // ядро: уровень голоса, такт фраз, пульс мысли, подпрыгивание, дрожь
+    if (Math.random() < .1) lvlT = Math.random() * .25; else if (Math.random() < .2) lvlT = .45 + Math.random() * .55;
+    lvl += (lvlT - lvl) * .3;
+    env *= .9; if (Math.random() < .07) env = .5 + Math.random() * .5;
+    const amp = Math.sin(now * .00546) * cur.dot.amp * .18;
+    const dotR = Math.max(0, cur.dot.r * (1 + cur.lvl * lvl * .4 + cur.speak * env * .5 + amp));
+    const dy = -1.2 * Math.abs(Math.sin((now % 1600) / 1600 * Math.PI)) * cur.bounce;
+    const dx = Math.sin(now * .045) * 1.7 * cur.shake;
+    els.core.setAttribute("transform", `translate(${(48 + dx).toFixed(2)} ${(32 + dy).toFixed(2)})`);
+    els.dot.setAttribute("r", dotR.toFixed(2));
+    els.hi.setAttribute("r", dotR.toFixed(2));
+    els.dot.setAttribute("fill", strC(cur.dot.c));
+    els.dot.setAttribute("opacity", cur.dot.op.toFixed(3));
+    els.hi.setAttribute("opacity", (cur.dot.op * .9).toFixed(3));
+    els.glow.setAttribute("r", (6 + cur.lvl * lvl * 3.5).toFixed(2));
+    els.glow.setAttribute("opacity", (cur.glow * (.35 + cur.lvl * lvl * .65)).toFixed(3));
+    const wOp = cur.x.waves || 0;
+    els.waves.style.opacity = wOp.toFixed(3);
+    if (wOp > .01) els.waves.querySelectorAll(".xw").forEach((n, i) => {
+      const ph = ((now / 1800) + i / 3) % 1;
+      n.setAttribute("r", (4.5 + ph * 7.3).toFixed(2));
+      n.setAttribute("opacity", (.75 * (1 - ph)).toFixed(3));
+    });
+    const pOp = cur.x.pulses || 0;
+    els.pulses.style.opacity = pOp.toFixed(3);
+    if (pOp > .01) els.pulses.querySelectorAll(".xp").forEach((n, i) => {
+      const ph = ((now / 1500) + i / 3) % 1;
+      n.setAttribute("r", (3.5 + ph * 8).toFixed(2));
+      n.setAttribute("opacity", (.8 * (1 - ph)).toFixed(3));
+    });
+    const cOp = cur.x.comets || 0;
+    els.comets.style.opacity = cOp.toFixed(3);
+    if (cOp > .01) {
+      const a = now * .00286;
+      els.cA.setAttribute("cx", (48 + 11.6 * Math.cos(a)).toFixed(2));
+      els.cA.setAttribute("cy", (32 + 11.6 * Math.sin(a)).toFixed(2));
+      els.cB.setAttribute("cx", (48 + 11.6 * Math.cos(a + Math.PI)).toFixed(2));
+      els.cB.setAttribute("cy", (32 + 11.6 * Math.sin(a + Math.PI)).toFixed(2));
+    }
+    els.quad.style.opacity = (cur.x.quad || 0).toFixed(3);
+    els.tick.style.opacity = (cur.x.tick || 0).toFixed(3);
+    const sOp = cur.x.scn || 0;
+    els.scn.style.opacity = sOp.toFixed(3);
+    if (sOp > .01) {
+      const prog = (now / 1000 * 1.6) % 8;
+      const i = Math.floor(prog), fr = prog - i;
+      const e = fr < .5 ? 2 * fr * fr : 1 - Math.pow(-2 * fr + 2, 2) / 2;
+      const p0 = SCN[i], p1 = SCN[(i + 1) % 8];
+      els.runner.setAttribute("cx", lerp(p0[0], p1[0], e).toFixed(2));
+      els.runner.setAttribute("cy", lerp(p0[1], p1[1], e).toFixed(2));
+      els.nodes.forEach((n, j) => {
+        n.setAttribute("fill", j < i ? strC(C.ok) : j === i ? strC(C.b1) : "rgba(255,255,255,.18)");
+        n.setAttribute("r", j === i ? (1.7 + Math.sin(now * .008) * .5).toFixed(2) : "1.7");
+      });
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // секвенсор: держим исходное состояние → морфим → держим результат → следующий переход
+  let ti = 0, tTimer = null, seqRun = false;
+  const step = () => {
+    if (!seqRun) return;
+    const tr = TRANS[ti];
+    demoLabel.innerHTML = `<b>${GR[tr.a]} <span class="arr">→</span> ${GR[tr.b]}</b> · ${tr.why}`;
+    target = STATES[tr.a];
+    tTimer = setTimeout(() => {
+      if (!seqRun) return;
+      target = STATES[tr.b];
+      tTimer = setTimeout(() => { ti = (ti + 1) % TRANS.length; step(); }, 1700);
+    }, 1200);
   };
-  const pause = () => { running = false; clearTimeout(demoTimer); stopLvl(); stopSpeak(); demoBtn.textContent = "Продолжить"; };
-  demoBtn.addEventListener("click", () => (running ? pause() : play()));
-  // Демо — основной контент страницы: проигрывается всегда; reduced-motion
-  // гасит только декоративные циклы карточек (см. скрипт-паузу ниже).
-  play();
+  demoBtn.addEventListener("click", () => {
+    seqRun = !seqRun;
+    demoBtn.textContent = seqRun ? "Пауза" : "Продолжить";
+    if (seqRun) step();
+  });
+  seqRun = true; demoBtn.textContent = "Пауза"; step();
 </script>
 
 <script>
