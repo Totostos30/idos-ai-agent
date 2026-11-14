@@ -1522,7 +1522,7 @@ export function mountIsland() {
     return {
       hidden: root.classList.contains("hidden"),
       waves,
-      liquid: (S.cfg.island.character || "liquid") === "liquid" && (!root.classList.contains("hidden") || (m === "music" && S.media.playing)),
+      liquid: (S.cfg.island.character || "liquid") === "liquid" && !root.classList.contains("hidden"),
       pill: m !== "panel" && m !== "bar" && m !== "confirm" && isl.dataset.lyric !== "1" && musicKind() !== "mini" || m === "idle",
       playing: !!(S.media.active && S.media.playing), edge: S.cfg.island.eq_edge !== false && waves.music_enabled !== false, bands: S.bands,
       accent: (waves.color || cs.getPropertyValue("--accent") || "#7c8cff").trim(), bg: cs.backgroundColor,

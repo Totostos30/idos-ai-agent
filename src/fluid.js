@@ -73,12 +73,16 @@ export class Fluid {
     }
     this.frame++;
     this.drawWideDrops(st, now);
-    if (!st.liquid) {
+    if (st.hidden || !st.liquid) {
       if (this.cv.style.opacity !== "0") this.cv.style.opacity = "0";
       this.beads.length = 0;
       this.reach = 0;
       this.reachX = -1;
       this.sag = 0;
+      this.musicVisibility = 0;
+      this.spikes.fill(0);
+      this.ctx.clearRect(0, 0, this.cv.width, this.cv.height);
+      this.last = now;
       return;
     }
     this.cv.style.opacity = "1";
