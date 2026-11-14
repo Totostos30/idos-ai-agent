@@ -9,7 +9,7 @@ export const REGIONS = [
   ['tools', 'Панель: «Инструменты»'],
 ];
 export const GLYPHS = {
-  orb:'pip', clock:'clock', battery:'battery', battery_percent:'battery', weather:'sun', privacy:'mic', caps:'keyboard', layout:'keyboard', vpn:'shield', core_status:'wifi', volume_osd:'volume', load:'gauge', focus:'ring', event:'calendar', downloads:'download', ticker:'dollar', sleep:'hourglass', coreinfo:'chipic',
+  orb:'pip', clock:'clock', battery:'battery', battery_percent:'battery', weather:'sun', privacy:'mic', caps:'keyboard', layout:'keyboard', vpn:'shield', core_status:'pip', volume_osd:'volume', load:'gauge', focus:'ring', event:'calendar', downloads:'download', ticker:'dollar', sleep:'hourglass', coreinfo:'chipic',
   music_cover:'music', music_title:'music', music_progress:'play', music_eq:'mixer', music_controls:'play', lyrics:'note', agent_steps:'tools', agent_stop:'stop', reply_text:'chat', mic_meter:'mic',
   p_player:'music', p_lyrics:'note', p_progress:'play', p_eq:'mixer', w_weather:'sun', w_clock:'clock', w_battery:'battery', w_timers:'timer', w_days:'sun', w_agenda:'calendar', w_sysmon:'gauge', w_downloads:'download', w_mixer:'mixer', w_note:'note', w_health:'eye', obs:'rec', pa_model:'chipic', pa_steps:'tools', pa_reply:'chat', pa_input:'mic', h_orb:'pip', h_edit:'edit', h_pin:'pin', h_open:'open',
   shot_area:'crop', shot_screen:'monitor', ocr:'ocr', qr:'qr', color:'pip', record:'rec', record_area:'shot', dictation:'keyboard', note:'note', timer:'timer',
@@ -49,12 +49,13 @@ export function arrangeCapsule(grid,I) {
   const i=cells.indexOf(center);
   grid.replaceChildren(el('div',{class:'capsule-wing'},cells.slice(0,i)),center,el('div',{class:'capsule-wing right'},cells.slice(i+1)));
   // Explicit equal widths work inside a shrink-to-fit capsule too.
-  requestAnimationFrame(()=>{
+  const measure=()=>{
     if(!grid.isConnected)return;
     const wings=grid.querySelectorAll('.capsule-wing');
     const width=Math.max(...[...wings].map(n=>n.scrollWidth));
     wings.forEach(n=>n.style.width=width+'px');
-  });
+  };
+  if(grid.isConnected)measure();else requestAnimationFrame(measure);
 }
 const integer = (v, fallback, max) => Number.isFinite(Number(v)) ? Math.max(1,Math.min(max,Math.round(Number(v)))) : fallback;
 // Сначала размещаются сохранённые блоки, затем новые. Коллизии раздвигают блоки, не перекрывая их.
@@ -100,7 +101,7 @@ export function gridRegion(I, region, nodes) {
   for(const [key,node] of live) {
     const cell=el('div',{class:'island-cell','data-grid-key':key},node);
     if(region!=='capsule')position(cell,pos[key]);
-    if(region==='tools'){cell.classList.toggle('icon-only',pos[key].w<3||pos[key].h<3);cell.title=entries(region).find(i=>i.key===key)?.label||key;node.setAttribute('aria-label',cell.title);}
+    if(region==='tools'){cell.classList.toggle('icon-only',pos[key].w<3);cell.classList.toggle('horizontal',pos[key].w>=3&&pos[key].h<3);cell.title=entries(region).find(i=>i.key===key)?.label||key;node.setAttribute('aria-label',cell.title);}
     grid.append(cell);
   }
   if(region==='capsule')arrangeCapsule(grid,I);

@@ -54,6 +54,7 @@ const S = {
   focus: null,
   sleep: null,
   editMode: "parts",
+  capsuleDetail: null,
 };
 
 let root, isl, cardsBox, fluid, lip, leaveTimer = null, barTimer = null;
@@ -161,15 +162,19 @@ function clockNode() {
 
 function batBlock() {
   const b = batInfo();
-  if (!b) return null;
-  return el("span", { class: "bat-mini" + (b.charging ? " charging" : "") + (b.percent < 20 ? " low" : ""),
+  if (!b) return el("span",{class:"cblk",title:t("Батарея не обнаружена")},iconNode("battery",14),S.status.battery?.no_battery?t("Сеть"):"—");
+  const display=S.cfg.island.battery_display||"icon";
+  const label=(b.charging?t("Заряжается"):t("Батарея"))+" · "+b.percent+"%";
+  if(display==="text")return el("span",{class:"cblk mono"},label);
+  const gauge=el("span", { class: "bat-mini"+(display==="horizontal"?" horizontal":"") + (b.charging ? " charging" : "") + (b.percent < 20 ? " low" : ""),
     title: (b.charging ? t("Заряжается") : t("Батарея")) + " · " + Math.round(b.percent) + "%" },
     el("i", { style: { height: Math.max(8, Math.min(100, b.percent)) + "%" } }));
+  return display==="combined"?el("span",{class:"cblk mono",title:label},gauge,b.percent+"%"):gauge;
 }
 
 function batPctBlock() {
   const b = batInfo();
-  if (!b) return null;
+  if (!b) return el("span",{class:"bat-pct mono",title:t("Батарея не обнаружена")},"—");
   return el("span", { class: "bat-pct mono" }, Math.round(b.percent) + "%");
 }
 
@@ -180,12 +185,12 @@ function weatherBlock() {
   const cityAsk = !temp && S.online
     ? el("button", { class: "chip w-ask", title: (S.weather && S.weather.reason) || t("Погоде нужен город — Настройки · Погода"),
       onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "settings" }); } }, t("город?")) : null;
-  return temp || cityAsk;
+  return temp || cityAsk || el("span",{class:"cblk"},iconNode("sun",13),"—°");
 }
 
 function loadBlock() {
   const st = S.sysmon || {};
-  if (st.cpu === undefined || st.cpu === null) return null;
+  if (st.cpu === undefined || st.cpu === null) return el("span",{class:"cblk",title:t("Данные системы пока недоступны")},iconNode("gauge",13),"—%");
   return el("span", { class: "cblk mono", title: t("ЦП {cpu}% · ОЗУ {ram}% · Диск {disk}%",
     { cpu: st.cpu, ram: st.ram ?? "—", disk: st.disk ?? "—" }) },
     iconNode("gauge", 13), el("b", {}, st.cpu + "%"), el("i", { class: "sep" }, "·"), el("b", {}, (st.ram ?? "—") + "%"));
@@ -206,7 +211,7 @@ function eventBlock() {
   const evs = (S.calendar && S.calendar.events) || [];
   const now = Date.now() / 1000;
   const ev = evs.find((e) => e.end > now);
-  if (!ev) return null;
+  if (!ev) return el("span",{class:"cblk",title:t("Ближайших событий нет")},iconNode("calendar",13),t("Нет событий"));
   const time = new Date(ev.start * 1000).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
   const inMin = Math.round((ev.start - now) / 60);
   const when = inMin > 0 && inMin < 1440 ? t("через {n} мин", { n: inMin }) : "";
@@ -216,7 +221,7 @@ function eventBlock() {
 
 function dlBlock() {
   const act = (S.downloads && S.downloads.active) || [];
-  if (!act.length) return null;
+  if (!act.length) return el("span",{class:"cblk",title:t("Активных загрузок нет")},iconNode("download",13),"0");
   const d = act[0];
   const pct = d.progress != null ? Math.round(d.progress * 100) : null;
   return el("span", { class: "cblk", title: d.name + (d.speed ? " · " + speedText(d.speed) : "") },
@@ -228,11 +233,11 @@ function dlBlock() {
 function tickerBlock() {
   const rates = (S.ticker && S.ticker.rates) || {};
   const usd = rates.usd, eur = rates.eur;
-  if (!usd && !eur) return null;
+  if (!usd && !eur) return el("span",{class:"cblk",title:S.ticker.error||t("Курсы пока недоступны")},"$ — · € —");
   const cell = (r, sym) => el("span", { class: "tk mono" }, sym + " " + (r.value < 1000 ? r.value.toFixed(1) : Math.round(r.value))
     + (r.diff > 0 ? " ↑" : r.diff < 0 ? " ↓" : ""));
   return el("span", { class: "cblk", title: t("Курс ЦБ на {d}", { d: new Date((S.ticker.updated || Date.now() / 1000) * 1000).toLocaleDateString(locale()) }) },
-    iconNode("dollar", 13), usd ? cell(usd, "$") : null, eur ? cell(eur, "€") : null);
+    usd ? cell(usd, "$") : null, eur ? cell(eur, "€") : null);
 }
 
 function sleepStart() {
@@ -270,7 +275,7 @@ const CAPS_BLOCKS = {
   battery: batBlock,
   battery_percent: batPctBlock,
   weather: weatherBlock,
-  core_status: () => el("span", { class: "chip" + (S.online ? "" : " warn"), title:t("Статус ядра") }, iconNode("wifi",13), S.online ? t("Готов") : t("ядро…")),
+  core_status: () => el("span", { class: "chip" + (S.online ? "" : " warn"), title:t("Статус ядра") }, S.online ? t("Готов") : t("ядро…")),
   load: loadBlock,
   focus: focusBlock,
   event: eventBlock,
@@ -298,12 +303,46 @@ function speedText(b) {
   return b >= 1048576 ? (b / 1048576).toFixed(1) + " " + t("МБ/с") : Math.max(1, Math.round(b / 1024)) + " " + t("КБ/с");
 }
 
+function openCapsuleDetail(key) {
+  S.capsuleDetail=key;S.expanded=true;S.pinned=true;render();
+}
+
+function capsuleDetail() {
+  const key=S.capsuleDetail;
+  const title=entries("capsule").find(i=>i.key===key)?.label||t("Островок");
+  const text=(value)=>el("div",{class:"widget"},el("span",{class:"sub"},value));
+  const setting=(label,tab="settings")=>el("button",{class:"btn ghost",onclick:()=>invoke("show_main",{tab})},t(label));
+  let content;
+  if(key==="weather")content=[panelWeatherWidget(),daysWidget()];
+  else if(key==="event")content=[agendaWidget()];
+  else if(key==="downloads")content=[dlWidget()];
+  else if(key==="load")content=[sysmonWidget()];
+  else if(key==="volume_osd")content=[mixerWidget()];
+  else if(key==="battery"||key==="battery_percent")content=[text(batInfo()?`${batInfo().percent}% · ${t(batInfo().charging?"Заряжается":"Работа от батареи")}`:t(S.status.battery?.no_battery?"Питание от сети · батарея не обнаружена":"Данные питания пока недоступны")),setting("Вид питания","island-settings")];
+  else if(key==="clock")content=[text(new Date().toLocaleDateString(locale(),{weekday:"long",day:"numeric",month:"long",year:"numeric"})),agendaWidget(),el("button",{class:"btn ghost",onclick:()=>openBar("таймер ")},t("Создать таймер"))];
+  else if(key==="privacy")content=[text([S.privacy.mic?t("Микрофон")+": "+(S.privacy.mic_app||t("Занят")):t("Микрофон свободен"),S.privacy.camera?t("Камера")+": "+(S.privacy.camera_app||t("Занята")):t("Камера свободна")].join(" · ")),el("button",{class:"btn ghost",onclick:()=>core.try("status.mic_mute",{})},t("Включить / выключить микрофон"))];
+  else if(key==="vpn")content=[text(S.status.vpn?.on?(S.status.vpn.name||"VPN"):t("VPN не подключён"))];
+  else if(key==="caps"||key==="layout")content=[text(`${t("Раскладка клавиатуры")}: ${S.kbd.layout||"—"} · Caps Lock: ${t(S.kbd.caps?"Включён":"Выключен")}`)];
+  else if(key==="coreinfo")content=[text(S.router||t("Модель пока не выбрана")),setting("Ключи и модели","models")];
+  else if(key==="ticker")content=[text(S.ticker.error||t("Курс ЦБ")),tickerBlock(),el("button",{class:"btn ghost",onclick:async e=>{const button=e.currentTarget;button.disabled=true;const r=await core.try("ticker.refresh",{},30000);if(r&&!r.error)S.ticker=r;else toastCard(t("Курс валют"),r?.error||t("Не удалось обновить"));render();}},t("Обновить"))];
+  else content=[text(S.online?t("Ядро подключено"):t("Ядро не подключено")),setting("Настройки")];
+  return [el("div",{class:"row"},el("b",{class:"grow"},t(title)),el("button",{class:"btn ghost",onclick:()=>{S.capsuleDetail=null;S.pinned=false;S.expanded=false;render();}},t("Назад"))),el("div",{class:"capsule-detail"},...content)];
+}
+
 function visualCapsule() {
-  const status = dots();
-  const indicators = { privacy: status.filter(n => n.matches(".mic,.cam")), caps: status.filter(n => n.matches(".caps")), layout: status.filter(n => n.matches(".lay")), vpn: status.filter(n => n.matches(".vpn")) };
-  return gridRegion(S.cfg.island, "capsule", entries("capsule").filter(item => shown(S.cfg.island, item)).map(({key}) => {
-    let node = key === "volume_osd" && S.vol && Date.now()-S.vol.at<1200 ? el("span", {class:"row"},iconNode("volume",14),String(S.vol.v)) : key === "orb" ? orb() : key === "clock" ? clockNode() : indicators[key]?.length ? el("span", {class:"row"}, indicators[key]) : CAPS_BLOCKS[key]?.();
-    return [key, node];
+  const idleIndicators={
+    privacy:()=>el("span",{class:"cblk",title:S.privacy.mic_app||S.privacy.camera_app||t("Микрофон и камера свободны")},iconNode(S.privacy.camera?"eye":"mic",13),S.privacy.mic||S.privacy.camera?t("Занят"):null),
+    caps:()=>el("span",{class:"chip caps",title:"Caps Lock"},S.kbd.caps?"⇪":"⇪ —"),
+    layout:()=>el("span",{class:"chip lay"},S.kbd.layout||"—"),
+    vpn:()=>el("span",{class:"cblk",title:S.status.vpn?.name||t("VPN не подключён")},iconNode("shield",14),S.status.vpn?.on?null:"—"),
+    volume_osd:()=>el("span",{class:"cblk",title:t("Микшер громкости")},iconNode("volume",14),String(S.vol&&Date.now()-S.vol.at<1200?S.vol.v:S.mixer.master??"—"))
+  };
+  return gridRegion(S.cfg.island, "capsule", entries("capsule").filter(item => shown(S.cfg.island, item)).map(({key,label}) => {
+    const node=key==="orb"?orb():key==="clock"?clockNode():idleIndicators[key]?.()||CAPS_BLOCKS[key]?.();
+    if(!node||["focus","sleep"].includes(key))return [key,node];
+    // Existing buttons keep their direct actions; passive blocks open their controls inside the island.
+    if(node.tagName==="BUTTON")return [key,node];
+    return [key,el("button",{class:"capsule-action",title:t(label),"aria-label":t(label),onclick:e=>{e.stopPropagation();if(key==="orb")invoke("show_main",{tab:"chat"});else openCapsuleDetail(key);}},node)];
   }));
 }
 
@@ -477,6 +516,7 @@ function toggleEdit() {
 }
 
 function panel() {
+  if(S.capsuleDetail)return capsuleDetail();
   const tabs = visibleTabs();
   if (S.tab !== "edit" && !tabs.some(([id]) => id === S.tab)) S.tab = tabs[0][0];
   const editing = S.tab === "edit";
@@ -746,7 +786,7 @@ function agendaWidget() {
 
 function sysmonWidget() {
   const st = S.sysmon || {};
-  if (st.cpu === undefined || st.cpu === null) return null;
+  if (st.cpu === undefined || st.cpu === null) return el("div",{class:"widget"},wHead("gauge","Система"),el("div",{class:"sub"},t("Данные системы пока недоступны")));
   const row = (label, val) => el("div", { class: "mon-row" }, el("span", { class: "lbl" }, label),
     el("span", { class: "bar" }, el("i", { style: { width: Math.min(100, val || 0) + "%" } })),
     el("span", { class: "mono" }, (val ?? "—") + "%"));
@@ -837,10 +877,10 @@ function widgetDescriptors() {
       el("div", { class: "sub" }, new Date().toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" }))) },
     { key: "w_battery", span: 1, make: () => batInfo() ? el("div", { class: "widget" },
       el("div", { class: "big" }, (batInfo().charging ? "⚡ " : "") + Math.round(batInfo().percent) + "%"),
-      el("div", { class: "sub" }, batInfo().charging ? t("Заряжается") : t("Батарея"))) : null },
+      el("div", { class: "sub" }, batInfo().charging ? t("Заряжается") : t("Батарея"))) : el("div",{class:"widget"},wHead("battery","Питание"),el("div",{class:"sub"},t(S.status.battery?.no_battery?"Питание от сети · батарея не обнаружена":"Данные питания пока недоступны"))) },
     { key: "w_timers", span: 1, make: () => {
       const list = [...S.timers.values()].slice(0, 3);
-      if (!list.length) return null;
+      if (!list.length) return el("button",{class:"widget hint",onclick:()=>openBar("таймер ")},wHead("timer","Таймеры"),el("div",{class:"sub"},t("Создать таймер")));
       return el("div", { class: "widget" }, list.map((tm) => {
         const left = tm.state === "running" && tm.ends_at ? tm.ends_at - Date.now() / 1000 : 0;
         return el("div", { class: "trow " + tm.state },
@@ -917,6 +957,8 @@ function panelNow() {
       if(on("p_player"))nodes.unshift(["p_player",player]);
     }
     for(const d of defs) {const node=widgets.querySelector(".lay-"+d.key);if(node)nodes.push([d.key,node]);}
+    const empty={p_player:()=>el("div",{class:"widget"},wHead("music","Плеер"),el("div",{class:"sub"},t("Запустите музыку в любом плеере"))),p_lyrics:()=>el("div",{class:"widget"},wHead("note","Текст песни"),el("div",{class:"sub"},t("Текст песни пока недоступен"))),p_progress:()=>el("div",{class:"widget"},wHead("play","Прогресс и время трека"),el("div",{class:"sub mono"},fmtTime(S.media.position||0)+" / "+fmtTime(S.media.duration||0))),p_eq:()=>eq(9)};
+    for(const [key,make]of Object.entries(empty))if(on(key)&&!nodes.some(([k])=>k===key))nodes.push([key,make()]);
     return [gridRegion(S.cfg.island,"now",nodes)];
   }
   if (widgets.children.length) blocks.push(widgets);
@@ -948,6 +990,7 @@ function panelTools() {
       el("button", { class: "btn" + (S.obs.streaming ? " danger" : ""), onclick: () => core.try("obs.stream", { command: "toggle" }) }, t("Эфир")),
       (S.obs.scenes || []).slice(0, 4).map((sc) => el("button", { class: "btn ghost" + (sc === S.obs.scene ? " on" : ""), onclick: () => core.try("obs.set_scene", { name: sc }) }, sc))));
   }
+  if(on("obs")&&!out[1])out.push(el("button",{class:"widget hint",onclick:()=>invoke("show_main",{tab:"settings"})},wHead("rec","Управление OBS"),el("span",{class:"sub"},t("Подключите OBS в настройках интеграций"))));
   if(S.cfg.island.visual_layout?.tools) return [gridRegion(S.cfg.island,"tools",[
     ...[...grid.children].map((node,i)=>[visibleTools[i][0],node]),["obs",out[1]]])];
   return out;
@@ -1527,6 +1570,7 @@ export function mountIsland() {
     if (sysmon && !sysmon.error) S.sysmon = sysmon;
     if (Array.isArray(notes)) S.notes = notes;
     S.healthAt = Date.now();
+    const indicators=await core.try("status.indicators");if(indicators&&!indicators.error){S.kbd=indicators.keyboard||{};S.privacy=indicators.privacy||{};}
     await applyConfig(cfg && !cfg.error ? cfg : {});
   });
   core.on("core.lost", () => { S.online = false; render(); });
@@ -1663,7 +1707,7 @@ export function normalizedIsland(I = {}) {
 export function renderEditorRegion(cfg, region, data = {}) {
   const previous={...S};
   try {
-    Object.assign(S,data,{cfg:{...cfg,island:normalizedIsland(cfg.island)},tab:region==='header'?(data.previewTab||'now'):region,online:core.connected});
+    Object.assign(S,data,{cfg:{...cfg,island:normalizedIsland(cfg.island)},capsuleDetail:null,tab:region==='header'?(data.previewTab||'now'):region,online:core.connected});
     if(region==='capsule')return visualCapsule();
     if(region==='header')return panel()[0];
     if(region==='now')return panelNow()[0];

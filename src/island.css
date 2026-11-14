@@ -559,7 +559,8 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .region-capsule .island-cell { flex:none; width:max-content; min-width:28px; height:36px; padding:4px; overflow:visible; }
 .region-capsule .island-cell > * { max-width:none; flex:none; }
 .capsule-wing { display:flex; align-items:center; gap:8px; flex:none; min-width:0; }
-.capsule-wing.right { justify-content:flex-end; }
+.capsule-wing { justify-content:space-between; }
+.capsule-wing:has(> :only-child) { justify-content:center; }
 .region-tools { grid-auto-rows:24px; }
 .region-tools .island-cell { padding:4px; }
 .region-tools .tile { min-width:0; padding:6px; overflow:hidden; gap:4px; }
@@ -571,3 +572,13 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .region-now .widget { min-height:min-content; }
 .region-now .widget .t, .region-now .widget .sub, .region-now .widget .note-last { white-space:normal; overflow-wrap:anywhere; }
 .region-now .island-cell { overflow:auto; }
+
+.region-tools .horizontal .tile { flex-direction:row; justify-content:flex-start; text-align:left; gap:8px; padding:8px; }
+.region-tools .horizontal .tile .ic { flex:none; margin:0; }
+.region-tools .horizontal .tile > span:last-child { min-width:0; }
+.bat-mini.horizontal { transform:rotate(90deg); margin:0 4px; }
+.capsule-detail { display:flex; flex-direction:column; gap:12px; }
+.capsule-detail .widget { width:100%; box-sizing:border-box; }
+.capsule-detail .row { flex-wrap:wrap; }
+.capsule-action { color:inherit; border:0; background:none; padding:0; font:inherit; display:inline-flex; align-items:center; gap:4px; cursor:pointer; border-radius:8px; }
+.capsule-action:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
