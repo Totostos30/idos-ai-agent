@@ -448,11 +448,12 @@ async function renderTools() {
 // ------------------------------------------------------------------ settings
 
 const SECTION_NAMES = {
-  island: "Остров", hotkeys: "Горячие клавиши", voice: "Голос", audio: "Звук и микрофон", agent: "Агент",
+  theme: "Тема", island: "Остров", hotkeys: "Горячие клавиши", voice: "Голос", audio: "Звук и микрофон", agent: "Агент",
   models: "Модели", web: "Интернет", capture: "Скриншоты и запись", integrations: "Интеграции", weather: "Погода",
   clipboard: "Буфер обмена", memory: "Память", mcp: "MCP", obs: "OBS", media: "Музыка", security: "Безопасность",
   browser: "Браузер", alice: "Алиса (Яндекс)",
 };
+let settingsMode = "basic";
 
 function field(path, value) {
   const save = async (v) => {
@@ -494,8 +495,8 @@ function field(path, value) {
 }
 
 // Погода: город задаётся здесь — ядро само геокодирует и включает обновление (weather.set_city).
-function weatherCityBox() {
-  const input = el("input", { class: "field", placeholder: t("Город — например, Казань"), "aria-label": t("Город погоды") });
+function weatherCityBox(cfg) {
+  const input = el("input", { class: "field", value: cfg.weather?.city || "", placeholder: t("Город — например, Казань"), "aria-label": t("Город погоды") });
   const btn = el("button", { class: "btn primary", onclick: async () => {
     const city = input.value.trim();
     if (!city || btn.disabled) return;
@@ -515,7 +516,7 @@ function weatherCityBox() {
     renderSettings();
   } }, t("Сохранить"));
   return el("section", { class: "box" }, el("h3", {}, t("Погода")),
-    el("p", { class: "mut small" }, t("Город показывает температуру в острове — справа в капсуле и виджетом в панели «Сейчас». Ядро само найдёт координаты и включит обновление.")),
+    el("p", { class: "mut small" }, t("Укажите город, чтобы видеть погоду на островке")),
     el("div", { class: "row2" }, input, btn));
 }
 
@@ -535,36 +536,80 @@ async function renderSettings() {
   if (A.tab !== "settings") return;
   if (!cfg || cfg.error) { main.replaceChildren(el("div", { class: "page" }, el("div", { class: "empty" }, t("Настройки недоступны: ") + ((cfg && cfg.error) || t("нет связи"))))); return; }
   A.cfg = cfg;
-  const filter = el("input", { class: "field", placeholder: t("Найти настройку…") });
+  const modes = el("div", { class: "settings-modes", role: "group", "aria-label": t("Раздел настроек") },
+    [["basic", "Обычные"], ["advanced", "Расширенные"]].map(([id, label]) =>
+      el("button", { class: "settings-mode" + (settingsMode === id ? " on" : ""), type: "button",
+        "data-settings-mode": id, "aria-pressed": settingsMode === id ? "true" : "false",
+        onclick: () => { if (settingsMode !== id) { settingsMode = id; renderSettings(); } } }, t(label))));
+  const header = el("div", { class: "settings-header" },
+    el("div", {}, grEyebrow(TABS[5]), el("h1", {}, t("Настройки"))), modes);
+
+  if (settingsMode === "basic") {
+    main.replaceChildren(el("div", { class: "page settings-page" }, header,
+      el("div", { class: "settings-overview" },
+        el("div", { class: "settings-column" }, themeBox(cfg), weatherCityBox(cfg)),
+        el("div", { class: "settings-column" }, basicIslandBox(cfg), langBox())),
+      voiceBox()));
+    return;
+  }
+
+  const filter = el("input", { class: "field", placeholder: t("Найти настройку…"), "aria-label": t("Найти настройку…") });
   const body = el("div", {});
   const draw = () => {
     const q = filter.value.trim().toLowerCase();
     body.replaceChildren(...Object.entries(cfg).filter(([, v]) => v && typeof v === "object" && !Array.isArray(v)).map(([sec, vals]) => {
-      const rows = Object.entries(vals).filter(([k]) => !(sec === "island" && (PARTS_KEYS.has(k) || k === "waves"))).filter(([k]) => !q || (sec + "." + k).toLowerCase().includes(q) || (SETTING_LABELS[sec + "." + k] || k).toLowerCase().includes(q)).map(([k, v]) =>
+      const rows = Object.entries(vals).filter(([k]) => !(sec === "island" && (PARTS_KEYS.has(k) || k === "waves"))).filter(([k]) => !q || (sec + "." + k).toLowerCase().includes(q) || (SETTING_LABELS[sec + "." + k] || k).toLowerCase().includes(q) || t(SETTING_LABELS[sec + "." + k] || k).toLowerCase().includes(q)).map(([k, v]) =>
         el("div", { class: "setrow" + (q ? " hl" : ""), title: sec + "." + k }, el("span", { class: "k" + (SETTING_LABELS[sec + "." + k] ? "" : " mono") }, t(SETTING_LABELS[sec + "." + k] || k)), field(sec + "." + k, v)));
       if (!rows.length) return el("span");
-      return el("section", { class: "box" }, el("h3", {}, t(SECTION_NAMES[sec] || sec), el("span", { class: "mut small" }, "  " + sec)), rows,
+      return el("details", { class: "box settings-section", open: !!q }, el("summary", {}, t(SECTION_NAMES[sec] || sec), el("span", { class: "mut small" }, "  " + sec)), rows,
         el("div", { class: "row2 end" }, el("button", { class: "btn ghost", onclick: (e) => confirmClick(e.currentTarget, async () => { await core.try("settings.reset", { key: sec }); renderSettings(); }) }, t("Сбросить раздел"))));
     }));
   };
   filter.addEventListener("input", draw);
   draw();
-  main.replaceChildren(el("div", { class: "page settings-page" },
-    grEyebrow(TABS[5]), el("h1", {}, t("Настройки")),
-    langBox(),
-    themeBox(cfg),
-    el("div", { class: "row2" }, filter,
+  main.replaceChildren(el("div", { class: "page settings-page settings-advanced" }, header,
+    el("p", { class: "mut settings-intro" }, t("Подробные параметры внешнего вида, островка и работы ядра")),
+    el("div", { class: "row2 settings-search" }, filter,
       el("button", { class: "btn", onclick: async () => { const r = await core.try("core.selftest"); showSelftest(r); } }, t("Самопроверка")),
     inTauri ? el("button", { class: "btn ghost", onclick: () => invoke("restart_core") }, t("Перезапустить ядро")) : null),
-    voiceBox(),
-    islandPartsBox(cfg),
-    waveSettingsBox(cfg),
-    weatherCityBox(),
+    settingsFold("Своя тема", themeBox(cfg, true)),
+    settingsFold("Словарь произношения", voiceBox(true)),
+    settingsFold("Островок: что показывать", islandPartsBox(cfg)),
+    settingsFold("Эффекты волн", waveSettingsBox(cfg)),
     body));
 }
 
+function settingsFold(title, content) {
+  return el("details", { class: "settings-fold" }, el("summary", {}, t(title)), content);
+}
+
+function basicIslandBox(cfg) {
+  const choices = [["clock", "Часы"], ["battery", "Значок батареи"], ["weather", "Погода"],
+    ["music_controls", "Кнопки плеера"], ["lyrics", "Строка песни"]];
+  const rows = choices.map(([key, label]) => {
+    const name = t(label);
+    const input = el("input", { type: "checkbox", checked: partOn(cfg.island, key), "aria-label": name });
+    input.addEventListener("change", async () => {
+      const previous = !input.checked;
+      input.disabled = true;
+      const values = partValues(key, input.checked);
+      applyValues(cfg, values);
+      const result = await core.try("settings.update", { values });
+      if (result && result.error) {
+        applyValues(cfg, partValues(key, previous));
+        input.checked = previous;
+        toast(result.error, "error");
+      }
+      input.disabled = false;
+    });
+    return el("div", { class: "settings-quick-row" }, el("span", {}, name), el("label", { class: "switch" }, input, el("i")));
+  });
+  return el("section", { class: "box settings-island" }, el("h3", {}, t("Островок")),
+    el("p", { class: "mut small" }, t("Выберите, что показывать в капсуле")), rows);
+}
+
 // «Внешний вид»: пресет темы + акцент (гайдбук §9, THEMES §5). Имена пресетов — по Γλῶτте.
-function themeBox(cfg) {
+function themeBox(cfg, advanced = false) {
   const cur = normalizeTheme(cfg.theme);
   const box = el("section", { class: "box themebox" },
     el("h3", {}, el("span", { class: "gr" }, "Χρώμα ·"), t(" Внешний вид")),
@@ -597,8 +642,8 @@ function themeBox(cfg) {
       return sw;
     }));
   box.append(el("div", { class: "setrow" }, el("span", { class: "k" }, t("Тема")), seg),
-    el("div", { class: "setrow" }, el("span", { class: "k" }, t("Акцент")), swatches),
-    customThemesUI(cur));
+    el("div", { class: "setrow" }, el("span", { class: "k" }, t("Акцент")), swatches));
+  if (advanced) box.append(customThemesUI(cur));
   return box;
 }
 
@@ -804,8 +849,8 @@ function islandPartsBox(cfg) {
 
 const GENDER = { "м": "мужской", "ж": "женский" };
 
-function voiceBox() {
-  const box = el("section", { class: "box voicebox" }, el("h3", {}, el("span", { class: "gr", title: "Музы — богини голоса и песни" }, "Μοῦσα ·"), t(" Голос Эйдоса")), el("div", { class: "mut small" }, t("Загружаю голоса…")));
+function voiceBox(advanced = false) {
+  const box = el("section", { class: "box voicebox", "data-advanced": String(advanced) }, el("h3", {}, el("span", { class: "gr", title: "Музы — богини голоса и песни" }, "Μοῦσα ·"), t(" Голос Эйдоса")), el("div", { class: "mut small" }, t("Загружаю голоса…")));
   refreshVoices(box);
   return box;
 }
@@ -922,8 +967,8 @@ function drawVoices(box, info, note) {
       el("button", { class: "btn ghost", onclick: () => core.try("voice.say", { text: t("Проверка голоса. Раз, два, три.") }) }, t("Прослушать")),
       el("button", { class: "btn ghost", onclick: () => core.try("voice.stop") }, t("Стоп")),
       info.engine === "off" ? el("span", { class: "tag warn" }, t("голос выключен")) : el("button", { class: "btn ghost", onclick: () => pick("off", "", null) }, t("Выключить голос"))),
-    status, ...groups, lexBox,
-    el("div", { class: "mut small" }, t("Можно и голосом: «Эйдос, говори мужским голосом», «включи голос Байя», «говори помедленнее», «произноси ГПУ как видеокарта».")));
+    status, ...groups, box.dataset.advanced === "true" ? lexBox : null,
+    box.dataset.advanced === "true" ? el("div", { class: "mut small" }, t("Можно и голосом: «Эйдос, говори мужским голосом», «включи голос Байя», «говори помедленнее», «произноси ГПУ как видеокарта».")) : null);
 }
 
 function showSelftest(r) {

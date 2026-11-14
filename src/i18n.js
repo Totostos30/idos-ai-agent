@@ -862,4 +862,11 @@ const EN = {
   "Загрузки": "Downloads",
   "Микшер": "Mixer",
   "Сегодня": "Today",
+  "Обычные": "Basic",
+  "Расширенные": "Advanced",
+  "Раздел настроек": "Settings section",
+  "Подробные параметры внешнего вида, островка и работы ядра": "Detailed appearance, island and core settings",
+  "Укажите город, чтобы видеть погоду на островке": "Set a city to see the weather on the island",
+  "Выберите, что показывать в капсуле": "Choose what to show in the capsule",
+  "Островок": "Island",
 };
