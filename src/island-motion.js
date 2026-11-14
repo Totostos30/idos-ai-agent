@@ -6,7 +6,7 @@ export function timerSeconds(timer, now=Date.now()) {
 }
 // Horizontal visualizers share the same live audio and animation clock.
 export function visualizerPath(bands=[],playing=false,layer=0,phase=0,style='waves') {
- const level=x=>{const i=Math.min(bands.length-1,Math.floor(x*bands.length));return Math.max(0,Math.min(1,Number(bands[i])||0));};
+ const level=x=>{const i=Math.min(bands.length-1,Math.floor(x*bands.length));return Math.max(0,Math.min(1,Math.pow(Math.max(0,Number(bands[i])||0),.65)*1.25));};
  const points=[];
  if(style==='spectrum'||style==='waveform'){
   const count=style==='waveform'?64:28;

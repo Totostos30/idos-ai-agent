@@ -1,3 +1,4 @@
+import {exportDesign,importDesign} from './island-design.js';
 import { renderEditorRegion } from './island.js';
 import { resizePanel } from './island-panel.js';
 import { core } from './rpc.js';
@@ -249,8 +250,19 @@ export function islandEditor(cfg) {
   for(const [id,label] of REGIONS)nav.append(el('button',{class:'settings-mode',type:'button','data-region':id,onclick:()=>{if(!busy){region=id;visibleKeys=null;selected=null;draw();}}},t(label)));
   const visualizer=el('select',{class:'field','aria-label':t('Вид эквалайзера')},[['waves','Плавные волны'],['spectrum','Спектр'],['waveform','Звуковая дорожка']].map(([value,label])=>el('option',{value,selected:(cfg.island?.waves?.visualizer||'waves')===value},t(label))));
   visualizer.onchange=()=>save({'island.waves.visualizer':visualizer.value});
+  const file=el('input',{type:'file',accept:'.json,application/json',hidden:true});
+  file.onchange=async()=>{
+    try{if(file.files[0]){if(file.files[0].size>262144)throw Error(t('Файл дизайна слишком большой'));await save(importDesign(await file.files[0].text()));visualizer.value=cfg.island?.waves?.visualizer||'waves';}}
+    catch(error){toast(error.message,'error');}finally{file.value='';}
+  };
+  const sharing=el('div',{class:'row'},file,
+    el('button',{class:'btn ghost',type:'button',onclick:()=>{
+      const url=URL.createObjectURL(new Blob([exportDesign(cfg.island)],{type:'application/json'}));
+      const link=el('a',{href:url,download:'idos-island-design.json'});document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }},t('Экспорт JSON')),
+    el('button',{class:'btn ghost',type:'button',onclick:()=>{if(!busy)file.click();}},t('Импорт JSON')));
   box.append(el('label',{class:'row'},t('Эквалайзер'),visualizer),el('h3',{},t('Настройка островка')),el('p',{class:'mut small'},t('Перетащите блок на макете или из списка. Потяните за угол, чтобы изменить размер. Стрелки — перемещение, Shift + стрелки — размер.')),nav,body,inspector,
-    el('div',{class:'island-settings-footer'},status,el('button',{class:'btn ghost',type:'button',onclick:()=>save({...RESET_VALUES,'island.visual_layout':{},'island.layout':{},'island.panel_layout':{},'island.capsule_center':'','island.battery_display':'icon'})},t('Вернуть стандартный набор'))));
+    el('div',{class:'island-settings-footer'},status,sharing,el('button',{class:'btn ghost',type:'button',onclick:()=>save({...RESET_VALUES,'island.visual_layout':{},'island.layout':{},'island.panel_layout':{},'island.capsule_center':'','island.battery_display':'icon'})},t('Вернуть стандартный набор'))));
   draw();refresh();
   const refreshEvents=['status.state','weather.state','sysmon.state','calendar.changed','downloads.changed','ticker.changed','mixer.changed','notes.changed','media.state','router.status','status.keyboard','status.privacy','media.lyrics'];
   const fields={ 'status.state':'status','weather.state':'weather','sysmon.state':'sysmon','calendar.changed':'calendar','downloads.changed':'downloads','ticker.changed':'ticker','mixer.changed':'mixer','notes.changed':'notes','media.state':'media','status.keyboard':'kbd','status.privacy':'privacy','media.lyrics':'lyricsData' };

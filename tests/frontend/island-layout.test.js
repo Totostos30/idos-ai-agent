@@ -42,7 +42,7 @@ test('capsule remains one row even with all blocks and old multiline layouts',()
 test('widgets enforce readable minima while tools allow icon buttons',()=>{
  const region='now',keys=['p_player','w_clock','w_mixer'];
  const pos=placements({visual_layout:{now:Object.fromEntries(keys.map(k=>[k,{w:1,h:1}]))}},region,keys);
- assert.equal(pos.p_player.w,12);assert.ok(pos.w_clock.w>=6);assert.equal(pos.w_mixer.w,12);verify(pos);
+ assert.equal(pos.p_player.w,12);assert.ok(pos.w_clock.w>=4);assert.equal(pos.w_mixer.w,12);verify(pos);
  const tools=placements({visual_layout:{tools:{shot_area:{w:1,h:1}}}},'tools',['shot_area']);
  assert.equal(tools.shot_area.w,1);assert.equal(tools.shot_area.h,2);
 });
@@ -78,4 +78,12 @@ test('default tools form a compact balanced layout, preserve saved positions and
  assert.deepEqual(actual.shot_area,saved.shot_area);
  assert.deepEqual(actual.note,saved.note);
  verify(actual);
+});
+
+test('compact now widgets keep readable bounds and omit the separate battery percentage',()=>{
+ assert.ok(!entries('capsule').some(i=>i.key==='battery_percent'));
+ const pos=placements({},'now',['w_clock','w_weather','w_battery']);
+ for(const p of Object.values(pos)){assert.equal(p.w,4);assert.equal(p.h,2);assert.equal(p.y,0);}
+ const health=placements({visual_layout:{now:{w_health:{w:1,h:1}}}},'now',['w_health']);
+ assert.equal(health.w_health.w,6);assert.equal(health.w_health.h,3);
 });

@@ -639,3 +639,8 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .stage.hidden > .island-halo, .stage.through > .island-halo { display:none; }
 .island-cell > button:only-child { flex:1; align-self:stretch; width:100%; }
 .region-capsule .island-cell > button:only-child { justify-content:center; }
+.widget.health { display:flex; flex-direction:column; gap:10px; justify-content:center; }
+.widget.health .row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.widget.health .sub { white-space:normal; line-height:1.4; }
+.health-interval { width:auto; min-width:80px; flex:1; }
+.island[data-mode="panel"]:has(> .capsule-detail) { max-height:calc(100vh - 16px); overflow:auto; }

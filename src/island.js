@@ -15,7 +15,7 @@ import { PARTS, TAB_LIST, TOOL_LIST, partOn, listOn, partValues, RESET_VALUES, a
 
 // видна ли часть интерфейса (настраивается в панели кнопкой ✎ или в настройках)
 const AUTOMATIC_PARTS = new Set(["music_cover","music_title","music_progress","music_eq","music_controls","lyrics","agent_steps","agent_stop","reply_text","mic_meter"]);
-const on = (key) => AUTOMATIC_PARTS.has(key) || partOn(S.cfg.island, key);
+const on = (key) => key!=='battery_percent' && (AUTOMATIC_PARTS.has(key) || partOn(S.cfg.island, key));
 
 const icon = (name, size = 15) => iconNode(name, size);
 
@@ -123,7 +123,7 @@ function animateRings() {
     const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
     document.querySelectorAll('.eq-ring').forEach(box=>{
       const target=box._bands||[], previous=box._smooth||target;
-      box._smooth=target.map((v,i)=>(previous[i]||0)+(v-(previous[i]||0))*.16);
+      box._smooth=target.map((v,i)=>(previous[i]||0)+(v-(previous[i]||0))*.4);
       box.querySelectorAll('path').forEach((path,i)=>path.setAttribute('d',visualizerPath(box._smooth,box.dataset.playing==='true',i,reduced?0:now/1000,box.dataset.style)));
     });
   };
@@ -199,11 +199,7 @@ function batBlock() {
   return display==="combined"?el("span",{class:"cblk mono",title:label},gauge,b.percent+"%"):gauge;
 }
 
-function batPctBlock() {
-  const b = batInfo();
-  if (!b) return el("span",{class:"bat-pct mono",title:t("Батарея не обнаружена")},"—");
-  return el("span", { class: "bat-pct mono" }, Math.round(b.percent) + "%");
-}
+
 
 function weatherBlock() {
   const w = S.weather || {};
@@ -300,7 +296,6 @@ function coreinfoBlock() {
 const CAPS_BLOCKS = {
   dots: () => dots(),
   battery: batBlock,
-  battery_percent: batPctBlock,
   weather: weatherBlock,
   core_status: () => el("span", { class: "chip" + (S.online ? "" : " warn"), title:t("Статус ядра") }, S.online ? t("Готов") : t("ядро…")),
   load: loadBlock,
@@ -312,7 +307,7 @@ const CAPS_BLOCKS = {
   coreinfo: coreinfoBlock,
 };
 const CAPS_ALL = Object.keys(CAPS_BLOCKS);
-const CAPS_DEFAULT = { left: ["dots"], right: ["battery", "battery_percent", "weather"] };
+const CAPS_DEFAULT = { left: ["dots"], right: ["battery", "weather"] };
 
 function capsLayout() {
   const saved = (S.cfg.island && S.cfg.island.layout) || {};
@@ -345,7 +340,7 @@ function capsuleDetail() {
   else if(key==="downloads")content=[dlWidget()];
   else if(key==="load")content=[sysmonWidget()];
   else if(key==="volume_osd")content=[mixerWidget()];
-  else if(key==="battery"||key==="battery_percent")content=[text(batInfo()?`${batInfo().percent}% · ${t(batInfo().charging?"Заряжается":"Работа от батареи")}`:t(S.status.battery?.no_battery?"Питание от сети · батарея не обнаружена":"Данные питания пока недоступны")),setting("Вид питания","island-settings")];
+  else if(key==="battery")content=[text(batInfo()?`${batInfo().percent}% · ${t(batInfo().charging?"Заряжается":"Работа от батареи")}`:t(S.status.battery?.no_battery?"Питание от сети · батарея не обнаружена":"Данные питания пока недоступны")),setting("Вид питания","island-settings")];
   else if(key==="clock")content=[text(new Date().toLocaleDateString(locale(),{weekday:"long",day:"numeric",month:"long",year:"numeric"})),agendaWidget(),el("button",{class:"btn ghost",onclick:()=>openBar("таймер ")},t("Создать таймер"))];
   else if(key==="privacy")content=[text([S.privacy.mic?t("Микрофон")+": "+(S.privacy.mic_app||t("Занят")):t("Микрофон свободен"),S.privacy.camera?t("Камера")+": "+(S.privacy.camera_app||t("Занята")):t("Камера свободна")].join(" · ")),el("button",{class:"btn ghost",onclick:()=>core.try("status.mic_mute",{})},t("Включить / выключить микрофон"))];
   else if(key==="vpn")content=[text(S.status.vpn?.on?(S.status.vpn.name||"VPN"):t("VPN не подключён"))];
@@ -640,7 +635,7 @@ function savePanelLayout(patch) {
 }
 
 const LAYOUT_LABELS = () => ({
-  dots: t("Микрофон · камера · VPN"), battery: t("Значок батареи"), battery_percent: t("Процент батареи"),
+  dots: t("Микрофон · камера · VPN"), battery: t("Значок батареи"),
   weather: t("Погода"), core_status: t("Статус ядра"), load: t("Загрузка ЦП и ОЗУ"), focus: t("Фокус-сессия"),
   event: t("Ближайшее событие"), downloads: t("Скачивания"), ticker: t("Курс валют"), sleep: t("Таймер сна"),
   coreinfo: t("Статус модели"),
@@ -888,8 +883,7 @@ function healthWidget() {
     el("div", { class: "row" },
       el("button", { class: "btn" + (enabled ? " primary" : " ghost"), onclick: () => setHealth({ enabled: !enabled }) },
         enabled ? t("Включены") : t("Выключены")),
-      [20, 30, 45, 60].map((m) => el("button", { class: "chip-t" + ((H.interval || 45) === m ? " on" : ""),
-        onclick: () => setHealth({ interval: m }) }, m))),
+      el('select',{class:'field health-interval','aria-label':t('Интервал перерывов'),onchange:e=>setHealth({interval:Number(e.target.value)})},[20,30,45,60].map(m=>el('option',{value:m,selected:(H.interval||45)===m},m+' '+t('мин'))))),
     el("div", { class: "sub" }, enabled
       ? (left > 0 ? t("Перерыв через {t}", { t: fmtTime(left) }) : t("Перерыв идёт…"))
       : t("Островок напомнит встать и размяться")));
@@ -1229,7 +1223,7 @@ function render() {
   void focusedValue;
   isl.dataset.panelTab=m==='panel'?S.tab:'';
   if(m==='panel'){
-    const size=panelSize(S.cfg.island.panel_size?.[S.tab]);isl.style.width=size.w+'px';isl.style.height=size.h+'px';
+    const size=panelSize(S.cfg.island.panel_size?.[S.tab]);isl.style.width=size.w+'px';isl.style.height=S.capsuleDetail?'auto':size.h+'px';isl.style.minHeight=S.capsuleDetail?'0':'';
     const saved=panelScroll.get(S.tab)||[];
     scrollNodes().forEach((n,i)=>{if(saved[i]){n.scrollLeft=saved[i].x;n.scrollTop=saved[i].y;}});
     if(focused){const next=isl.querySelector(`[data-focus-key="${focused}"]`);if(next){next.focus({preventScroll:true});if(selection)next.setSelectionRange(...selection);}}
