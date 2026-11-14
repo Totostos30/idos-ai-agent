@@ -19,7 +19,10 @@ export async function invoke(cmd, args = {}) {
     case "register_hotkeys": return { registered: Object.keys(args.map || {}).length, errors: {} };
     case "select_info": return { purpose: query.get("purpose") || "shot", x: 0, y: 0, width: innerWidth, height: innerHeight, scale: 1 };
     case "monitors": return [{ index: 0, name: "Экран 1", x: 0, y: 0, width: screen.width, height: screen.height, scale: devicePixelRatio }];
-    case "show_main": if (view !== "app") window.open("?view=app&" + query.toString(), "_blank"); return null;
+    case "show_main": {
+      if (view !== "app") { const url = new URL(location.href); url.searchParams.set("view", "app"); if (args.tab) url.searchParams.set("tab", args.tab); window.open(url.href, "_blank"); }
+      return null;
+    }
     default: return null;
   }
 }

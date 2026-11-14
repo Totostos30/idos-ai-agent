@@ -48,6 +48,13 @@ export function initI18n(core) {
 
 // Английские соответствия русских строк интерфейса. Дополняется по мере обёртки строк в t().
 const EN = {
+  "Перетащите блок на макете или из списка. Потяните за угол, чтобы изменить размер. Стрелки — перемещение, Shift + стрелки — размер.": "Drag a block on the preview or from the palette. Drag its corner to resize. Arrow keys move; Shift + arrows resize.",
+  "Сохранение…": "Saving…", "Сохранено": "Saved", "Выберите блок на макете": "Select a block on the preview",
+  "Колонка": "Column", "Строка": "Row", "Ширина": "Width", "Высота": "Height",
+  "Убрать с островка": "Remove from island", "Потяните для изменения размера": "Drag to resize", "Изменить размер": "Resize",
+  "Доступные элементы": "Available elements", "Все элементы уже на островке": "All elements are on the island",
+  "Название трека": "Track title", "Исполнитель": "Artist",
+
   "Вид островка": "Island view",
   "Раскрытый островок": "Expanded island",
   "Элементы компактного островка. Индикаторы появляются, когда для них есть данные.": "Compact island elements. Indicators appear when data is available.",

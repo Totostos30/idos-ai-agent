@@ -7,6 +7,7 @@ import { Mic } from "./voice.js";
 import { createNous } from "./nous.js";
 import { iconNode } from "./icons.js";
 import { t, locale } from "./i18n.js";
+import { entries, shown, gridRegion } from "./island-layout.js";
 import { Fluid } from "./fluid.js";
 import { PARTS, TAB_LIST, TOOL_LIST, partOn, listOn, partValues, RESET_VALUES, applyValues } from "./parts.js";
 
@@ -296,22 +297,32 @@ function speedText(b) {
   return b >= 1048576 ? (b / 1048576).toFixed(1) + " " + t("МБ/с") : Math.max(1, Math.round(b / 1024)) + " " + t("КБ/с");
 }
 
+function visualCapsule() {
+  const status = dots();
+  const indicators = { privacy: status.filter(n => n.matches(".mic,.cam")), caps: status.filter(n => n.matches(".caps")), layout: status.filter(n => n.matches(".lay")), vpn: status.filter(n => n.matches(".vpn")) };
+  return gridRegion(S.cfg.island, "capsule", entries("capsule").filter(item => shown(S.cfg.island, item)).map(({key}) => {
+    let node = key === "volume_osd" && S.vol && Date.now()-S.vol.at<1200 ? el("span", {class:"row"},iconNode("volume",14),String(S.vol.v)) : key === "orb" ? orb() : key === "clock" ? clockNode() : indicators[key]?.length ? el("span", {class:"row"}, indicators[key]) : CAPS_BLOCKS[key]?.();
+    return [key, node];
+  }));
+}
+
 const VIEWS = {
   idle: () => {
     const liquid = (S.cfg.island.character || "liquid") === "liquid";
-    if (on("volume_osd") && S.vol && Date.now() - S.vol.at < 1200) return [el("div", { class: "row pill" }, el("span", { class: "ic" }, S.vol.v ? "🔊" : "🔇"),
+    if (!S.cfg.island.visual_layout?.capsule && on("volume_osd") && S.vol && Date.now() - S.vol.at < 1200) return [el("div", { class: "row pill" }, el("span", { class: "ic" }, S.vol.v ? "🔊" : "🔇"),
       el("span", { class: "vol" }, el("i", { style: { width: S.vol.v + "%" } })), el("span", { class: "mono sub" }, String(S.vol.v)))];
+    if (S.cfg.island.visual_layout?.capsule) return [visualCapsule()];
     const lay = capsLayout();
     const cell = (k) => {
       let n = null;
       try { n = CAPS_BLOCKS[k] && CAPS_BLOCKS[k](); } catch (e) { n = null; }
       if (n === null || n === undefined) return [];
-      return Array.isArray(n) ? n : [n];
+      return (Array.isArray(n) ? n : [n]).map(node => el("span", {class:"island-icon-box"}, node));
     };
     // лого — слева, часы — всегда по центру, блоки раскладываются по плечам редактором
     return [el("div", { class: "row pill tri" },
-      el("span", { class: "side l" }, on("orb") ? orb() : null, ...lay.left.flatMap(cell)),
-      el("span", { class: "mid" }, on("clock") ? clockNode() : null),
+      el("span", { class: "side l" }, on("orb") ? el("span", {class:"island-icon-box"}, orb()) : null, ...lay.left.flatMap(cell)),
+      el("span", { class: "mid" }, on("clock") ? el("span", {class:"island-icon-box"}, clockNode()) : null),
       el("span", { class: "side r" }, ...lay.right.flatMap(cell)))];
   },
   music: () => {
@@ -322,6 +333,14 @@ const VIEWS = {
     const cov = (size) => (on("music_cover") ? cover(size) : null);
     const bars = () => (on("music_eq") ? eq(5) : null);
     const thin = () => (on("music_progress") ? el("span", { class: "thin" }, el("i", { style: { width: prog } })) : null);
+    if (S.cfg.island.visual_layout?.music) {
+      const controls = el("span", {class:"row"},
+        el("button", {class:"icon", title:t("Назад"), disabled:!m.can_prev, onclick:e=>{e.stopPropagation();core.try("media.control",{action:"previous"});}},iconNode("prev")),
+        el("button", {class:"icon", title:t("Воспроизведение / пауза"), onclick:e=>{e.stopPropagation();core.try("media.control",{action:"play_pause"});}},iconNode(m.playing?"pause":"play")),
+        el("button", {class:"icon", title:t("Далее"), disabled:!m.can_next, onclick:e=>{e.stopPropagation();core.try("media.control",{action:"next"});}},iconNode("next")));
+      return [gridRegion(S.cfg.island,"music",[["music_cover",cov("s")],["music_title",on("music_title")?el("span",{class:"label"},m.title):null],
+        ["music_progress",thin()],["music_eq",bars()],["music_controls",on("music_controls")?controls:null],["lyrics",lyricOn?el("span",{class:"lyric"},S.lyric):null]])];
+    }
     if (kind === "normal") return [el("div", { class: "row pill" }, cov("s"), el("span", { class: "grow" }), bars())];
     if (kind === "wide") return [el("div", { class: "row pill" }, cov("s"),
       on("music_title") || on("music_progress") ? el("span", { class: "wide-meta" },
@@ -460,14 +479,21 @@ function panel() {
   const tabs = visibleTabs();
   if (S.tab !== "edit" && !tabs.some(([id]) => id === S.tab)) S.tab = tabs[0][0];
   const editing = S.tab === "edit";
-  const head = el("div", { class: "row tabs" }, on("h_orb") ? orb() : null,
+  let head = el("div", { class: "row tabs" }, on("h_orb") ? orb() : null,
     editing ? el("span", { class: "label" }, t("Настройка островка"))
       : tabs.length > 1 ? tabs.map(([id, name]) => el("button", { class: "tab" + (S.tab === id ? " on" : ""), title: t(name), onclick: (e) => { e.stopPropagation(); S.tab = id; if (id === "clip") loadClip(); render(); } }, t(name)))
       : el("span", { class: "label" }, t(tabs[0][1])),
     el("span", { class: "grow" }),
-    on("h_edit") || editing ? el("button", { class: "icon" + (editing ? " on" : ""), title: editing ? t("Готово") : t("Настроить: что показывать"), onclick: (e) => { e.stopPropagation(); toggleEdit(); } }, editing ? iconNode("check", 13) : iconNode("edit", 13)) : null,
-    on("h_pin") && !editing ? el("button", { class: "icon" + (S.pinned ? " on" : ""), title: t("Закрепить"), onclick: (e) => { e.stopPropagation(); S.pinned = !S.pinned; render(); } }, iconNode("home", 13)) : null,
-    on("h_open") && !editing ? el("button", { class: "icon", title: t("Окно Эйдоса"), onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "chat" }); } }, "↗") : null);
+    on("h_edit") || editing ? el("button", { class: "icon" + (editing ? " on" : ""), title: t("Настройка островка"), onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "island-settings" }); } }, editing ? iconNode("check", 13) : iconNode("edit", 20)) : null,
+    on("h_pin") && !editing ? el("button", { class: "icon" + (S.pinned ? " on" : ""), title: t("Закрепить"), onclick: (e) => { e.stopPropagation(); S.pinned = !S.pinned; render(); } }, iconNode("home", 20)) : null,
+    on("h_open") && !editing ? el("button", { class: "icon", title: t("Окно Эйдоса"), onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "chat" }); } }, iconNode("expand", 20)) : null);
+  if (S.cfg.island.visual_layout?.header && !editing) {
+    const tabNodes = [...head.querySelectorAll("button.tab")];
+    const buttons = [...head.querySelectorAll("button.icon")];
+    const headerNodes = [["h_orb",on("h_orb")?orb():null], ...tabs.map(([id,name],i)=>["tab_"+id,tabNodes[i] || el("span",{},t(name))])];
+    let i=0;for(const key of ["h_edit","h_pin","h_open"]) if(on(key))headerNodes.push([key,buttons[i++]]);
+    head=gridRegion(S.cfg.island,"header",headerNodes);
+  }
   const body = ({ now: panelNow, tools: panelTools, clip: panelClip, agent: panelAgent, edit: panelEdit })[S.tab]();
   return [head, el("div", { class: "panel-body" + (editing ? " edit" : "") }, body)];
 }
@@ -852,7 +878,7 @@ function panelOrdered(defs) {
 
 function panelNow() {
   const blocks = [];
-  if (on("p_player") && S.media.active) {
+  if ((on("p_player") || S.cfg.island.visual_layout?.now) && S.media.active) {
     const m = S.media;
     const pos = m.position || 0, dur = m.duration || 0;
     blocks.push(el("div", { class: "player", style: m.accent ? { "--accent": m.accent } : {} },
@@ -879,6 +905,19 @@ function panelNow() {
       widgets.append(node);
     }
   }
+  if (S.cfg.island.visual_layout?.now) {
+    const nodes=[];
+    if(blocks[0]) {
+      const player=blocks[0];
+      const lyric=player.querySelector(".lyric"),progress=player.querySelector(".progress"),times=player.querySelector(".times"),eq=player.querySelector(".eq");
+      if(lyric)nodes.push(["p_lyrics",lyric]);
+      if(progress)nodes.push(["p_progress",el("div",{},progress,times)]);
+      if(eq)nodes.push(["p_eq",eq]);
+      if(on("p_player"))nodes.unshift(["p_player",player]);
+    }
+    for(const d of defs) {const node=widgets.querySelector(".lay-"+d.key);if(node)nodes.push([d.key,node]);}
+    return [gridRegion(S.cfg.island,"now",nodes)];
+  }
   if (widgets.children.length) blocks.push(widgets);
   if (!blocks.length) blocks.push(el("div", { class: "empty" }, t("Здесь всё скрыто — нажмите ✎, чтобы вернуть элементы")));
   return blocks;
@@ -898,6 +937,7 @@ const TOOL_BUTTONS = [
 ];
 
 function panelTools() {
+  const visibleTools = TOOL_BUTTONS.filter(([id]) => listOn(S.cfg.island, "tools", id));
   const grid = el("div", { class: "grid" }, TOOL_BUTTONS.filter(([id]) => listOn(S.cfg.island, "tools", id)).map(([, ic, name, fn]) =>
     el("button", { class: "tile", onclick: (e) => { e.stopPropagation(); S.expanded = false; S.pinned = false; render(); fn(); } }, el("span", { class: "ic" }, iconNode(ic, 18)), el("span", {}, t(name)))));
   const out = [grid];
@@ -907,6 +947,8 @@ function panelTools() {
       el("button", { class: "btn" + (S.obs.streaming ? " danger" : ""), onclick: () => core.try("obs.stream", { command: "toggle" }) }, t("Эфир")),
       (S.obs.scenes || []).slice(0, 4).map((sc) => el("button", { class: "btn ghost" + (sc === S.obs.scene ? " on" : ""), onclick: () => core.try("obs.set_scene", { name: sc }) }, sc))));
   }
+  if(S.cfg.island.visual_layout?.tools) return [gridRegion(S.cfg.island,"tools",[
+    ...[...grid.children].map((node,i)=>[visibleTools[i][0],node]),["obs",out[1]]])];
   return out;
 }
 
@@ -1005,7 +1047,7 @@ function panelAgent() {
     if (e.key === "Enter" && input.value.trim()) { core.try("agent.ask", { text: input.value.trim(), source: "island" }); input.value = ""; input.blur(); }
     if (e.key === "Escape") input.blur();
   });
-  return [
+  const content = [
     el("div", { class: "row" }, el("span", { class: "label" }, stateLabel(S.agent.state)), el("span", { class: "grow" }),
       on("pa_model") ? el("span", { class: "chip" }, S.router || "") : null,
       BUSY.has(S.agent.state) ? el("button", { class: "btn danger", onclick: stopAll }, iconNode("stop", 14), t(" Стоп")) : null),
@@ -1013,6 +1055,11 @@ function panelAgent() {
     on("pa_reply") && S.agent.lastReply ? el("div", { class: "reply-text" }, S.agent.lastReply) : null,
     on("pa_input") ? el("div", { class: "row" }, input) : null,
   ];
+  if(S.cfg.island.visual_layout?.agent) {
+    const model=content[0].querySelector(".chip");
+    return [content[0],gridRegion(S.cfg.island,"agent",[["pa_model",model],["pa_steps",content[1]],["pa_reply",content[2]],["pa_input",content[3]]])];
+  }
+  return content;
 }
 
 function renderCards() {
@@ -1085,12 +1132,23 @@ function render() {
   root.style.setProperty("--lip-width", `${Math.max(1, isl.offsetWidth)}px`);
   root.classList.toggle("through", !!S.cfg.island.through_mode && (m === "idle" || m === "music" || m === "timer" || m === "rec"));
   const focusedValue = m === "bar" ? null : undefined;
-  isl.replaceChildren(...(VIEWS[m] || VIEWS.idle)().filter(Boolean));
+  let content = (VIEWS[m] || VIEWS.idle)().filter(Boolean);
+  if (S.cfg.island.visual_layout?.activity && ["agent","reply","mic"].includes(m)) {
+    const nodes=[];
+    const stop=content[0]?.querySelector(".stop"), meter=content[0]?.querySelector(".eq.mic");
+    if(stop) nodes.push(["agent_stop",stop]);
+    if(meter) nodes.push(["mic_meter",meter]);
+    if(content[1])nodes.push([m==="reply"?"reply_text":"agent_steps",content[1]]);
+    content=[content[0],gridRegion(S.cfg.island,"activity",nodes)];
+  }
+  isl.replaceChildren(...content);
+  isl.classList.toggle("visual-capsule",m==="idle" && !!S.cfg.island.visual_layout?.capsule);
+  isl.classList.toggle("visual-music",m==="music" && !!S.cfg.island.visual_layout?.music);
   void focusedValue;
   // Мини-островок: капсула сжимается и растягивается под набор включённых элементов,
   // плечи слева и справа делаются равными — часы стоят ровно по центру островка.
   // Волны флюида читают offsetWidth каждый кадр и следуют за шириной сами.
-  if (m === "idle") {
+  if (m === "idle" && !S.cfg.island.visual_layout?.capsule) {
     const fixed = Number((S.cfg.island.layout || {}).width) || 0;
     if (fixed >= 150) {
       isl.style.width = fixed + "px";

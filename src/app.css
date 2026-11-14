@@ -277,21 +277,33 @@ button:active > .gmic-wrap .gmic { transform: scale(.86); }
 .island-settings-header h3 { margin: 0; }
 .island-settings-nav .settings-mode { display: inline-flex; align-items: center; gap: 8px; }
 .settings-island .island-settings-hint { margin: 0 0 16px; }
-.island-options { border-top: 1px solid var(--line); }
-.island-options > summary { display: flex; align-items: center; gap: 8px; padding: 16px 0; cursor: pointer; font-weight: 600; list-style: none; }
-.island-options > summary::-webkit-details-marker { display: none; }
-.island-options > summary::after { content: "+"; margin-left: auto; color: var(--mut); font-weight: 400; }
-.island-options[open] > summary::after { content: "−"; }
-.island-option-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; padding-bottom: 16px; }
-.island-option { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 44px; padding: 8px 0; border-top: 1px solid var(--line); cursor: pointer; }
-.island-option > span:first-child { min-width: 0; overflow-wrap: anywhere; }
-.island-option .switch { flex: none; }
-.island-option:has(input:disabled) { opacity: .5; cursor: default; }
-.island-settings-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
-.island-settings-footer > span { flex: 1 1 300px; }
-@media (max-width: 800px) {
-  .island-option-list { grid-template-columns: minmax(0, 1fr); }
-}
+/* Визуальный редактор: образцы данных, общая сетка и палитра скрытых блоков. */
+.visual-editor .settings-modes { margin:16px 0; gap:4px; }
+.visual-editor .settings-mode { font-size:12px; padding:8px 12px; }
+.editor-scroll { overflow:auto; padding:24px 8px; border-radius:16px; background:var(--fill-1); }
+.editor-island { width:560px; max-width:none; margin:auto; padding:12px; background:var(--bg); border:1px solid var(--line); border-radius:28px; box-sizing:border-box; box-shadow:var(--shadow-1); }
+.editor-island.compact { width:760px; }
+.editor-grid { background-image:radial-gradient(var(--border-2,var(--line)) 1px,transparent 1px); background-size:calc((100% + 8px)/12) 56px; grid-auto-rows:48px; align-content:start; }
+.editor-grid.region-capsule, .editor-grid.region-header { grid-auto-rows:36px; background-size:calc((100% + 8px)/12) 44px; }
+.editor-cell { position:relative; cursor:grab; touch-action:none; border:1px solid var(--line); background:var(--surface-2); flex-direction:column; gap:4px; }
+.editor-cell:hover, .editor-cell.selected { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 8%,var(--surface-2)); }
+.editor-cell-name { font-size:10px; color:var(--mut); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+.editor-grid.region-capsule .editor-cell-name, .editor-grid.region-header .editor-cell-name { display:none; }
+.editor-sample { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; overflow:hidden; font-size:12px; }
+.editor-sample > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.editor-sample svg { flex:none; }
+.editor-progress { display:block; height:4px; flex:1; border-radius:4px; background:linear-gradient(to right,var(--accent) 40%,var(--fill-2) 40%); }
+.editor-resize { position:absolute; right:0; bottom:0; width:18px; height:18px; font-size:10px; color:var(--accent); cursor:nwse-resize; padding:0; touch-action:none; }
+.editor-palette { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 24px; }
+.editor-palette button { display:inline-flex; align-items:center; gap:8px; touch-action:none; cursor:grab; white-space:normal; }
+.editor-drag-ghost { position:fixed; z-index:10000; pointer-events:none; padding:8px 12px; border:1px solid var(--accent); background:var(--surface-2); color:var(--fg); border-radius:8px; }
+.island-inspector { display:flex; align-items:end; gap:12px; flex-wrap:wrap; padding:16px 0; border-top:1px solid var(--line); }
+.island-inspector > b { flex:1 1 140px; align-self:center; }
+.island-inspector label { display:grid; gap:4px; }
+.island-inspector input { width:64px; }
+.visual-editor[aria-busy="true"] { cursor:progress; }
+.island-settings-footer { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; border-top:1px solid var(--line); padding-top:16px; }
+@media(max-width:900px) { .editor-island { margin:0; } }
 
 /* pronunciation dictionary */
 .vlexbox { margin-top: 14px; display: grid; gap: 8px; }
@@ -627,3 +639,8 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .tool:hover .tool-ic { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .item .tag { margin-right: 6px; }
 .item .meta { display: flex; align-items: center; gap: 6px; }
+
+.editor-drop-preview { pointer-events:none; z-index:3; border:2px dashed var(--accent); border-radius:12px; background:color-mix(in srgb,var(--accent) 16%,transparent); }
+.editor-panel-header { padding:0 0 16px; gap:8px; font-size:11px; }
+
+.visual-editor .editor-scroll { max-height:600px; }
