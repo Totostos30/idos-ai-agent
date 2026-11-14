@@ -16,7 +16,7 @@ export const GLYPHS = {
 };
 export function entries(region) {
   const title = region==='agent'?'Панель: «Агент»':REGIONS.find(([id]) => id === region)?.[1];
-  const items = PARTS.filter(([, , group]) => group === title).map(([key, label]) => ({key, label, kind:'part'}));
+  const items = PARTS.filter(([key, , group]) => group === title && key !== 'p_progress').map(([key, label]) => ({key, label, kind:'part'}));
   if (region === 'header') items.splice(1, 0, ...TAB_LIST.map(([id,label]) => ({key:'tab_'+id,label,kind:'tab',id})));
   if (region === 'tools') items.unshift(...TOOL_LIST.map(([id,label]) => ({key:id,label,kind:'tool',id})));
   return items;
@@ -28,12 +28,12 @@ export function defaultSize(region, key) {
   if (region === 'header') return {w:key.startsWith('tab_')?2:1,h:1};
   if (region === 'capsule') return {w:['clock','battery_percent','weather','layout','caps'].includes(key)?2: key === 'orb' || key === 'battery' || key === 'vpn' || key === 'privacy' ? 1 : 3,h:1};
   if (region === 'music' || region === 'activity') return {w:['music_cover','music_eq','agent_stop','mic_meter'].includes(key)?2:6,h:1};
-  return {w:region === 'tools'?4:['p_player','w_days','w_agenda','w_mixer','w_sysmon','w_downloads','pa_input','pa_reply'].includes(key)?12:6,h:region==='tools'||key === 'p_player'?3:2};
+  return {w:region === 'tools'?4:['p_player','w_days','w_agenda','w_mixer','w_sysmon','w_downloads','pa_input','pa_reply'].includes(key)?12:6,h:key==='p_player'?4:region==='tools'?3:2};
 }
 export function minimumSize(region,key) {
   if(region==='tools')return key==='obs'?{w:6,h:3}:{w:1,h:2};
   if(region==='header')return {w:key.startsWith('tab_')?2:1,h:1};
-  if(region==='now')return {w:['p_player','w_days','w_agenda','w_mixer','w_downloads'].includes(key)?12:6,h:key==='p_player'?3:2};
+  if(region==='now')return {w:['p_player','w_days','w_agenda','w_mixer','w_downloads'].includes(key)?12:6,h:key==='p_player'?4:2};
   return {w:1,h:1};
 }
 // Тот же flex-контейнер для редактора и настоящей капсулы. Равные плечи сохраняют точный центр.
@@ -98,6 +98,7 @@ export function gridRegion(I, region, nodes) {
   const pos=placements(I,region,live.map(([key])=>key));
   const grid=el('div',{class:'island-grid region-'+region,'data-grid-region':region});
 
+  if(region==='header')live.sort(([a],[b])=>pos[a].x-pos[b].x);
   for(const [key,node] of live) {
     const cell=el('div',{class:'island-cell','data-grid-key':key},node);
     if(region!=='capsule')position(cell,pos[key]);

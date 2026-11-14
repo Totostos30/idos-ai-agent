@@ -664,3 +664,8 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .editor-island.compact { border:0; }
 .editor-grid .editor-cell { border:0; outline:1px solid transparent; }
 .editor-grid .editor-cell:hover, .editor-grid .editor-cell.selected { outline-color:var(--accent); }
+
+.visual-editor .editor-island.expanded { display:flex; flex-direction:column; gap:8px; overflow:hidden; }
+.visual-editor .editor-island.expanded > .region-header { min-height:36px; }
+.visual-editor .editor-island.expanded > .editor-grid { flex:1; min-height:0!important; overflow:auto; align-content:start; padding-bottom:12px; }
+.editor-drop-preview[hidden] { display:none; }

@@ -46,3 +46,16 @@ test('widgets enforce readable minima while tools allow icon buttons',()=>{
  const tools=placements({visual_layout:{tools:{shot_area:{w:1,h:1}}}},'tools',['shot_area']);
  assert.equal(tools.shot_area.w,1);assert.equal(tools.shot_area.h,2);
 });
+
+
+test('track progress is part of the player, not a separately placeable panel',()=>{
+ assert.ok(entries('now').some(i=>i.key==='p_player'));
+ assert.ok(!entries('now').some(i=>i.key==='p_progress'));
+});
+test('expanded panel sizes clamp corrupt data and respect small viewports',async()=>{
+ const {panelSize}=await import('../../src/island-panel.js');
+ assert.deepEqual(panelSize({w:600,h:500},{width:1000,height:800}),{w:600,h:500});
+ assert.deepEqual(panelSize({w:-1,h:'bad'},{width:1000,height:800}),{w:560,h:460});
+ assert.deepEqual(panelSize({w:9999,h:9999},{width:800,height:600}),{w:768,h:568});
+ assert.deepEqual(panelSize({w:100,h:100},{width:320,height:240}),{w:288,h:208});
+});

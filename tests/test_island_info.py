@@ -107,6 +107,39 @@ class MediaFeatureTest(BusCase):
         self.assertEqual(self.app.db.kv_get("lyrics:" + state["track_id"])["lines"][1]["text"], "вторая")
         self.assertIn("media.lyrics", [event for event, _ in self.events])
 
+    def test_parallel_lyrics_requests_are_coalesced(self):
+        media = media_mod.create(self.app)
+        media.state = {"active": True, "title": "Song", "artist": "Band", "track_id": "song"}
+
+        async def scenario():
+            with mock.patch.object(media_mod, "fetch_lyrics", mock.AsyncMock(return_value={"lines": LYRICS})) as fetch:
+                results = await asyncio.gather(media.load_lyrics(), media.load_lyrics())
+                self.assertEqual(fetch.await_count, 1)
+                self.assertEqual(results[0], results[1])
+                self.assertEqual(results[0]["source"], "LRCLIB")
+        asyncio.run(scenario())
+
+    def test_lyrics_for_a_track_that_stopped_are_not_published(self):
+        media = media_mod.create(self.app)
+        media.state = {"active": True, "title": "Song", "artist": "Band", "track_id": "song"}
+
+        async def fetch(*args):
+            media.state = {"active": False}
+            return {"lines": LYRICS}
+
+        with mock.patch.object(media_mod, "fetch_lyrics", fetch):
+            self.assertIsNone(asyncio.run(media.load_lyrics()))
+        self.assertNotIn("media.lyrics", [event for event, _ in self.events])
+
+    def test_old_missing_lyrics_cache_is_retried(self):
+        media = media_mod.create(self.app)
+        media.state = {"active": True, "title": "Song", "artist": "Band", "track_id": "song"}
+        self.app.db.kv_set("lyrics:song", {"missing": True})
+        with mock.patch.object(media_mod, "fetch_lyrics", mock.AsyncMock(return_value={"lines": LYRICS})) as fetch:
+            result = asyncio.run(media.load_lyrics())
+            self.assertEqual(fetch.await_count, 1)
+            self.assertEqual(result["lines"], LYRICS)
+
     def test_tool_and_controls(self):
         tools = FakeTools()
         self.app.tools = tools

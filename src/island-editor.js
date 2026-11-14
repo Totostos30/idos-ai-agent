@@ -1,4 +1,5 @@
 import { renderEditorRegion } from './island.js';
+import { resizePanel } from './island-panel.js';
 import { core } from './rpc.js';
 import { el, toast } from './shell.js';
 import { t } from './i18n.js';
@@ -21,6 +22,11 @@ export function islandEditor(cfg) {
     const router=await core.try('router.status',{},8000);liveData.router=router?.active_label||router?.active||'';
     const indicators=await core.try('status.indicators',{},8000);if(indicators&&!indicators.error){liveData.kbd=indicators.keyboard||{};liveData.privacy=indicators.privacy||{};}
     if(box.isConnected&&!drag&&!busy)draw();
+    const track=liveData.media?.track_id;
+    if(liveData.media?.active)core.try('media.lyrics',{},30000).then(data=>{
+      if(!data||data.error||track!==liveData.media?.track_id||!box.isConnected)return;
+      liveData.lyricsData=data;if(!drag&&!busy)draw();
+    });
   };
   const body=el('div'), inspector=el('div',{class:'island-inspector'}), status=el('span',{'aria-live':'polite',class:'mut small'});
   const nav=el('div',{class:'settings-modes',role:'group','aria-label':t('Вид островка')});
@@ -116,9 +122,12 @@ export function islandEditor(cfg) {
     const marker=el('div',{class:'editor-drop-preview'});stage.append(marker);
     const update=e=>{
       ghost.style.left=e.clientX+12+'px';ghost.style.top=e.clientY+12+'px';
+      const activeRect=stage.getBoundingClientRect();
+      const inside=e.clientX>=activeRect.left&&e.clientX<=activeRect.right&&e.clientY>=activeRect.top&&e.clientY<=activeRect.bottom;
+      marker.hidden=!inside;if(!inside)return;
       const w=resize?Math.max(1,Math.min(COLS,pos.w+Math.round((e.clientX-startX)/cell))):pos.w;
       const h=resize?Math.max(1,Math.min(8,pos.h+Math.round((e.clientY-startY)/row))):pos.h;
-      const target={x:resize?pos.x:Math.max(0,Math.min(COLS-w,Math.floor((e.clientX-rect.left)/cell))),y:resize?pos.y:Math.max(0,Math.floor((e.clientY-rect.top)/row)),w,h};
+      const target={x:resize?pos.x:Math.max(0,Math.min(COLS-w,Math.floor((e.clientX-stage.getBoundingClientRect().left)/cell))),y:resize?pos.y:Math.max(0,Math.floor((e.clientY-stage.getBoundingClientRect().top)/row)),w,h};
       const keys=[key,...current().map(i=>i.key).filter(k=>k!==key)];
       const original=placements(cfg.island,region,keys);
       const layout={[key]:target,...Object.fromEntries(Object.entries(original).filter(([k])=>k!==key))};
@@ -138,9 +147,10 @@ export function islandEditor(cfg) {
     const finish=e=>{
       drag.cancel();drag=null;
       if(Math.hypot(e.clientX-startX,e.clientY-startY)<5&&!resize){if(add)move(key,{},true);else draw();return;}
-      if(e.clientX<rect.left||e.clientX>rect.right||e.clientY<rect.top||e.clientY>rect.bottom){draw();return;}
+      const dropRect=stage.getBoundingClientRect();
+      if(e.clientX<dropRect.left||e.clientX>dropRect.right||e.clientY<dropRect.top||e.clientY>dropRect.bottom){draw();return;}
       move(key,resize?{w:pos.w+Math.round((e.clientX-startX)/cell),h:pos.h+Math.round((e.clientY-startY)/row)}:
-        {x:Math.floor((e.clientX-rect.left)/cell),y:Math.floor((e.clientY-rect.top)/row)},add);
+        {x:Math.floor((e.clientX-stage.getBoundingClientRect().left)/cell),y:Math.floor((e.clientY-stage.getBoundingClientRect().top)/row)},add);
     };
     document.addEventListener('pointermove',update);document.addEventListener('pointerup',finish,{once:true});document.addEventListener('keydown',escape);document.addEventListener('pointercancel',cancel,{once:true});
   };
@@ -194,7 +204,9 @@ export function islandEditor(cfg) {
       header.inert=true;shell.append(header);
     }
     if(region==='capsule')arrangeCapsule(grid,cfg.island);
+    if(region==='header')grid.replaceChildren(...[...grid.children].sort((a,b)=>pos[a.dataset.editorKey].x-pos[b.dataset.editorKey].x));
     shell.append(grid);
+    if(!['capsule','header'].includes(region))resizePanel(shell,cfg.island?.panel_size?.[region],{start:()=>{drag={};},finish:size=>{drag=null;save({['island.panel_size.'+region]:size});},cancel:()=>{drag=null;draw();}});
     body.replaceChildren(el('div',{class:'editor-scroll'},shell),
       el('h4',{},t('Доступные элементы')),el('p',{class:'mut small'},t('Макет повторяет островок. Нажмите блок в самом островке, чтобы открыть подробности или управление.')),tray.childNodes.length?tray:el('p',{class:'mut small'},t('Все элементы уже на островке')));
     const scroll=body.querySelector('.editor-scroll'),savedScroll=scrollPositions[region]||[0,0];
@@ -205,8 +217,8 @@ export function islandEditor(cfg) {
   box.append(el('h3',{},t('Настройка островка')),el('p',{class:'mut small'},t('Перетащите блок на макете или из списка. Потяните за угол, чтобы изменить размер. Стрелки — перемещение, Shift + стрелки — размер.')),nav,body,inspector,
     el('div',{class:'island-settings-footer'},status,el('button',{class:'btn ghost',type:'button',onclick:()=>save({...RESET_VALUES,'island.visual_layout':{},'island.layout':{},'island.panel_layout':{},'island.capsule_center':'','island.battery_display':'icon'})},t('Вернуть стандартный набор'))));
   draw();refresh();
-  const refreshEvents=['status.state','weather.state','sysmon.state','calendar.changed','downloads.changed','ticker.changed','mixer.changed','notes.changed','media.state','router.status','status.keyboard','status.privacy'];
-  const fields={ 'status.state':'status','weather.state':'weather','sysmon.state':'sysmon','calendar.changed':'calendar','downloads.changed':'downloads','ticker.changed':'ticker','mixer.changed':'mixer','notes.changed':'notes','media.state':'media','status.keyboard':'kbd','status.privacy':'privacy' };
+  const refreshEvents=['status.state','weather.state','sysmon.state','calendar.changed','downloads.changed','ticker.changed','mixer.changed','notes.changed','media.state','router.status','status.keyboard','status.privacy','media.lyrics'];
+  const fields={ 'status.state':'status','weather.state':'weather','sysmon.state':'sysmon','calendar.changed':'calendar','downloads.changed':'downloads','ticker.changed':'ticker','mixer.changed':'mixer','notes.changed':'notes','media.state':'media','status.keyboard':'kbd','status.privacy':'privacy','media.lyrics':'lyricsData' };
   const off=refreshEvents.map(event=>core.on(event,data=>{if(!box.isConnected)return;if(event==='router.status')liveData.router=data.active_label||data.active||'';else liveData[fields[event]]=data;if(!drag&&!busy)draw();}));
   let mounted=false;
   const observer=new MutationObserver(()=>{if(box.isConnected)mounted=true;else if(mounted){off.forEach(fn=>fn());observer.disconnect();}});

@@ -8,6 +8,7 @@ import { createNous } from "./nous.js";
 import { iconNode } from "./icons.js";
 import { t, locale } from "./i18n.js";
 import { entries, shown, gridRegion } from "./island-layout.js";
+import { resizePanel } from "./island-panel.js";
 import { Fluid } from "./fluid.js";
 import { PARTS, TAB_LIST, TOOL_LIST, partOn, listOn, partValues, RESET_VALUES, applyValues } from "./parts.js";
 
@@ -57,6 +58,7 @@ const S = {
   capsuleDetail: null,
 };
 
+const panelScroll=new Map();
 let root, isl, cardsBox, fluid, lip, leaveTimer = null, barTimer = null;
 let clipLoadRequest = 0, clipOpenRequest = 0;
 try { S.focus = JSON.parse(localStorage.getItem("idos.focus") || "null"); } catch (e) { /* пусто */ }
@@ -116,15 +118,38 @@ function orb(extra = "") {
   return el("span", { class: "orb nous-wrap " + extra }, inst.el);
 }
 
-function eq(n = 5) {
-  const box = el("span", { class: "eq" });
-  const bands = S.bands;
-  for (let i = 0; i < n; i++) {
-    const v = bands.length ? bands[Math.floor((i / n) * bands.length)] || 0 : 0;
-    const h = S.media.playing ? Math.max(0.15, Math.min(1, v)) : 0.15;
-    box.append(el("b", { style: { transform: "scaleY(" + h.toFixed(3) + ")" } }));
+function wavePath(bands, playing, ring=0) {
+  const count=96,points=[];
+  for(let i=0;i<count;i++){
+    const angle=i/count*Math.PI*2,at=i/count*(bands.length||1),index=Math.floor(at);
+    const v=playing?Math.max(0,Math.min(1,(bands[index%bands.length]||0)*(1-at%1)+(bands[(index+1)%bands.length]||0)*(at%1))):0;
+    const r=17+ring*5+v*(5+Math.sin(angle*6+ring)*2);
+    points.push((32+Math.cos(angle)*r).toFixed(2)+','+(32+Math.sin(angle)*r).toFixed(2));
   }
-  return box;
+  return 'M'+points.join(' L')+' Z';
+}
+function eq() {
+  const box=el('span',{class:'eq eq-ring',role:'img','aria-label':t('Эквалайзер')});
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 64 64');
+  for(let i=0;i<2;i++){const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',wavePath(S.bands,S.media.playing,i));svg.append(path);}
+  box.append(svg);return box;
+}
+
+function syncLyric() {
+  const data=S.lyricsData;
+  if(!data)return;
+  const pos=S.media.position||0;
+  const line=(data.lines||[]).filter(l=>l.t<=pos).at(-1);
+  S.lyric=line?.text||'';
+}
+async function loadTrackLyrics(force=false) {
+  const key=S.media.track_id||[S.media.app,S.media.artist,S.media.title].join('|');
+  if(!S.media.active||!S.media.title)return;
+  if(!force&&S.lyricsKey===key)return;
+  S.lyricsKey=key;S.lyricsData=null;S.lyric='';
+  const data=await core.try('media.lyrics',{force},30000);
+  if(S.lyricsKey!==key)return;
+  S.lyricsData=data&&!data.error?data:{missing:true};syncLyric();render();
 }
 
 function cover(size = "s") {
@@ -927,9 +952,9 @@ function panelNow() {
       el("div", { class: "meta" },
         el("div", { class: "title" }, m.title || t("Без названия")), el("div", { class: "artist" }, [m.artist, m.app].filter(Boolean).join(" · ")),
         on("p_lyrics") && S.lyric ? el("div", { class: "lyric" }, S.lyric) : null,
-        dur && on("p_progress") ? el("div", { class: "progress", onclick: (e) => { if (!m.can_seek) return; const r = e.currentTarget.getBoundingClientRect(); core.try("media.control", { action: "seek", position: ((e.clientX - r.left) / r.width) * dur }); } },
+        dur ? el("div", { class: "progress", onclick: (e) => { if (!m.can_seek) return; const r = e.currentTarget.getBoundingClientRect(); core.try("media.control", { action: "seek", position: ((e.clientX - r.left) / r.width) * dur }); } },
           el("i", { style: { width: Math.min(100, (pos / dur) * 100).toFixed(1) + "%" } })) : null,
-        dur && on("p_progress") ? el("div", { class: "times mono" }, el("span", {}, fmtTime(pos)), el("span", {}, fmtTime(dur))) : null,
+        dur ? el("div", { class: "times mono" }, el("span", {}, fmtTime(pos)), el("span", {}, fmtTime(dur))) : null,
         el("div", { class: "controls" },
           el("button", { class: "icon", disabled: !m.can_prev, onclick: () => core.try("media.control", { action: "previous" }) }, iconNode("prev", 14)),
           el("button", { class: "icon big", onclick: () => core.try("media.control", { action: "play_pause" }) }, iconNode(m.playing ? "pause" : "play", 16)),
@@ -950,14 +975,17 @@ function panelNow() {
     const nodes=[];
     if(blocks[0]) {
       const player=blocks[0];
-      const lyric=player.querySelector(".lyric"),progress=player.querySelector(".progress"),times=player.querySelector(".times"),eq=player.querySelector(".eq");
-      if(lyric)nodes.push(["p_lyrics",lyric]);
-      if(progress)nodes.push(["p_progress",el("div",{},progress,times)]);
-      if(eq)nodes.push(["p_eq",eq]);
+      const visualizer=player.querySelector('.eq');
+      if(on('p_lyrics')){
+        const data=S.lyricsData;
+        const text=data?.plain||(data?.lines||[]).map(l=>l.text).join('\n')||t('Текст песни пока недоступен');
+        nodes.push(['p_lyrics',el('div',{class:'lyrics-panel'},el('div',{class:'row'},el('span',{class:'sub grow'},data?.source||'LRCLIB'),el('button',{class:'icon',title:t('Обновить текст песни'),onclick:()=>loadTrackLyrics(true)},iconNode('refresh',14))),el('div',{class:'lyrics-full'},text))]);
+      }
+      if(visualizer)nodes.push(['p_eq',visualizer]);
       if(on("p_player"))nodes.unshift(["p_player",player]);
     }
     for(const d of defs) {const node=widgets.querySelector(".lay-"+d.key);if(node)nodes.push([d.key,node]);}
-    const empty={p_player:()=>el("div",{class:"widget"},wHead("music","Плеер"),el("div",{class:"sub"},t("Запустите музыку в любом плеере"))),p_lyrics:()=>el("div",{class:"widget"},wHead("note","Текст песни"),el("div",{class:"sub"},t("Текст песни пока недоступен"))),p_progress:()=>el("div",{class:"widget"},wHead("play","Прогресс и время трека"),el("div",{class:"sub mono"},fmtTime(S.media.position||0)+" / "+fmtTime(S.media.duration||0))),p_eq:()=>eq(9)};
+    const empty={p_player:()=>el("div",{class:"widget"},wHead("music","Плеер"),el("div",{class:"sub"},t("Запустите музыку в любом плеере"))),p_lyrics:()=>el("div",{class:"widget"},wHead("note","Текст песни"),el("div",{class:"sub"},t("Текст песни пока недоступен"))),p_eq:()=>eq(9)};
     for(const [key,make]of Object.entries(empty))if(on(key)&&!nodes.some(([k])=>k===key))nodes.push([key,make()]);
     return [gridRegion(S.cfg.island,"now",nodes)];
   }
@@ -1084,26 +1112,26 @@ function panelClip() {
 }
 
 function panelAgent() {
-  const input = el("input", { class: "bar-input small", placeholder: t("Задача для Эйдоса…") });
-  input.addEventListener("focus", () => invoke("island_focus", { focus: true }));
-  input.addEventListener("blur", () => invoke("island_focus", { focus: false }));
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && input.value.trim()) { core.try("agent.ask", { text: input.value.trim(), source: "island" }); input.value = ""; input.blur(); }
-    if (e.key === "Escape") input.blur();
-  });
-  const content = [
-    el("div", { class: "row" }, el("span", { class: "label" }, stateLabel(S.agent.state)), el("span", { class: "grow" }),
-      on("pa_model") ? el("span", { class: "chip" }, S.router || "") : null,
-      BUSY.has(S.agent.state) ? el("button", { class: "btn danger", onclick: stopAll }, iconNode("stop", 14), t(" Стоп")) : null),
-    on("pa_steps") ? stepsMini() : null,
-    on("pa_reply") && S.agent.lastReply ? el("div", { class: "reply-text" }, S.agent.lastReply) : null,
-    on("pa_input") ? el("div", { class: "row" }, input) : null,
-  ];
-  if(S.cfg.island.visual_layout?.agent) {
-    const model=content[0].querySelector(".chip");
-    return [content[0],gridRegion(S.cfg.island,"agent",[["pa_model",model],["pa_steps",content[1]],["pa_reply",content[2]],["pa_input",content[3]]])];
-  }
-  return content;
+  const input=el('textarea',{class:'agent-input',rows:3,placeholder:t('Задача для Эйдоса…'),'data-focus-key':'agent-input'},S.agentDraft||'');
+  input.addEventListener('input',()=>{S.agentDraft=input.value;});
+  input.addEventListener('focus',()=>invoke('island_focus',{focus:true}));
+  input.addEventListener('blur',()=>invoke('island_focus',{focus:false}));
+  const send=async()=>{
+    const text=input.value.trim();if(!text||S.agentSending||BUSY.has(S.agent.state))return;
+    S.agentSending=true;S.agentDraft=text;render();
+    const r=await core.try('agent.ask',{text,source:'island'});
+    S.agentSending=false;
+    if(r?.error||!r)toastCard(t('Не получилось'),r?.error||t('Ядро не подключено'));else S.agentDraft='';
+    render();
+  };
+  input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}if(e.key==='Escape')input.blur();});
+  const busy=BUSY.has(S.agent.state);
+  return [el('section',{class:'agent-panel'},
+    el('div',{class:'agent-status'},el('div',{},el('b',{},stateLabel(S.agent.state)),on('pa_model')?el('div',{class:'sub'},S.router||t('Модель пока не выбрана')):null),
+      busy?el('button',{class:'btn danger',onclick:stopAll},iconNode('stop',14),t('Стоп')):iconNode('chat',24)),
+    on('pa_steps')&&S.agent.steps.length?el('div',{class:'agent-steps'},stepsMini()):null,
+    on('pa_reply')?el('div',{class:'agent-reply'},S.agent.lastReply||t('Задайте вопрос или поручите задачу')):null,
+    on('pa_input')?el('div',{class:'agent-compose'},input,el('div',{class:'row'},el('span',{class:'sub grow'},'Enter · '+t('Отправить')+' / Shift+Enter · '+t('Новая строка')),micButton(()=>mic.start('ask',micOpts())),el('button',{class:'btn primary',disabled:busy||S.agentSending,onclick:send},t('Отправить')))):null)];
 }
 
 function renderCards() {
@@ -1155,7 +1183,12 @@ function peek() {
 
 let lastMode = "";
 function render() {
-  if (!isl) return;
+  if (!isl||S.resizing) return;
+  const scrollNodes=()=>[isl,...isl.querySelectorAll('.panel-body,.island-cell,.lyrics-full,.agent-reply')];
+  const oldTab=isl.dataset.panelTab;
+  if(isl.dataset.mode==='panel'&&oldTab)panelScroll.set(oldTab,scrollNodes().map(n=>({x:n.scrollLeft,y:n.scrollTop})));
+  const focused=document.activeElement?.dataset.focusKey;
+  const selection=focused?[document.activeElement.selectionStart,document.activeElement.selectionEnd]:null;
   const m = mode();
   if (m !== lastMode) { isl.dataset.prev = lastMode; lastMode = m; isl.classList.remove("pop", "enter"); void isl.offsetWidth; isl.classList.add("pop", "enter"); clearTimeout(render.enterT); render.enterT = setTimeout(() => isl.classList.remove("enter"), 380); }
   isl.dataset.mode = m;
@@ -1163,7 +1196,7 @@ function render() {
   isl.dataset.playing = S.media.active && S.media.playing ? "1" : "0";
   // акцент капсулы: цвет трека, если есть, иначе — акцент темы (хардкод #7c8cff
   // перекрывал тему для батареи, щита и всего внутри острова)
-  if (S.media.active && S.media.accent) isl.style.setProperty("--accent", S.media.accent);
+  if (S.media.active && (S.cfg.island.waves?.color||S.media.accent)) isl.style.setProperty("--accent", S.cfg.island.waves?.color||S.media.accent);
   else isl.style.removeProperty("--accent");
   isl.style.setProperty("--cover", S.media.active && S.media.cover ? "url(" + JSON.stringify(S.media.cover) + ")" : "none");
   isl.classList.toggle("flash", Date.now() - S.flash < 500);
@@ -1172,7 +1205,7 @@ function render() {
   isl.dataset.lyric = m === "music" && musicKind() === "wide" && S.cfg.island.lyrics !== false && S.lyric ? "1" : "0";
   root.classList.toggle("hidden", tucked(m));
   root.dataset.playing = isl.dataset.playing;
-  root.style.setProperty("--accent", getComputedStyle(document.documentElement).getPropertyValue("--accent"));
+  root.style.setProperty("--accent", (S.cfg.island.waves?.color || S.media.active&&S.media.accent || getComputedStyle(document.documentElement).getPropertyValue("--accent")));
   root.style.setProperty("--lip-width", `${Math.max(1, isl.offsetWidth)}px`);
   root.classList.toggle("through", !!S.cfg.island.through_mode && (m === "idle" || m === "music" || m === "timer" || m === "rec"));
   const focusedValue = m === "bar" ? null : undefined;
@@ -1189,6 +1222,17 @@ function render() {
   isl.classList.toggle("visual-capsule",m==="idle" && !!S.cfg.island.visual_layout?.capsule);
   isl.classList.toggle("visual-music",m==="music" && !!S.cfg.island.visual_layout?.music);
   void focusedValue;
+  isl.dataset.panelTab=m==='panel'?S.tab:'';
+  if(m==='panel'){
+    resizePanel(isl,S.cfg.island.panel_size?.[S.tab],{start:()=>{S.resizing=true;},change:scheduleHit,finish:size=>{S.resizing=false;saveValues({['island.panel_size.'+S.tab]:size});},cancel:()=>{S.resizing=false;render();}});
+    const saved=panelScroll.get(S.tab)||[];
+    scrollNodes().forEach((n,i)=>{if(saved[i]){n.scrollLeft=saved[i].x;n.scrollTop=saved[i].y;}});
+    if(focused){const next=isl.querySelector(`[data-focus-key="${focused}"]`);if(next){next.focus({preventScroll:true});if(selection)next.setSelectionRange(...selection);}}
+  }else{isl.style.height='';}
+  const waveColor=(S.cfg.island.waves?.color||S.media.active&&S.media.accent||getComputedStyle(isl).getPropertyValue('--accent')).trim();
+  isl.style.setProperty('--music-color',waveColor);
+  isl.classList.toggle('music-tinted',m!=='panel'&&!!S.media.active);
+
   // Мини-островок: капсула сжимается и растягивается под набор включённых элементов,
   // плечи слева и справа делаются равными — часы стоят ровно по центру островка.
   // Волны флюида читают offsetWidth каждый кадр и следуют за шириной сами.
@@ -1209,7 +1253,7 @@ function render() {
         root.style.setProperty("--lip-width", total + "px");
       } else isl.style.width = "";
     }
-  } else if (isl.style.width) isl.style.width = "";
+  } else if (m!=="panel"&&isl.style.width) isl.style.width = "";
   renderCards();
   scheduleHit();
 }
@@ -1470,7 +1514,7 @@ export function mountIsland() {
       liquid: (S.cfg.island.character || "liquid") === "liquid" && (!root.classList.contains("hidden") || (m === "music" && S.media.playing)),
       pill: m !== "panel" && m !== "bar" && m !== "confirm" && isl.dataset.lyric !== "1" && musicKind() !== "mini" || m === "idle",
       playing: !!(S.media.active && S.media.playing), edge: S.cfg.island.eq_edge !== false && waves.music_enabled !== false, bands: S.bands,
-      accent: (waves.color || cs.getPropertyValue("--accent") || "#7c8cff").trim(), bg: (cs.getPropertyValue("--bg") || "#000").trim(),
+      accent: (waves.color || cs.getPropertyValue("--accent") || "#7c8cff").trim(), bg: cs.backgroundColor,
       rainColor: "rgba(150,190,255,0.9)", away: S.away, rain: S.weather && ["rain", "sleet", "thunder", "snow"].includes(S.weather.kind),
     };
   }, wideDrops);
@@ -1557,7 +1601,7 @@ export function mountIsland() {
       core.try("island.timers"), core.try("recorder.state"), core.try("router.status"),
       core.try("calendar.state"), core.try("downloads.state"), core.try("ticker.state"),
       core.try("mixer.state"), core.try("sysmon.state"), core.try("notes.list", {})]);
-    if (media && !media.error) S.media = media;
+    if (media && !media.error) {S.media=media;loadTrackLyrics();}
     if (status && !status.error) S.status = status;
     if (weather && !weather.error) S.weather = weather;
     if (Array.isArray(timers)) timers.forEach((t) => S.timers.set(t.id, t));
@@ -1617,28 +1661,17 @@ export function mountIsland() {
     if (t.state === "cancelled") S.timers.delete(t.id);
     render();
   });
-  core.on("media.state", (m) => { S.media = m || { active: false }; if (!(S.media && S.media.active)) S.musicView = "auto"; render(); });
-  core.on("media.position", (p) => { if (S.media) { S.media.position = p.position; if (mode() === "panel" && S.tab === "now" && Date.now() - (S.posDrawn || 0) > 900) { S.posDrawn = Date.now(); render(); } } });
+  core.on("media.state", (m) => { const old=S.media.track_id||S.media.title;S.media=m||{active:false};if(!S.media.active){S.musicView="auto";S.lyricsKey=null;S.lyricsData=null;S.lyric="";}else if(old!==(S.media.track_id||S.media.title)){S.lyricsKey=null;loadTrackLyrics();}render(); });
+  core.on("media.position", (p) => { if (S.media) { if(p.track_id&&p.track_id!==S.media.track_id)return;S.media.position = p.position;syncLyric(); if (mode() === "panel" && S.tab === "now" && Date.now() - (S.posDrawn || 0) > 900) { S.posDrawn = Date.now(); render(); } } });
   core.on("media.levels", (d) => {
     S.bands = d.bands || S.bands;
     const avg = S.bands.length ? S.bands.reduce((a, b) => a + (b || 0), 0) / S.bands.length : 0;
     const bass = S.bands.length ? Math.max(S.bands[0] || 0, S.bands[1] || 0) : 0;
     isl.style.setProperty("--lvl", (S.media.playing ? Math.min(1, avg * 1.3) : 0).toFixed(3));
     isl.style.setProperty("--bass", (S.media.playing ? Math.min(1, bass) : 0).toFixed(3));
-    isl.querySelectorAll(".eq:not(.mic)").forEach((box) => {
-      const bars = box.children;
-      for (let i = 0; i < bars.length; i++) {
-        const v = S.bands[Math.floor((i / bars.length) * S.bands.length)] || 0;
-        bars[i].style.transform = "scaleY(" + (S.media.playing ? Math.max(0.15, Math.min(1, v)) : 0.15).toFixed(3) + ")";
-      }
-    });
+    isl.querySelectorAll('.eq-ring path').forEach((path,i)=>path.setAttribute('d',wavePath(S.bands,S.media.playing,i%2)));
   });
-  core.on("media.lyrics", (d) => {
-    const now = Date.now();
-    if (S.lyricAt) S.lyricDur = Math.min(8, (now - S.lyricAt) / 1000);
-    S.lyricAt = now;
-    if (d && d.duration) S.lyricDur = d.duration;
-    S.lyric = (d && (d.line || d.text)) || ""; if (mode() === "panel" || mode() === "music") render(); });
+  core.on('media.lyrics',d=>{if(d?.track_id&&d.track_id!==S.media.track_id)return;if(d?.lines||d?.plain){S.lyricsData=d;syncLyric();}else S.lyric=d?.line||d?.text||'';if(mode()==='panel'||mode()==='music')render();});
   core.on("recorder.state", (r) => { const was = S.rec.recording; S.rec = r || {}; if (was && !S.rec.recording && S.rec.path) pushCard({ title: t("Запись сохранена"), text: S.rec.path, kind: "ok", icon: "rec" }); render(); });
   core.on("obs.state", (o) => { S.obs = o || {}; render(); });
   core.on("status.state", (s) => { S.status = s || {}; render(); });
@@ -1708,10 +1741,12 @@ export function renderEditorRegion(cfg, region, data = {}) {
   const previous={...S};
   try {
     Object.assign(S,data,{cfg:{...cfg,island:normalizedIsland(cfg.island)},capsuleDetail:null,tab:region==='header'?(data.previewTab||'now'):region,online:core.connected});
+    if(S.lyricsData?.track_id&&S.lyricsData.track_id!==S.media.track_id)S.lyricsData=null;
+    syncLyric();
     if(region==='capsule')return visualCapsule();
     if(region==='header')return panel()[0];
     if(region==='now')return panelNow()[0];
     if(region==='tools')return panelTools()[0];
-    return panelAgent().find(node=>node?.dataset?.gridRegion==='agent');
+    return panelAgent()[0];
   } finally {Object.assign(S,previous);}
 }

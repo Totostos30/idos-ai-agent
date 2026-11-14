@@ -356,6 +356,7 @@ class Media(Feature):
         self.snapshot: Callable[..., Any] = snapshot_async
         self.session_control: Callable[..., Any] = control_async
         self._covers: dict[str, tuple[str, str]] = {}
+        self._lyrics_lock = asyncio.Lock()
         if getattr(app, "tools", None) is not None:
             register_tool(app.tools, self)
 
@@ -392,11 +393,17 @@ class Media(Feature):
         changed = self.signature(state) != self.signature(self.state)
         new_track = state.get("track_id") != self.state.get("track_id")
         self.state = state
-        if new_track and state.get("active") and self.settings.get("island.lyrics", False):
+        if new_track:
+            self.lyrics = None
+        if new_track and state.get("active"):
             self.spawn(self.load_lyrics(), "lyrics")
         return changed
 
     async def load_lyrics(self, force: bool = False) -> dict | None:
+        async with self._lyrics_lock:
+            return await self._load_lyrics(force)
+
+    async def _load_lyrics(self, force: bool = False) -> dict | None:
         state = self.state
         if not state.get("active") or not state.get("title"):
             return None
@@ -404,6 +411,8 @@ class Media(Feature):
         if self.lyrics and self.lyrics.get("track_id") == key and not force:
             return self.lyrics
         cached = None if force or self.db is None else self.db.kv_get("lyrics:" + key)
+        if cached and cached.get("missing") and time.time() - cached.get("fetched_at", 0) > 6 * 3600:
+            cached = None
         if cached is None:
             try:
                 cached = await fetch_lyrics(state["title"], state.get("artist", ""), state.get("album", ""),
@@ -411,12 +420,12 @@ class Media(Feature):
             except (llm.HTTPError, llm.NetworkError) as exc:
                 log.info("lyrics unavailable: %s", exc)
                 return None
-            cached = cached or {"synced": False, "lines": [], "plain": "", "missing": True}
+            cached = cached or {"synced": False, "lines": [], "plain": "", "missing": True, "fetched_at": time.time()}
             if self.db is not None:
                 self.db.kv_set("lyrics:" + key, cached)
-        if (self.state.get("track_id") or key) != key:
+        if not self.state.get("active") or (self.state.get("track_id") or track_key(self.state)) != key:
             return None
-        self.lyrics = {**cached, "track_id": key}
+        self.lyrics = {**cached, "track_id": key, "source": "LRCLIB"}
         bus.emit("media.lyrics", self.lyrics)
         return self.lyrics
 
@@ -510,6 +519,8 @@ class Media(Feature):
                 log.debug("media poll failed", exc_info=True)
                 changed = False
             playing = bool(self.state.get("playing"))
+            if self.state.get("active"):
+                bus.emit("media.position", {"position": position_now(self.state), "track_id": self.state.get("track_id")})
             if changed or (playing and time.time() - last > 5):
                 bus.emit("media.state", self.state)
                 last = time.time()
