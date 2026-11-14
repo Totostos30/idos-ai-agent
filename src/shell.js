@@ -54,7 +54,7 @@ export function el(tag, attrs = {}, ...children) {
     else if (k === "html") node.innerHTML = v;
     else node.setAttribute(k, v === true ? "" : v);
   }
-  for (const c of children.flat()) {
+  for (const c of children.flat(9)) {
     if (c === null || c === undefined || c === false) continue;
     node.append(c instanceof Node ? c : document.createTextNode(String(c)));
   }

@@ -381,10 +381,16 @@ fn monitors(app: AppHandle) -> Result<Value, String> {
 // ------------------------------------------------------------------ main window
 
 fn create_main(app: &AppHandle) -> Result<(), String> {
+    // иконка окна/панели задач — в рантайме, чтобы не зависеть от кэша exe и проводника
+    let tray_image = tauri::image::Image::from_bytes(include_bytes!("../icons/tray.ico"))
+        .map_err(|e| format!("иконка окна: {e}"))?;
     let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("Эйдос")
         .inner_size(1120.0, 760.0)
         .min_inner_size(860.0, 560.0)
+        .maximized(true)
+        .icon(tray_image)
+        .map_err(|e| e.to_string())?
         .decorations(false)
         .transparent(true)
         .center()
@@ -552,8 +558,11 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let quit = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &toggle, &stop, &restart, &settings, &separator, &quit])?;
     let mut builder = TrayIconBuilder::with_id("idos-tray").tooltip("Эйдос").menu(&menu);
-    if let Some(icon) = app.default_window_icon() {
-        builder = builder.icon(icon.clone());
+    // Знак Νοῦς (покой) на тёмной капсуле — icons/tray.ico (генератор Temp/gen_tray.py);
+    // ICO декодируется включённой фичей image-ico. Фолбэк — иконка окна.
+    let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray.ico")).ok();
+    if let Some(icon) = tray_icon.or_else(|| app.default_window_icon().cloned()) {
+        builder = builder.icon(icon);
     }
     builder
         .on_menu_event(|app, event| match event.id().as_ref() {

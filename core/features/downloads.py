@@ -61,6 +61,7 @@ class Downloads(Feature):
     def __init__(self, app) -> None:
         super().__init__(app)
         self.items: list[dict] = []
+        self.active: dict = {}  # имя → {name, size, total, speed, eta, updated}
 
     def folder(self) -> pathlib.Path:
         custom = (self.settings.get("integrations.downloads_folder", "") or "").strip()
@@ -85,18 +86,17 @@ class Downloads(Feature):
                  card_id=f"dl:{path}", timeout=8)
         return item
 
-    async def _loop(self) -> None:
-        folder = self.folder()
-        before = await asyncio.to_thread(snapshot, folder)
-        pending: dict = {}
-        while True:
-            await asyncio.sleep(POLL)
-            if not self.settings.get("integrations.downloads", True):
-                continue
-            after = await asyncio.to_thread(snapshot, folder)
-            for name in finished(before, after, pending):
-                self.announce(folder / name)
-            before = {k: v for k, v in after.items() if k not in pending}
+    def active_state(self) -> list[dict]:
+        out = []
+        for it in self.active.values():
+            speed = it["speed"]
+            item = {"name": it["name"], "size": it["size"], "speed": round(speed, 1) if speed else 0,
+                    "eta": it["eta"], "updated": it["updated"]}
+            if it["total"]:
+                item["total"] = it["total"]
+                item["progress"] = min(1.0, it["size"] / it["total"]) if it["total"] else None
+            out.append(item)
+        return out
 
     def on_action(self, data: dict) -> None:
         card, action = str((data or {}).get("card_id", "")), (data or {}).get("action")
@@ -108,6 +108,47 @@ class Downloads(Feature):
         elif action == "folder":
             subprocess.Popen(["explorer", "/select,", path])  # noqa: S603,S607
 
+    async def _loop(self) -> None:
+        folder = self.folder()
+        before = await asyncio.to_thread(snapshot, folder)
+        pending: dict = {}
+        while True:
+            await asyncio.sleep(POLL)
+            if not self.settings.get("integrations.downloads", True):
+                continue
+            after = await asyncio.to_thread(snapshot, folder)
+            for name in finished(before, after, pending):
+                self.announce(folder / name)
+            self._track_active(folder, before, after)
+            before = {k: v for k, v in after.items() if k not in pending}
+
+    def _track_active(self, folder: pathlib.Path, before: dict, after: dict) -> None:
+        """Частичные файлы (.crdownload/.part/…) растут — это активные загрузки браузера.
+        Скорость считаем по дельте размера, ETA — когда известен итоговый размер (total)."""
+        from .. import bus
+        now = time.time()
+        seen = {}
+        for name, (size, _mtime) in after.items():
+            base = name.lower()
+            partial = base.endswith(PARTIAL)
+            if partial or name in self.active:
+                key = name
+                if partial:
+                    key = name[: -len(next(p for p in PARTIAL if base.endswith(p)))]
+                prev = self.active.get(key)
+                speed = 0.0
+                if prev and size > prev["size"]:
+                    speed = max(0.0, (size - prev["size"]) / max(0.001, now - prev["updated"]))
+                total = prev["total"] if prev else 0
+                if not total and not partial:
+                    total = size  # файл без суффикса уже имеет финальное имя: это и есть итог
+                eta = round((total - size) / speed) if total and size < total and speed > 1 else None
+                seen[key] = {"name": key, "size": size, "total": total, "speed": speed,
+                             "eta": eta, "updated": now}
+        self.active = seen
+        if seen:
+            bus.emit("downloads.changed", {"active": self.active_state(), "recent": self.items[-5:]})
+
     async def start(self) -> None:
         self._unsubscribe.append(bus.on("island.action", self.on_action))
         self.spawn(self._loop(), "watch")
@@ -116,7 +157,10 @@ class Downloads(Feature):
         async def recent() -> list:
             return self.items
 
-        return {"downloads.recent": recent}
+        async def state() -> dict:
+            return {"active": self.active_state(), "recent": self.items}
+
+        return {"downloads.recent": recent, "downloads.state": state}
 
 
 def create(app) -> Downloads:

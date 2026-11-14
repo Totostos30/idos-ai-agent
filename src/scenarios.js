@@ -1,16 +1,24 @@
 // Конструктор сценариев: блок-схема действий и таблицы входных/runtime-переменных.
 import { core } from "./rpc.js";
+import { iconNode } from "./icons.js";
 import { el, toast, win } from "./shell.js";
+import { t } from "./i18n.js";
 
-const ICONS = { start: "▶", launch: "🚀", focus: "🪟", click: "👆", type: "⌨", hotkey: "⌘", wait: "⏱", wait_for: "⏳",
-  if_exists: "❓", condition: "⇄", repeat: "🔁", read: "🧪", media: "⏯", open: "📂", say: "🔊", ask: "💬",
-  window: "🗗", scenario: "⧉", end: "■" };
+// иконки узлов сценариев — SVG-набор (гайдбук §3), без эмодзи
+const ICONS = { start: "play", launch: "spark", focus: "expand", click: "pip", type: "keyboard", hotkey: "settings",
+  wait: "clock", wait_for: "clock", if_exists: "info", condition: "convert", repeat: "history", read: "search",
+  media: "play", open: "file", say: "chat", ask: "chat", window: "app", scenario: "scenario", end: "end" };
+const iconGlyph = (name, size = 14) => iconNode(ICONS[name] || "spark", size);
 const PALETTE = ["launch", "window", "click", "type", "read", "ask", "condition", "repeat", "hotkey", "wait",
   "wait_for", "if_exists", "focus", "media", "open", "say", "scenario", "end"];
 const WINDOW_NAMES = { minimize: "Свернуть", maximize: "Развернуть", restore: "Восстановить", close: "Закрыть",
   kill: "Завершить принудительно" };
 const ASK_MODES = { any: "Голосом и текстом", voice: "Только голосом", text: "Только текстом (без озвучки)" };
 const varName = (v) => String(v || "").trim().replace(/[^\p{L}\p{N}_]+/gu, "_").replace(/^_+|_+$/g, "") || "answer";
+// локализованные варианты селектов (строятся на вызов — язык мог смениться)
+const windowOptions = () => Object.fromEntries(Object.entries(WINDOW_NAMES).map(([k, v]) => [k, t(v)]));
+const askModes = () => Object.fromEntries(Object.entries(ASK_MODES).map(([k, v]) => [k, t(v)]));
+const mediaOptions = () => Object.fromEntries(Object.entries(MEDIA_NAMES).map(([k, v]) => [k, t(v)]));
 const MEDIA_NAMES = { play_pause: "Пуск/пауза", next: "Следующий трек", previous: "Предыдущий трек", stop: "Стоп",
   volume_up: "Громче", volume_down: "Тише", mute: "Без звука" };
 const NODE_W = 230;
@@ -26,34 +34,34 @@ const uid = () => Math.random().toString(16).slice(2, 10);
 
 function summary(n) {
   const p = n.params || {};
-  const t = p.target;
-  const tl = t && typeof t === "object" ? (t.label || ("«" + (t.name || t.id || "элемент") + "»")) : "элемент не выбран";
+  const tg = p.target;
+  const tl = tg && typeof tg === "object" ? (tg.label || ("«" + (tg.name || tg.id || t("элемент")) + "»")) : t("элемент не выбран");
   switch (n.type) {
-    case "launch": return p.app || "программа не указана";
-    case "focus": return p.window || "окно не указано";
+    case "launch": return p.app || t("программа не указана");
+    case "focus": return p.window || t("окно не указано");
     case "click": {
-      const targets = Array.isArray(p.targets) && p.targets.length ? p.targets : (t ? [t] : []);
-      return targets.length > 1 ? `${targets.length} элементов` : (targets[0] ? (targets[0].label || `«${targets[0].name || targets[0].id || "элемент"}»`) : tl);
+      const targets = Array.isArray(p.targets) && p.targets.length ? p.targets : (tg ? [tg] : []);
+      return targets.length > 1 ? t("{n} элементов", { n: targets.length }) : (targets[0] ? (targets[0].label || `«${targets[0].name || targets[0].id || t("элемент")}»`) : tl);
     }
     case "wait_for": case "if_exists": case "read": return tl;
     case "condition": return `{${varName(p.var)}} ${p.operator || "equals"} ${p.value || ""}`.trim();
-    case "repeat": return `${p.count ?? 3} раз(а)`;
+    case "repeat": return t("{n} раз(а)", { n: p.count ?? 3 });
     case "type": return "«" + (p.text || "") + "»" + (p.enter ? " + Enter" : "");
-    case "hotkey": return p.keys || "клавиши не указаны";
-    case "wait": return (p.seconds ?? 1) + " с";
-    case "media": return MEDIA_NAMES[p.action] || p.action || "";
+    case "hotkey": return p.keys || t("клавиши не указаны");
+    case "wait": return (p.seconds ?? 1) + t(" с");
+    case "media": return (MEDIA_NAMES[p.action] && t(MEDIA_NAMES[p.action])) || p.action || "";
     case "open": return p.path || "";
     case "say": return p.text || "";
-    case "ask": return "{" + varName(p.var) + "} ← «" + (p.question || "вопрос не задан") + "»";
-    case "window": return (WINDOW_NAMES[p.action] || p.action || "") + ": " + (p.app || "активное окно");
+    case "ask": return "{" + varName(p.var) + "} ← «" + (p.question || t("вопрос не задан")) + "»";
+    case "window": return ((WINDOW_NAMES[p.action] && t(WINDOW_NAMES[p.action])) || p.action || "") + ": " + (p.app || t("активное окно"));
     case "scenario": return p.name || "";
     default: return "";
   }
 }
 
-const blockTitle = (type) => (S.meta && S.meta.blocks[type] ? S.meta.blocks[type].title : type);
+const blockTitle = (type) => t(S.meta && S.meta.blocks[type] ? S.meta.blocks[type].title : type);
 const outsOf = (type) => (S.meta && S.meta.blocks[type] ? S.meta.blocks[type].outs : ["next"]);
-const outLabel = (o) => (S.meta && S.meta.outs[o]) || o;
+const outLabel = (o) => t((S.meta && S.meta.outs[o]) || o);
 const nodeById = (id) => (S.cur ? S.cur.nodes.find((n) => n.id === id) : null);
 
 function markDirty() {
@@ -69,7 +77,7 @@ function toggleScenarioSidebar() {
   if (wrap) wrap.classList.toggle("scn-sidebar-collapsed", S.sidebarCollapsed);
   if (button) {
     button.textContent = S.sidebarCollapsed ? "›" : "‹";
-    button.title = S.sidebarCollapsed ? "Развернуть панель" : "Свернуть панель до иконок";
+    button.title = S.sidebarCollapsed ? t("Развернуть панель") : t("Свернуть панель до иконок");
   }
 }
 
@@ -101,8 +109,8 @@ export function scenarioEvent(kind, d) {
   if (kind === "run") {
     S.running = d.status === "running";
     if (d.status === "running") { S.status = {}; S.runtimeValues = {}; refreshRuntimeVars(); }
-    else if (d.status === "ok") toast("Сценарий выполнен за " + ((d.ms || 0) / 1000).toFixed(1) + " с");
-    else if (d.status === "error") toast("Сценарий: " + (d.text || "ошибка"), "error");
+    else if (d.status === "ok") toast(t("Сценарий выполнен за ") + ((d.ms || 0) / 1000).toFixed(1) + t(" с"));
+    else if (d.status === "error") toast(t("Сценарий: ") + (d.text || t("ошибка")), "error");
     const stop = page && page.querySelector(".scn-stop");
     if (stop) stop.disabled = !S.running;
   } else if (kind === "vars") {
@@ -118,7 +126,7 @@ export function scenarioEvent(kind, d) {
 // ------------------------------------------------------------------ data
 
 async function openScenario(id, redraw = true) {
-  if (S.dirty && S.cur && !confirm("Есть несохранённые изменения. Открыть другой сценарий без сохранения?")) return;
+  if (S.dirty && S.cur && !confirm(t("Есть несохранённые изменения. Открыть другой сценарий без сохранения?"))) return;
   const r = await core.try("scenarios.get", { sid: id }, 10000);
   if (r && r.error) { toast(r.error, "error"); return; }
   S.cur = r; S.sel = null; S.status = {}; S.runtimeValues = {}; S.dirty = false;
@@ -126,8 +134,8 @@ async function openScenario(id, redraw = true) {
 }
 
 function newScenario() {
-  if (S.dirty && S.cur && !confirm("Есть несохранённые изменения. Создать новый без сохранения?")) return;
-  S.cur = { id: "", name: "Новый сценарий", description: "", triggers: [], variables: [], enabled: true,
+  if (S.dirty && S.cur && !confirm(t("Есть несохранённые изменения. Создать новый без сохранения?"))) return;
+  S.cur = { id: "", name: t("Новый сценарий"), description: "", triggers: [], variables: [], enabled: true,
     nodes: [{ id: "start", type: "start", x: 60, y: 30, params: {}, links: {} }] };
   S.sel = "start"; S.status = {}; S.runtimeValues = {}; S.dirty = true;
   draw();
@@ -136,11 +144,11 @@ function newScenario() {
 async function save(quiet = false) {
   if (!S.cur) return null;
   const r = await core.try("scenarios.save", { data: S.cur }, 10000);
-  if (r && r.error) { toast("Не сохранено: " + r.error, "error"); return null; }
+  if (r && r.error) { toast(t("Не сохранено: ") + r.error, "error"); return null; }
   S.cur = r; S.dirty = false;
   const list = await core.try("scenarios.list", {}, 10000);
   if (Array.isArray(list)) S.list = list;
-  if (!quiet) toast("Сценарий сохранён");
+  if (!quiet) toast(t("Сценарий сохранён"));
   draw();
   return r;
 }
@@ -154,7 +162,7 @@ async function runScenario(startAt = "") {
   const missing = (saved.variables || []).filter((v) => v.required !== false && !variables[varName(v.name)]);
   if (missing.length) {
     const names = missing.map((v) => "{" + varName(v.name) + "}").join(", ");
-    toast(`Не заполнены переменные: ${names}. Заполните таблицу переменных и нажмите «Запустить» ещё раз.`, "error");
+    toast(t("Не заполнены переменные: {names}. Заполните таблицу переменных и нажмите «Запустить» ещё раз.", { names }), "error");
     return;
   }
   S.status = {};
@@ -165,7 +173,7 @@ async function runScenario(startAt = "") {
 
 async function removeScenario() {
   if (!S.cur || !S.cur.id) { S.cur = null; S.dirty = false; draw(); return; }
-  if (!confirm(`Удалить сценарий «${S.cur.name}»?`)) return;
+  if (!confirm(t("Удалить сценарий «{name}»?", { name: S.cur.name }))) return;
   await core.try("scenarios.delete", { sid: S.cur.id });
   S.cur = null; S.dirty = false; S.sel = null;
   const list = await core.try("scenarios.list", {}, 10000);
@@ -211,7 +219,7 @@ function startPaletteDrag(type, row, e) {
   const sx = e.clientX, sy = e.clientY;
   let moved = false;
   const ghost = el("div", { class: "scn-node scn-drag-ghost" },
-    el("div", { class: "scn-node-head" }, el("span", { class: "ic" }, ICONS[type] || "•"), el("span", { class: "tt" }, blockTitle(type))));
+    el("div", { class: "scn-node-head" }, el("span", { class: "ic" }, ICONS[type] ? iconGlyph(type) : "•"), el("span", { class: "tt" }, blockTitle(type))));
   const moveGhost = (ev) => {
     ghost.style.left = `${ev.clientX - ghost.offsetWidth / 2}px`;
     ghost.style.top = `${ev.clientY - ghost.offsetHeight / 2}px`;
@@ -379,31 +387,31 @@ function scenarioVariablesEditor(scenario, collapsed = false) {
   if (!Array.isArray(scenario.variables)) scenario.variables = [];
   const rows = scenario.variables.map((v, index) => {
     if (typeof v === "string") v = scenario.variables[index] = { name: v, description: "", value: "" };
-    const name = el("input", { class: "field", value: v.name || "", placeholder: "город" });
+    const name = el("input", { class: "field", value: v.name || "", placeholder: t("город") });
     const value = el("input", { class: "field scn-var-value", value: v.value ?? v.default ?? "",
-      placeholder: v.required === false ? "Необязательно — заполняется блоком" : "Обязательное значение" });
-    name.title = v.description || "Имя переменной";
+      placeholder: v.required === false ? t("Необязательно — заполняется блоком") : t("Обязательное значение") });
+    name.title = v.description || t("Имя переменной");
     name.addEventListener("input", () => { v.name = name.value; markDirty(); });
     value.addEventListener("input", () => { v.value = value.value; v.default = ""; markDirty(); });
     return el("tr", {}, el("td", {}, name), el("td", {}, value),
-      el("td", {}, el("button", { class: "icon", title: "Удалить переменную", onclick: () => {
+      el("td", {}, el("button", { class: "icon", title: t("Удалить переменную"), onclick: () => {
         scenario.variables.splice(index, 1); markDirty(); draw();
       } }, "×")));
   });
   const box = el("details", { class: "scn-vars" });
   box.open = !collapsed;
-  box.append(el("summary", {}, `Таблица переменных${scenario.variables.length ? ` · ${scenario.variables.length}` : ""}`),
+  box.append(el("summary", {}, t("Таблица переменных") + (scenario.variables.length ? " · " + scenario.variables.length : "")),
     el("div", { class: "scn-vars-panel" },
       el("table", { class: "scn-var-table" },
-        el("thead", {}, el("tr", {}, el("th", {}, "Переменная"), el("th", {}, "Значение"), el("th", {}))),
+        el("thead", {}, el("tr", {}, el("th", {}, t("Переменная")), el("th", {}, t("Значение")), el("th", {}))),
         el("tbody", {}, ...rows)),
-      el("div", { class: "scn-runtime-vars" }, el("b", {}, "Текущие значения выполнения"),
+      el("div", { class: "scn-runtime-vars" }, el("b", {}, t("Текущие значения выполнения")),
         el("table", { class: "scn-var-table scn-runtime-table" },
-          el("thead", {}, el("tr", {}, el("th", {}, "Переменная"), el("th", {}, "Текущее значение"))),
+          el("thead", {}, el("tr", {}, el("th", {}, t("Переменная")), el("th", {}, t("Текущее значение")))),
           el("tbody", { class: "scn-runtime-var-body" }, ...runtimeVariableRows()))),
     el("button", { class: "btn small", onclick: () => {
       scenario.variables.push({ name: "", description: "", value: "" }); S.sel = null; markDirty(); draw();
-    } }, "+ Переменная")));
+    } }, t("+ Переменная"))));
   return box;
 }
 
@@ -433,15 +441,15 @@ function scenarioSidebar() {
     "data-search": [s.name || "", ...(s.triggers || [])].join(" ").toLocaleLowerCase(), onclick: () => openScenario(s.id) },
     el("div", { class: "t" }, el("span", { class: "scn-item-icon" }, [...String(s.name || "С")][0].toLocaleUpperCase()),
       el("span", { class: "scn-item-name" }, (s.enabled ? "" : "⏸ ") + s.name))));
-  const scenarioSearch = el("input", { class: "field scn-list-search scn-scenario-search", type: "search", placeholder: "Поиск сценария", value: S.scenarioQuery });
-  const scenarioList = el("div", { class: "scn-list scn-scenario-list" }, scenarioRows.length ? scenarioRows : el("div", { class: "mut small scn-list-empty" }, "Пока нет сценариев"));
+  const scenarioSearch = el("input", { class: "field scn-list-search scn-scenario-search", type: "search", placeholder: t("Поиск сценария"), value: S.scenarioQuery });
+  const scenarioList = el("div", { class: "scn-list scn-scenario-list" }, scenarioRows.length ? scenarioRows : el("div", { class: "mut small scn-list-empty" }, t("Пока нет сценариев")));
   bindListSearch(scenarioSearch, scenarioRows, (value) => { S.scenarioQuery = value; });
 
-  const nodeSearch = el("input", { class: "field scn-list-search scn-node-search", type: "search", placeholder: "Поиск узла", value: S.nodeQuery });
+  const nodeSearch = el("input", { class: "field scn-list-search scn-node-search", type: "search", placeholder: t("Поиск узла"), value: S.nodeQuery });
   const nodeRows = PALETTE.map((t) => {
     const title = blockTitle(t);
     const row = el("button", { class: "scn-node-item", title, "data-search": title.toLocaleLowerCase() },
-      el("span", { class: "scn-node-icon" }, ICONS[t]), el("span", { class: "scn-node-label" }, title));
+      el("span", { class: "scn-node-icon" }, iconGlyph(t, 14)), el("span", { class: "scn-node-label" }, title));
     row.addEventListener("pointerdown", (e) => startPaletteDrag(t, row, e));
     return row;
   });
@@ -451,15 +459,15 @@ function scenarioSidebar() {
   return el("aside", { class: "scn-side" },
     el("section", { class: "scn-side-panel scn-scenario-panel" },
       el("div", { class: "scn-side-head" },
-        el("button", { class: "icon scn-sidebar-toggle", title: S.sidebarCollapsed ? "Развернуть панель" : "Свернуть панель до иконок", onclick: toggleScenarioSidebar }, S.sidebarCollapsed ? "›" : "‹"),
-        el("b", {}, "Сценарии"),
-        el("button", { class: "btn small scn-new", title: "Новый сценарий", onclick: newScenario }, el("span", { class: "scn-new-icon" }, "+"), el("span", { class: "scn-side-label" }, "Новый"))),
+        el("button", { class: "icon scn-sidebar-toggle", title: S.sidebarCollapsed ? t("Развернуть панель") : t("Свернуть панель до иконок"), onclick: toggleScenarioSidebar }, S.sidebarCollapsed ? "›" : "‹"),
+        el("b", {}, t("Сценарии")),
+        el("button", { class: "btn small scn-new", title: t("Новый сценарий"), onclick: newScenario }, el("span", { class: "scn-new-icon" }, "+"), el("span", { class: "scn-side-label" }, t("Новый")))),
       scenarioSearch, scenarioList,
       el("div", { class: "scn-side-foot" },
-        el("button", { class: "btn small scn-import", title: "Импорт JSON", onclick: importDialog }, el("span", {}, "⇪"), el("span", { class: "scn-side-label" }, "Импорт JSON")))),
+        el("button", { class: "btn small scn-import", title: t("Импорт JSON"), onclick: importDialog }, el("span", {}, "⇪"), el("span", { class: "scn-side-label" }, t("Импорт JSON"))))),
     el("section", { class: "scn-side-panel scn-node-panel" },
-      el("div", { class: "scn-node-head" }, el("b", {}, "Узлы"),
-        el("button", { class: "icon scn-layout-btn", title: "Выровнять узлы", onclick: layout }, "⇅")),
+      el("div", { class: "scn-node-head" }, el("b", {}, t("Узлы")),
+        el("button", { class: "icon scn-layout-btn", title: t("Выровнять узлы"), onclick: layout }, "⇅")),
       nodeSearch, nodeList));
 }
 
@@ -469,28 +477,28 @@ function draw() {
 
   if (!S.cur) {
     page.replaceChildren(el("div", { class: "scn-wrap" + (S.sidebarCollapsed ? " scn-sidebar-collapsed" : "") }, side, el("div", { class: "scn-empty" },
-      el("h1", {}, "Сценарии"), el("button", { class: "btn primary", onclick: newScenario }, "Создать сценарий"))));
+      el("p", { class: "gr-eyebrow", title: t("Мимесис — подражание и воспроизведение у Платона и Аристотеля") }, t("Μίμησις · сценарии")), el("h1", {}, t("Сценарии")), el("button", { class: "btn primary", onclick: newScenario }, t("Создать сценарий")))));
     return;
   }
   const c = S.cur;
-  const name = el("input", { class: "field scn-name", value: c.name, placeholder: "Название" });
+  const name = el("input", { class: "field scn-name", value: c.name, placeholder: t("Название") });
   bindDirty(name, "input", () => { c.name = name.value; });
-  const triggers = el("textarea", { class: "field scn-triggers", rows: 2, placeholder: "Фразы-триггеры, по одной в строке. «*» — любое слово: «включи трек *» → {arg}" });
+  const triggers = el("textarea", { class: "field scn-triggers", rows: 2, placeholder: t("Фразы-триггеры, по одной в строке. «*» — любое слово: «включи трек *» → {arg}") });
   triggers.value = (c.triggers || []).join("\n");
   bindDirty(triggers, "input", () => { c.triggers = triggers.value.split("\n").map((t) => t.trim()).filter(Boolean); });
   const enabled = el("input", { type: "checkbox" });
   enabled.checked = c.enabled !== false;
   bindDirty(enabled, "change", () => { c.enabled = enabled.checked; });
-  const desc = el("input", { class: "field", value: c.description || "", placeholder: "Описание (видит агент)" });
+  const desc = el("input", { class: "field", value: c.description || "", placeholder: t("Описание (видит агент)") });
   bindDirty(desc, "input", () => { c.description = desc.value; });
   const head = el("div", { class: "scn-head" },
     el("div", { class: "scn-head-row" }, name,
-      el("label", { class: "scn-check", title: "Выключенный сценарий не запускается по фразе" }, enabled, "включён"),
-      el("button", { class: "btn scn-save" + (S.dirty ? " primary" : ""), onclick: () => save() }, "Сохранить"),
-      el("button", { class: "btn primary", onclick: () => runScenario() }, "▶ Запустить"),
-      el("button", { class: "btn scn-stop", disabled: !S.running, onclick: () => core.try("scenarios.stop") }, "■ Стоп"),
-      el("button", { class: "icon", title: "Скопировать JSON", onclick: exportJson }, "⇪"),
-      el("button", { class: "icon", title: "Удалить сценарий", onclick: removeScenario }, "✕")),
+      el("label", { class: "scn-check", title: t("Выключенный сценарий не запускается по фразе") }, enabled, t("включён")),
+      el("button", { class: "btn scn-save" + (S.dirty ? " primary" : ""), onclick: () => save() }, t("Сохранить")),
+      el("button", { class: "btn primary", onclick: () => runScenario() }, t("▶ Запустить")),
+      el("button", { class: "btn scn-stop", disabled: !S.running, onclick: () => core.try("scenarios.stop") }, t("■ Стоп")),
+      el("button", { class: "icon", title: t("Скопировать JSON"), onclick: exportJson }, "⇪"),
+      el("button", { class: "icon", title: t("Удалить сценарий"), onclick: removeScenario }, "✕")),
     el("div", { class: "scn-head-row" }, triggers, desc));
 
   plane = el("div", { class: "scn-plane" });
@@ -548,22 +556,22 @@ function paintStatus(view, st) {
   if (!st) return;
   view.classList.add("run-" + st.status);
   const s = view.querySelector(".scn-st");
-  if (s) s.textContent = st.status === "running" ? "выполняется…" : st.status === "ok" ? "✓ " + ((st.ms || 0) / 1000).toFixed(1) + " с" : st.status === "error" ? "✕ " + (st.text || "") : "остановлено";
+  if (s) s.textContent = st.status === "running" ? t("выполняется…") : st.status === "ok" ? "✓ " + ((st.ms || 0) / 1000).toFixed(1) + t(" с") : st.status === "error" ? "✕ " + (st.text || "") : t("остановлено");
 }
 
 function nodeView(n) {
   const p = n.params || {};
   const outs = outsOf(n.type);
-  const t = p.target && typeof p.target === "object" ? p.target
+  const tg = p.target && typeof p.target === "object" ? p.target
     : (Array.isArray(p.targets) && p.targets.length ? p.targets[0] : null);
   const view = el("div", { class: "scn-node t-" + n.type + (S.sel === n.id ? " sel" : ""), "data-id": n.id, style: { left: n.x + "px", top: n.y + "px", width: NODE_W + "px" } },
-    n.type !== "start" ? el("span", { class: "scn-in", title: "вход" }) : null,
-    el("div", { class: "scn-node-head" }, el("span", { class: "ic" }, ICONS[n.type] || "•"), el("span", { class: "tt" }, blockTitle(n.type))),
+    n.type !== "start" ? el("span", { class: "scn-in", title: t("вход") }) : null,
+    el("div", { class: "scn-node-head" }, el("span", { class: "ic" }, ICONS[n.type] ? iconGlyph(n.type) : "•"), el("span", { class: "tt" }, blockTitle(n.type))),
     n.type !== "start" && n.type !== "end" ? el("div", { class: "scn-sum" }, summary(n)) : null,
-    t && t.preview ? el("img", { class: "scn-prev", src: t.preview, alt: "" }) : null,
+    tg && tg.preview ? el("img", { class: "scn-prev", src: tg.preview, alt: "" }) : null,
     n.note ? el("div", { class: "mut small" }, n.note) : null,
     el("div", { class: "scn-st small" }),
-    outs.length ? el("div", { class: "scn-outs" }, outs.map((o) => el("span", { class: "scn-port o-" + o + (n.links[o] ? " linked" : ""), "data-out": o, title: "Потяните к следующему блоку" }, outLabel(o)))) : null);
+    outs.length ? el("div", { class: "scn-outs" }, outs.map((o) => el("span", { class: "scn-port o-" + o + (n.links[o] ? " linked" : ""), "data-out": o, title: t("Потяните к следующему блоку") }, outLabel(o)))) : null);
   paintStatus(view, S.status[n.id]);
   view.addEventListener("pointerdown", (e) => {
     const port = e.target.closest(".scn-port");
@@ -654,10 +662,10 @@ function drawEdges() {
   if (!svg || !S.cur) return;
   svg.replaceChildren();
   for (const n of S.cur.nodes) for (const [out, to] of Object.entries(n.links || {})) {
-    const t = nodeById(to);
-    if (!t) continue;
+    const tn = nodeById(to);
+    if (!tn) continue;
     const [x1, y1] = portPoint(n, out);
-    const x2 = t.x + NODE_W / 2, y2 = t.y;
+    const x2 = tn.x + NODE_W / 2, y2 = tn.y;
     const path = document.createElementNS(SVGNS, "path");
     path.setAttribute("class", "scn-edge o-" + out);
     path.setAttribute("d", curve(x1, y1, x2, y2));
@@ -665,7 +673,7 @@ function drawEdges() {
     hit.setAttribute("class", "scn-edge-hit");
     hit.setAttribute("d", curve(x1, y1, x2, y2));
     const title = document.createElementNS(SVGNS, "title");
-    title.textContent = outLabel(out) + " — клик, чтобы удалить связь";
+    title.textContent = outLabel(out) + " — " + t("клик, чтобы удалить связь");
     hit.append(title);
     hit.addEventListener("click", () => { delete n.links[out]; markDirty(); draw(); });
     const arrow = document.createElementNS(SVGNS, "path");
@@ -720,23 +728,23 @@ function refreshNode(n) {
 }
 
 function targetEditor(n, key, optional = false) {
-  const t = n.params[key] && typeof n.params[key] === "object" ? n.params[key] : null;
+  const tg = n.params[key] && typeof n.params[key] === "object" ? n.params[key] : null;
   const box = el("div", { class: "scn-target" });
-  const details = t ? [["Программа", t.process], ["Окно", t.title], ["Тип", t.type], ["Имя", t.name], ["AutomationId", t.id],
-    ["Ref", t.ref ? (t.ref.twins > 1 ? "№" + t.ref.ordinal + " из " + t.ref.twins + " одинаковых" : "единственный такой") : ""]].filter(([, v]) => v) : [];
-  const name = el("input", { class: "field", value: (t && t.name) || "", placeholder: "Имя элемента (как в программе)" });
+  const details = tg ? [[t("Программа"), tg.process], [t("Окно"), tg.title], [t("Тип"), tg.type], [t("Имя"), tg.name], ["AutomationId", tg.id],
+    [t("Ref"), tg.ref ? (tg.ref.twins > 1 ? t("№{i} из {n} одинаковых", { i: tg.ref.ordinal, n: tg.ref.twins }) : t("единственный такой")) : ""]].filter(([, v]) => v) : [];
+  const name = el("input", { class: "field", value: (tg && tg.name) || "", placeholder: t("Имя элемента (как в программе)") });
   name.addEventListener("change", () => { n.params[key] = Object.assign({}, n.params[key] || {}, { name: name.value.trim(), label: "", ref: null, path: [] }); markDirty(); refreshNode(n); drawInspector(); });
-  const proc = el("input", { class: "field", value: (t && t.process) || "", placeholder: "Процесс, например Яндекс Музыка.exe" });
+  const proc = el("input", { class: "field", value: (tg && tg.process) || "", placeholder: t("Процесс, например Яндекс Музыка.exe") });
   proc.addEventListener("change", () => { n.params[key] = Object.assign({}, n.params[key] || {}, { process: proc.value.trim() }); markDirty(); });
   box.append(
-    t && t.preview ? el("img", { class: "scn-prev big", src: t.preview, alt: "" }) : null,
-    el("div", { class: "scn-target-label" }, t ? (t.label || "«" + (t.name || t.id || "элемент") + "»") : (optional ? "Без элемента — текст печатается туда, где курсор" : "Элемент не выбран")),
+    tg && tg.preview ? el("img", { class: "scn-prev big", src: tg.preview, alt: "" }) : null,
+    el("div", { class: "scn-target-label" }, tg ? (tg.label || "«" + (tg.name || tg.id || t("элемент")) + "»") : (optional ? t("Без элемента — текст печатается туда, где курсор") : t("Элемент не выбран"))),
     details.length ? el("div", { class: "mut small" }, details.map(([k, v]) => el("div", {}, k + ": " + v))) : null,
     el("div", { class: "scn-row" },
-      el("button", { class: "btn primary", disabled: S.picking, onclick: () => pipette(n, key) }, "🎯 Пипетка"),
-      t ? el("button", { class: "btn", onclick: () => probe(t) }, "Проверить") : null,
-      t && optional ? el("button", { class: "btn", onclick: () => { n.params[key] = null; markDirty(); refreshNode(n); drawInspector(); } }, "Убрать") : null),
-    el("details", { class: "scn-adv" }, el("summary", { class: "mut small" }, "Вручную"), field("Имя", name), field("Процесс", proc)));
+      el("button", { class: "btn primary", disabled: S.picking, onclick: () => pipette(n, key) }, t("🎯 Пипетка")),
+      tg ? el("button", { class: "btn", onclick: () => probe(tg) }, t("Проверить")) : null,
+      tg && optional ? el("button", { class: "btn", onclick: () => { n.params[key] = null; markDirty(); refreshNode(n); drawInspector(); } }, t("Убрать")) : null),
+    el("details", { class: "scn-adv" }, el("summary", { class: "mut small" }, t("Вручную")), field(t("Имя"), name), field(t("Процесс"), proc)));
   return box;
 }
 
@@ -756,23 +764,23 @@ function targetListEditor(n) {
     el("div", { class: "scn-target-label" }, target.label || `«${target.name || target.id || "элемент"}»`),
     el("div", { class: "mut small" }, [target.process, target.type, target.id].filter(Boolean).join(" · ")),
     el("div", { class: "scn-row" },
-      el("button", { class: "btn small", onclick: () => probe(target) }, "Проверить"),
-      el("button", { class: "btn small", disabled: index === 0, title: "Переместить вверх", onclick: () => {
+      el("button", { class: "btn small", onclick: () => probe(target) }, t("Проверить")),
+      el("button", { class: "btn small", disabled: index === 0, title: t("Переместить вверх"), onclick: () => {
         const next = [...targets]; [next[index - 1], next[index]] = [next[index], next[index - 1]];
         updateTargets(next);
       } }, "↑"),
-      el("button", { class: "btn small", disabled: index === targets.length - 1, title: "Переместить вниз", onclick: () => {
+      el("button", { class: "btn small", disabled: index === targets.length - 1, title: t("Переместить вниз"), onclick: () => {
         const next = [...targets]; [next[index + 1], next[index]] = [next[index], next[index + 1]];
         updateTargets(next);
       } }, "↓"),
-      el("button", { class: "btn small danger", title: "Убрать элемент", onclick: () => {
+      el("button", { class: "btn small danger", title: t("Убрать элемент"), onclick: () => {
         updateTargets(targets.filter((_, i) => i !== index));
-      } }, "Убрать"))));
+      } }, t("Убрать")))));
   box.append(
-    ...(targets.length ? items : [el("div", { class: "mut small" }, "Элементы ещё не выбраны.")]),
+    ...(targets.length ? items : [el("div", { class: "mut small" }, t("Элементы ещё не выбраны."))]),
     el("button", { class: "btn primary", disabled: S.picking, onclick: () => pickTarget(n, (target) => {
       n.params.targets = [...targets, target]; n.params.target = null; markDirty();
-    }) }, "🎯 Добавить элемент пипеткой"));
+    }) }, t("🎯 Добавить элемент пипеткой")));
   return box;
 }
 
@@ -784,17 +792,17 @@ async function pickTarget(n, setTarget) {
   if (S.picking) return;
   S.picking = true;
   drawInspector();
-  toast("Наведите курсор на нужную кнопку и нажмите Ctrl. Esc — отмена.");
+  toast(t("Наведите курсор на нужную кнопку и нажмите Ctrl. Esc — отмена."));
   try {
     if (win) { try { await win.minimize(); } catch (e) { /* ignore */ } }
     await new Promise((r) => setTimeout(r, 450));
     const r = await core.call("scenarios.pick", { timeout: 60 }, null, 75000);
     if (r && r.target) {
       setTarget(r.target);
-      toast("Выбрано: " + (r.target.label || r.target.name || "элемент"));
-    } else toast("Пипетка отменена");
+      toast(t("Выбрано: ") + (r.target.label || r.target.name || t("элемент")));
+    } else toast(t("Пипетка отменена"));
   } catch (e) {
-    toast("Пипетка: " + (e.message || e), "error");
+    toast(t("Пипетка: ") + (e.message || e), "error");
   } finally {
     S.picking = false;
     if (win) { try { await win.unminimize(); await win.show(); await win.setFocus(); } catch (e) { /* ignore */ } }
@@ -807,79 +815,79 @@ async function probe(target) {
   await new Promise((r) => setTimeout(r, 400));
   const r = await core.try("scenarios.probe", { target }, 30000);
   if (win) { try { await win.unminimize(); await win.setFocus(); } catch (e) { /* ignore */ } }
-  toast(r && r.text ? r.text : (r && r.error) || "нет ответа", r && r.found ? "info" : "error");
+  toast(r && r.text ? r.text : (r && r.error) || t("нет ответа"), r && r.found ? "info" : "error");
 }
 
 function drawInspector() {
   if (!inspector) return;
   const n = nodeById(S.sel);
   if (!n) {
-    inspector.replaceChildren(el("h3", {}, "Переменные"),
-      el("p", { class: "mut small" }, "Заполните значения до запуска. Пустые входы блокируют выполнение."),
+    inspector.replaceChildren(el("h3", {}, t("Переменные")),
+      el("p", { class: "mut small" }, t("Заполните значения до запуска. Пустые входы блокируют выполнение.")),
       scenarioVariablesEditor(S.cur));
     return;
   }
   const p = n.params;
   const parts = [];
   switch (n.type) {
-    case "launch": parts.push(field("Программа", textInput(n, "app", "Яндекс Музыка"), "Как в меню Пуск, путь к .exe или ссылка"), field("Подождать после запуска, с", textInput(n, "wait", "", "number"))); break;
-    case "focus": parts.push(field("Окно", textInput(n, "window", "часть заголовка или программа"))); break;
-    case "click": parts.push(el("div", { class: "scn-f" }, el("span", { class: "k" }, "Элементы (по порядку)"),
-      targetListEditor(n), el("span", { class: "mut small" }, "Выберите один или несколько элементов пипеткой.")),
-      field("Кнопка мыши", selectInput(n, "button", { left: "Левая", right: "Правая", double: "Двойной клик" })),
-      field("Способ", selectInput(n, "method", { mouse: "Мышью (как человек)", invoke: "Без мыши (UI Automation)" }), "«Без мыши» работает даже в фоне, но не во всех программах"),
-      field("Ждать появления, с", textInput(n, "timeout", "", "number"))); break;
-    case "type": parts.push(field("Текст", textInput(n, "text", "можно {arg}")), checkInput(n, "enter", "Нажать Enter после ввода"),
-      el("div", { class: "k small" }, "Поле ввода (необязательно)"), targetEditor(n, "target", true), field("Ждать поле, с", textInput(n, "timeout", "", "number"))); break;
-    case "hotkey": parts.push(field("Клавиши", textInput(n, "keys", "ctrl+l, alt+tab, win+d, space, f5"))); break;
-    case "wait": parts.push(field("Секунд", textInput(n, "seconds", "", "number"))); break;
-    case "wait_for": parts.push(targetEditor(n, "target"), field("Ждать не дольше, с", textInput(n, "timeout", "", "number"))); break;
-    case "if_exists": parts.push(targetEditor(n, "target"), field("Ждать, с", textInput(n, "timeout", "", "number"), "0 — проверить сразу")); break;
+    case "launch": parts.push(field(t("Программа"), textInput(n, "app", "Яндекс Музыка"), t("Как в меню Пуск, путь к .exe или ссылка")), field(t("Подождать после запуска, с"), textInput(n, "wait", "", "number"))); break;
+    case "focus": parts.push(field(t("Окно"), textInput(n, "window", t("часть заголовка или программа")))); break;
+    case "click": parts.push(el("div", { class: "scn-f" }, el("span", { class: "k" }, t("Элементы (по порядку)")),
+      targetListEditor(n), el("span", { class: "mut small" }, t("Выберите один или несколько элементов пипеткой."))),
+      field(t("Кнопка мыши"), selectInput(n, "button", { left: t("Левая"), right: t("Правая"), double: t("Двойной клик") })),
+      field(t("Способ"), selectInput(n, "method", { mouse: t("Мышью (как человек)"), invoke: t("Без мыши (UI Automation)") }), t("«Без мыши» работает даже в фоне, но не во всех программах")),
+      field(t("Ждать появления, с"), textInput(n, "timeout", "", "number"))); break;
+    case "type": parts.push(field(t("Текст"), textInput(n, "text", t("можно {arg}"))), checkInput(n, "enter", t("Нажать Enter после ввода")),
+      el("div", { class: "k small" }, t("Поле ввода (необязательно)")), targetEditor(n, "target", true), field(t("Ждать поле, с"), textInput(n, "timeout", "", "number"))); break;
+    case "hotkey": parts.push(field(t("Клавиши"), textInput(n, "keys", "ctrl+l, alt+tab, win+d, space, f5"))); break;
+    case "wait": parts.push(field(t("Секунд"), textInput(n, "seconds", "", "number"))); break;
+    case "wait_for": parts.push(targetEditor(n, "target"), field(t("Ждать не дольше, с"), textInput(n, "timeout", "", "number"))); break;
+    case "if_exists": parts.push(targetEditor(n, "target"), field(t("Ждать, с"), textInput(n, "timeout", "", "number"), t("0 — проверить сразу"))); break;
     case "read": parts.push(targetEditor(n, "target"),
-      field("Сохранить в переменную", textInput(n, "var", "значение")),
-      field("Что прочитать", selectInput(n, "property", { value: "Значение / Value", text: "Текст", name: "Имя элемента", state: "Состояние переключателя", id: "AutomationId" })),
-      field("Ждать появления, с", textInput(n, "timeout", "", "number")),
-      el("p", { class: "mut small" }, "Переменная доступна в следующих блоках как {имя}.")); break;
+      field(t("Сохранить в переменную"), textInput(n, "var", t("значение"))),
+      field(t("Что прочитать"), selectInput(n, "property", { value: t("Значение / Value"), text: t("Текст"), name: t("Имя элемента"), state: t("Состояние переключателя"), id: "AutomationId" })),
+      field(t("Ждать появления, с"), textInput(n, "timeout", "", "number")),
+      el("p", { class: "mut small" }, t("Переменная доступна в следующих блоках как {имя}."))); break;
     case "condition": parts.push(
       field("Переменная", textInput(n, "var", "город")),
-      field("Условие", selectInput(n, "operator", {
-        equals: "равно", not_equals: "не равно", contains: "содержит", not_contains: "не содержит",
-        greater: "больше (число)", less: "меньше (число)", is_set: "задано", is_empty: "пусто",
+      field(t("Условие"), selectInput(n, "operator", {
+        equals: t("равно"), not_equals: t("не равно"), contains: t("содержит"), not_contains: t("не содержит"),
+        greater: t("больше (число)"), less: t("меньше (число)"), is_set: t("задано"), is_empty: t("пусто"),
       })),
-      field("Сравнить со значением", textInput(n, "value", "Москва"), "Для «задано» и «пусто» значение не используется.")); break;
+      field(t("Сравнить со значением"), textInput(n, "value", t("Москва")), t("Для «задано» и «пусто» значение не используется."))); break;
     case "repeat": parts.push(
-      field("Количество повторов", textInput(n, "count", "", "number"), "От 1 до 100. Выход «повтор» соедините с телом цикла, его конец — обратно с этим блоком."),
-      field("Переменная итерации", textInput(n, "var", "iteration"), "Внутри цикла принимает значения от 1 до N.")); break;
-    case "media": parts.push(field("Действие", selectInput(n, "action", MEDIA_NAMES))); break;
-    case "open": parts.push(field("Файл, папка или ссылка", textInput(n, "path", "https://music.yandex.ru или C:\\…"))); break;
+      field(t("Количество повторов"), textInput(n, "count", "", "number"), t("От 1 до 100. Выход «повтор» соедините с телом цикла, его конец — обратно с этим блоком.")),
+      field(t("Переменная итерации"), textInput(n, "var", "iteration"), t("Внутри цикла принимает значения от 1 до N."))); break;
+    case "media": parts.push(field(t("Действие"), selectInput(n, "action", mediaOptions()))); break;
+    case "open": parts.push(field(t("Файл, папка или ссылка"), textInput(n, "path", "https://music.yandex.ru или C:\\…"))); break;
     case "say": parts.push(
-      field("Фраза", textInput(n, "text", "Включаю вашу музыку"), "Можно подставлять ответы: «Включаю {исполнитель}»"),
-      checkInput(n, "wait", "Ждать окончания речи")); break;
+      field(t("Фраза"), textInput(n, "text", t("Включаю вашу музыку")), t("Можно подставлять ответы: «Включаю {исполнитель}»")),
+      checkInput(n, "wait", t("Ждать окончания речи"))); break;
     case "ask": parts.push(
-      field("Вопрос", textInput(n, "question", "Какого исполнителя включить?")),
-      field("Имя переменной", textInput(n, "var", "исполнитель"), "Дальше пишите {" + varName(p.var) + "} в любом текстовом поле: «Ввести текст», «Сказать», «Открыть», «Запустить»…"),
-      field("Как спрашивать", selectInput(n, "mode", ASK_MODES)),
-      field("Варианты ответа", textInput(n, "choices", "необязательно: рок, джаз, классика"), "Через запятую. Поймёт «второй», «давай джаз». Не подошло — выход «если ошибка»"),
-      field("Значение по умолчанию", textInput(n, "default", "если не ответили или нажали «Пропустить»"), "Пусто — без ответа сценарий идёт по выходу «если ошибка»"),
-      field("Ждать ответа, с", textInput(n, "timeout", "", "number")),
-      field("Уточнить ответ моделью", textInput(n, "extract", "например: время в формате ЧЧ:ММ"), "Пусто — ответ берётся как есть (0 запросов). Заполнено — один короткий запрос: «поставь на семь утра» → 07:00"),
-      checkInput(n, "skip_known", "Не спрашивать, если значение уже известно (агент взял его из вашей фразы)")); break;
+      field(t("Вопрос"), textInput(n, "question", t("Какого исполнителя включить?"))),
+      field(t("Имя переменной"), textInput(n, "var", "исполнитель"), t("Дальше пишите {v} в любом текстовом поле: «Ввести текст», «Сказать», «Открыть», «Запустить»…", { v: "{" + varName(p.var) + "}" })),
+      field(t("Как спрашивать"), selectInput(n, "mode", askModes())),
+      field(t("Варианты ответа"), textInput(n, "choices", t("необязательно: рок, джаз, классика")), t("Через запятую. Поймёт «второй», «давай джаз». Не подошло — выход «если ошибка»")),
+      field(t("Значение по умолчанию"), textInput(n, "default", t("если не ответили или нажали «Пропустить»")), t("Пусто — без ответа сценарий идёт по выходу «если ошибка»")),
+      field(t("Ждать ответа, с"), textInput(n, "timeout", "", "number")),
+      field(t("Уточнить ответ моделью"), textInput(n, "extract", t("например: время в формате ЧЧ:ММ")), t("Пусто — ответ берётся как есть (0 запросов). Заполнено — один короткий запрос: «поставь на семь утра» → 07:00")),
+      checkInput(n, "skip_known", t("Не спрашивать, если значение уже известно (агент взял его из вашей фразы)"))); break;
     case "window": parts.push(
-      field("Программа или окно", textInput(n, "app", "Яндекс Музыка"), "Пусто — активное окно. Можно {переменную}"),
-      field("Действие", selectInput(n, "action", WINDOW_NAMES), "«Закрыть» — как крестик (программа может спросить о сохранении). «Завершить» — сразу, несохранённое пропадёт")); break;
-    case "scenario": parts.push(field("Сценарий", selectInput(n, "name", Object.fromEntries([["", "— выберите —"]].concat(S.list.filter((s) => !S.cur || s.id !== S.cur.id).map((s) => [s.name, s.name])))))); break;
+      field(t("Программа или окно"), textInput(n, "app", "Яндекс Музыка"), t("Пусто — активное окно. Можно {переменную}")),
+      field(t("Действие"), selectInput(n, "action", windowOptions()), t("«Закрыть» — как крестик (программа может спросить о сохранении). «Завершить» — сразу, несохранённое пропадёт"))); break;
+    case "scenario": parts.push(field(t("Сценарий"), selectInput(n, "name", Object.fromEntries([["", t("— выберите —")]].concat(S.list.filter((s) => !S.cur || s.id !== S.cur.id).map((s) => [s.name, s.name])))))); break;
     default: break;
   }
-  const note = el("input", { class: "field", value: n.note || "", placeholder: "Заметка к блоку" });
+  const note = el("input", { class: "field", value: n.note || "", placeholder: t("Заметка к блоку") });
   note.addEventListener("input", () => { n.note = note.value; markDirty(); refreshNode(n); });
   inspector.replaceChildren(
-    el("h3", {}, (ICONS[n.type] || "") + " " + blockTitle(n.type)),
+    el("h3", {}, ICONS[n.type] ? iconGlyph(n.type) : "", " " + blockTitle(n.type)),
     ...parts,
     scenarioVariablesEditor(S.cur, true),
-    n.type !== "start" ? field("Заметка", note) : el("p", { class: "mut small" }, "Отсюда начинается сценарий. Потяните «далее» к первому действию."),
+    n.type !== "start" ? field(t("Заметка"), note) : el("p", { class: "mut small" }, t("Отсюда начинается сценарий. Потяните «далее» к первому действию.")),
     el("div", { class: "scn-row" },
-      n.type !== "start" && n.type !== "end" ? el("button", { class: "btn", onclick: () => runScenario(n.id) }, "▶ Отсюда") : null,
-      n.type !== "start" ? el("button", { class: "btn danger", onclick: () => deleteBlock(n.id) }, "Удалить блок") : null));
+      n.type !== "start" && n.type !== "end" ? el("button", { class: "btn", onclick: () => runScenario(n.id) }, t("▶ Отсюда")) : null,
+      n.type !== "start" ? el("button", { class: "btn danger", onclick: () => deleteBlock(n.id) }, t("Удалить блок")) : null));
   void p;
 }
 
@@ -889,13 +897,13 @@ async function exportJson() {
   const data = clone(S.cur);
   for (const n of data.nodes) if (n.params && n.params.target) delete n.params.target.preview;
   const text = JSON.stringify(data, null, 1);
-  try { await navigator.clipboard.writeText(text); toast("JSON сценария скопирован в буфер"); }
-  catch (e) { toast("Не удалось скопировать: " + e.message, "error"); }
+  try { await navigator.clipboard.writeText(text); toast(t("JSON сценария скопирован в буфер")); }
+  catch (e) { toast(t("Не удалось скопировать: ") + e.message, "error"); }
 }
 
 function importDialog() {
-  const area = el("textarea", { class: "field", rows: 10, placeholder: "Вставьте JSON сценария" });
-  const box = el("div", { class: "scn-modal" }, el("div", { class: "scn-modal-card" }, el("h3", {}, "Импорт сценария"), area,
+  const area = el("textarea", { class: "field", rows: 10, placeholder: t("Вставьте JSON сценария") });
+  const box = el("div", { class: "scn-modal" }, el("div", { class: "scn-modal-card" }, el("h3", {}, t("Импорт сценария")), area,
     el("div", { class: "scn-row" },
       el("button", { class: "btn primary", onclick: async () => {
         try {
@@ -904,8 +912,8 @@ function importDialog() {
           S.cur = data; S.dirty = true; S.sel = null; box.remove();
           await save();
         } catch (e) { toast("Неверный JSON: " + e.message, "error"); }
-      } }, "Импортировать"),
-      el("button", { class: "btn", onclick: () => box.remove() }, "Отмена"))));
+      } }, t("Импортировать")),
+      el("button", { class: "btn", onclick: () => box.remove() }, t("Отмена")))));
   document.body.append(box);
   area.focus();
 }

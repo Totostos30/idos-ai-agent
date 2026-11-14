@@ -13,7 +13,7 @@ from .. import bus, llm
 from . import Feature
 
 log = logging.getLogger("idos.weather")
-MET = "https:" + "//api.met" + ".no/weatherdata/locationforecast/2.0/compact"
+MET = "https:" + "//api.met" + ".no/weatherapi/locationforecast/2.0/compact"
 NOMINATIM = "https:" + "//nominatim.openstreetmap" + ".org/search"
 HEADERS = {"User-Agent": "IDOS/2.0 (desktop assistant)"}
 OPEN_METEO = "https:" + "//api.open-meteo" + ".com/v1/forecast"
@@ -313,10 +313,11 @@ class Weather(Feature):
         raise ValueError(f"не нашёл город «{city}»")
 
     def providers(self) -> list[str]:
-        """Chosen provider first, then the rest. Yandex is used only with a key, MET Norway only when chosen."""
+        """Chosen provider first, then the rest. Yandex is used only with a key.
+        MET Norway — последний резерв: он доступнее из РФ, чем api.open-meteo/wttr.in."""
         choice = str(self.settings.get("weather.provider", "auto") or "auto").strip().lower()
         key = str(self.settings.get("weather.yandex_key", "") or "").strip()
-        order = (["yandex"] if key else []) + ["open-meteo", "wttr"]
+        order = (["yandex"] if key else []) + ["open-meteo", "wttr", "met"]
         if choice in PROVIDERS:
             order = [choice] + [p for p in order if p != choice]
         return order

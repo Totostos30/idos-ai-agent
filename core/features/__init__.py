@@ -16,7 +16,7 @@ from typing import Any, Callable
 log = logging.getLogger("idos.features")
 
 MODULES = ["clipboard", "notes", "media", "weather", "status", "commandbar", "capture", "recorder", "downloads",
-           "hooks", "obs"]
+           "sysmon", "calendar", "ticker", "mixer", "hooks", "obs"]
 
 
 class Feature:

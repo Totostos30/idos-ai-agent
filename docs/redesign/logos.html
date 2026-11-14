@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="ru" data-zcode-design>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Эйдос · 10 концептов логотипа</title>
+<style>
+  :root {
+    --b1: #7c8cff; --b2: #b46cff; --b3: #4fd1ff; --b4: #e07cff;
+    --bg: #0a0a0c; --stage: #060609; --ink: #f5f5f7; --mut: #9a9aa2;
+    --line: rgba(255, 255, 255, .09); --capsule: rgba(255, 255, 255, .14);
+    --spring: cubic-bezier(.34, 1.36, .5, 1);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--ink);
+    font: 14px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 75% -10%, #14141d 0%, var(--bg) 55%);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 52px 0 90px; }
+  .eyebrow { color: var(--b3); font: 600 11px/1 ui-monospace, Consolas, monospace; letter-spacing: .22em; margin: 0 0 10px; }
+  h1 { margin: 0 0 8px; font-size: 34px; letter-spacing: -.02em; }
+  h1 .gr { color: var(--b1); }
+  .lead { margin: 0; max-width: 720px; color: var(--mut); }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 26px 0 8px; }
+  .legend i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: -2px; }
+  .legend span { color: var(--mut); font-size: 12px; background: var(--stage); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 18px; margin-top: 22px; }
+  .card {
+    background: var(--stage); border-radius: 20px; padding: 18px 18px 16px;
+    box-shadow: inset 0 0 0 1px var(--line);
+    transition: transform .25s var(--spring), box-shadow .25s;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1px rgba(124, 140, 255, .5), 0 14px 34px rgba(0, 0, 0, .5); }
+  .card h2 { margin: 0 0 2px; font-size: 16.5px; font-weight: 650; }
+  .card h2 .gr { color: var(--b2); font-weight: 700; margin-right: 8px; }
+  .card .ref { margin: 0 0 12px; color: var(--mut); font-size: 12px; }
+  .stage {
+    display: grid; place-items: center; min-height: 178px; padding: 14px;
+    background: radial-gradient(320px 150px at 50% 40%, #0e0e14 0%, transparent 70%), var(--stage);
+    box-shadow: inset 0 0 0 1px var(--line); border-radius: 16px;
+  }
+  .hero { width: 228px; height: 152px; }
+  .sizes { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+  .sizes svg { display: block; }
+  .sizes .m48 { width: 48px; height: 32px; }
+  .sizes .m24 { width: 24px; height: 16px; }
+  .sizes .m16 { width: 16px; height: 10.67px; }
+  .sizes span { color: var(--mut); font-size: 11px; margin-left: 2px; }
+  .note { margin: 8px 0 0; color: var(--mut); font-size: 12.5px; }
+  .note b { color: var(--ink); font-weight: 600; }
+
+  /* целиком-знаковые микро-анимации (сам <use>), через CSS — для 1, 5, 8 */
+  .card .hero { transition: transform .3s var(--spring), filter .3s; }
+  .card:hover .hero { transform: scale(1.04); }
+  [data-variant="1-sphaira"] .hero { filter: drop-shadow(0 0 6px rgba(124, 140, 255, .25)); animation: breathe 3.2s ease-in-out infinite; }
+  [data-variant="1-sphaira"]:hover .hero { filter: drop-shadow(0 0 14px rgba(124, 140, 255, .55)); }
+  @keyframes breathe { 50% { filter: drop-shadow(0 0 11px rgba(124, 140, 255, .45)); } }
+  [data-variant="8-sfragis"]:hover .hero { transform: translateY(3px) scale(1.02); }
+
+  .final {
+    margin-top: 26px; padding: 18px 20px; border-radius: 20px;
+    background: linear-gradient(135deg, rgba(124, 140, 255, .10), rgba(228, 124, 255, .08) 60%, transparent);
+    box-shadow: inset 0 0 0 1px rgba(124, 140, 255, .35);
+  }
+  .final h2 { margin: 0 0 6px; font-size: 16px; }
+  .final p { margin: 4px 0; color: var(--mut); font-size: 13px; }
+  .final b { color: var(--ink); }
+  footer { margin-top: 30px; color: #6b6b75; font-size: 11.5px; }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } .hero { width: 190px; } }
+  @media (prefers-reduced-motion: reduce) {
+    .card .hero, .card:hover .hero, [data-variant="1-sphaira"] .hero { animation: none !important; transition: none !important; transform: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">IDOS / REDESIGN · ЛОГОТИП</p>
+  <h1>εἶδος — <span class="gr">десять знаков</span></h1>
+  <p class="lead">Концепты логотипа Эйдоса: платоновская «форма» на визуальном языке приложения — чёрная жидкая капсула, фирменный градиент из четырёх цветов, свечение изнутри, пружины. Каждый знак — рабочий SVG: один <code>symbol</code>, инстансы любого размера.</p>
+  <div class="legend" aria-hidden="true">
+    <span><i style="background:var(--b1)"></i>бренд 1</span>
+    <span><i style="background:var(--b2)"></i>бренд 2</span>
+    <span><i style="background:var(--b3)"></i>бренд 3</span>
+    <span><i style="background:var(--b4)"></i>бренд 4</span>
+    <span><i style="background:var(--ink)"></i>текст</span>
+  </div>
+
+  <!-- общие градиенты и фильтры: один defs на все знаки документа -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="var(--b1)"/>
+        <stop offset=".38" stop-color="var(--b2)"/>
+        <stop offset=".72" stop-color="var(--b3)"/>
+        <stop offset="1" stop-color="var(--b4)"/>
+      </linearGradient>
+      <linearGradient id="brandUS" gradientUnits="userSpaceOnUse" x1="30" y1="18" x2="66" y2="46">
+        <stop offset="0" stop-color="var(--b1)"/>
+        <stop offset=".38" stop-color="var(--b2)"/>
+        <stop offset=".72" stop-color="var(--b3)"/>
+        <stop offset="1" stop-color="var(--b4)"/>
+      </linearGradient>
+      <linearGradient id="ray" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="rgba(255,255,255,.9)"/>
+        <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+      </linearGradient>
+      <radialGradient id="sph" cx=".35" cy=".3" r=".9">
+        <stop offset="0" stop-color="rgba(255,255,255,.45)"/>
+        <stop offset=".5" stop-color="rgba(255,255,255,0)"/>
+      </radialGradient>
+      <radialGradient id="caveglow" cx=".5" cy=".9" r="1">
+        <stop offset="0" stop-color="rgba(124,140,255,.85)"/>
+        <stop offset="1" stop-color="rgba(124,140,255,0)"/>
+      </radialGradient>
+      <filter id="soft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.3"/></filter>
+      <clipPath id="blobClip"><path d="M48 17.5c9.5 0 15 6 14.6 13.6-.4 7.4-5.4 15.4-14.6 15.4s-14.2-8-14.6-15.4C33 23.5 38.5 17.5 48 17.5Z"/></clipPath>
+    </defs>
+  </svg>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <!-- 1 · Σφέра: идеальная сфера в капсуле -->
+      <symbol id="logo-1" viewBox="0 0 96 64">
+        <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+        <circle cx="48" cy="32" r="11" fill="url(#brand)"/>
+        <circle cx="48" cy="32" r="11" fill="url(#sph)"/>
+        <circle cx="48" cy="32" r="12.5" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="1"/>
+      </symbol>
+      <!-- 2 · Σκιὰ: тень и форма -->
+      <symbol id="logo-2" viewBox="0 0 96 64">
+        <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+        <line x1="41" y1="33.5" x2="53.5" y2="30" stroke="url(#ray)" stroke-width="1.4"/>
+        <circle cx="34" cy="37" r="8" fill="none" stroke="#5a6278" stroke-width="1.6" stroke-dasharray="3 3" filter="url(#soft)"/>
+        <circle cx="61" cy="27" r="8" fill="url(#brand)"/>
+        <circle cx="61" cy="27" r="8" fill="url(#sph)"/>
+      </symbol>
+      <!-- 3 · Δημιουργός: форма в материи -->
+      <symbol id="logo-3" viewBox="0 0 96 64">
+        <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+        <polygon points="60.5,32 58.8,38.25 54,42.75 48,44.5 42,42.75 37.2,38.25 35.5,32 37.2,25.75 42,21.25 48,19.5 54,21.25 58.8,25.75"
+                 fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M48 22.5c6 0 10 4 9.8 9.3-.2 5.2-3.8 10.2-9.8 10.2s-9.6-5-9.8-10.2c-.2-5.3 3.8-9.3 9.8-9.3Z" fill="url(#brand)"/>
+        <path d="M48 22.5c6 0 10 4 9.8 9.3-.2 5.2-3.8 10.2-9.8 10.2s-9.6-5-9.8-10.2c-.2-5.3 3.8-9.3 9.8-9.3Z" fill="url(#sph)"/>
+      </symbol>
+      <!-- 4 · Νοῦς: неподвижный двигатель -->
+      <symbol id="logo-4" viewBox="0 0 96 64">
+        <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+        <circle cx="48" cy="32" r="11.5" fill="none" stroke="var(--b3)" stroke-width="1.6" opacity=".4">
+          <animate attributeName="r" values="6;11.5;6" dur="2.8s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values=".55;0;.55" dur="2.8s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="48" cy="32" r="9" fill="none" stroke="var(--b2)" stroke-width="1.6" opacity=".65">
+          <animate attributeName="r" values="5.5;9;5.5" dur="2.4s" begin=".4s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values=".65;0;.65" dur="2.4s" begin=".4s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="48" cy="32" r="6.5" fill="none" stroke="var(--b1)" stroke-width="1.6" opacity=".9">
+          <animate attributeName="r" values="4.5;6.5;4.5" dur="2s" begin=".8s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values=".9;0;.9" dur="2s" begin=".8s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="48" cy="32" r="2.8" fill="var(--ink)"/>
+      </symbol>
+      <!-- 5 · Ἔψιλον: монограмма ε (капитальная Ɛ: три руки от левой дуги) -->
+      <symbol id="logo-5" viewBox="0 0 96 64">
+        <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+        <g fill="none" stroke="url(#brandUS)" stroke-width="5" stroke-linecap="round">
+          <path d="M42 19C30.5 19 30.5 45 42 45"/>
+          <path d="M35.5 22.5H54"/>
+          <path d="M32.5 32H54"/>
+          <path d="M35.5 41.5H54"/>
+        </g>
+      </symbol>
+      <!-- 6 · ῥοή: поток Гераклита -->
+      <symbol id="logo-6" viewBox="0 0 96 64">
+        <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+        <path d="M48 17.5c9.5 0 15 6 14.6 13.6-.4 7.4-5.4 15.4-14.6 15.4s-14.2-8-14.6-15.4C33 23.5 38.5 17.5 48 17.5Z"
+              fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/>
+        <g clip-path="url(#blobClip)">
+          <path d="M28 27q6-3.5 12 0t12 0t12 0" fill="none" stroke="var(--b1)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="9 5">
+            <animate attributeName="stroke-dashoffset" values="0;-28" dur="2.6s" repeatCount="indefinite"/>
+          </path>
+          <path d="M28 33q6-3.5 12 0t12 0t12 0" fill="none" stroke="var(--b2)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="9 5">
+            <animate attributeName="stroke-dashoffset" values="-28;0" dur="2.6s" repeatCount="indefinite"/>
+          </path>
+          <path d="M28 39q6-3.5 12 0t12 0t12 0" fill="none" stroke="var(--b3)" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="9 5">
+            <animate attributeName="stroke-dashoffset" values="0;-28" dur="2.6s" begin=".35s" repeatCount="indefinite"/>
+          </path>
+        </g>
+      </symbol>
+      <!-- 7 · Λόγος: разделяющая линия -->
+      <symbol id="logo-7" viewBox="0 0 96 64">
+        <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11"/>
+        <clipPath id="topHalf"><rect x="10" y="18" width="76" height="14"/></clipPath>
+        <rect x="10" y="18" width="76" height="28" rx="14" fill="url(#brand)" clip-path="url(#topHalf)"/>
+        <line x1="13" y1="32" x2="83" y2="32" stroke="var(--ink)" stroke-width="1.5"/>
+        <rect x="10" y="18" width="76" height="28" rx="14" fill="none" stroke="var(--capsule)" stroke-width="1.2"/>
+        <circle cx="22" cy="25" r="3.4" fill="rgba(255,255,255,.85)"/>
+      </symbol>
+      <!-- 8 · Σφραγίς: печать на воске -->
+      <symbol id="logo-8" viewBox="0 0 96 64">
+        <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+        <path d="M18 46.5c9-3 51-3 60 0l0 6.5c-9 3.2-51 3.2-60 0Z" fill="#131318" stroke="rgba(255,255,255,.14)" stroke-width="1"/>
+        <path d="M18 46.5c9-3 51-3 60 0" fill="none" stroke="url(#brand)" stroke-width="1.3" opacity=".85"/>
+        <ellipse cx="48" cy="44" rx="15" ry="6" fill="url(#caveglow)" opacity=".55"/>
+        <circle cx="48" cy="30.5" r="8.5" fill="none" stroke="url(#brand)" stroke-width="5"/>
+        <circle cx="48" cy="30.5" r="8.5" fill="none" stroke="url(#sph)" stroke-width="5" opacity=".8"/>
+      </symbol>
+      <!-- 9 · Τετρακτύς: пифагорейская десятка -->
+      <symbol id="logo-9" viewBox="0 0 96 64">
+        <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+        <circle cx="48" cy="21.5" r="2.8" fill="var(--b1)">
+          <animate attributeName="r" values="2.8;3.6;2.8" dur="2.8s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="44.75" cy="28" r="2.8" fill="rgba(255,255,255,.3)"/>
+        <circle cx="51.25" cy="28" r="2.8" fill="var(--b2)">
+          <animate attributeName="r" values="2.8;3.6;2.8" dur="2.8s" begin=".5s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="41.5" cy="34.5" r="2.8" fill="rgba(255,255,255,.3)"/>
+        <circle cx="48" cy="34.5" r="2.8" fill="rgba(255,255,255,.3)"/>
+        <circle cx="54.5" cy="34.5" r="2.8" fill="var(--b3)">
+          <animate attributeName="r" values="2.8;3.6;2.8" dur="2.8s" begin="1s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="38.25" cy="41" r="2.8" fill="rgba(255,255,255,.3)"/>
+        <circle cx="44.75" cy="41" r="2.8" fill="rgba(255,255,255,.3)"/>
+        <circle cx="51.25" cy="41" r="2.8" fill="rgba(255,255,255,.3)"/>
+        <circle cx="57.75" cy="41" r="2.8" fill="var(--b4)">
+          <animate attributeName="r" values="2.8;3.6;2.8" dur="2.8s" begin="1.5s" repeatCount="indefinite"/>
+        </circle>
+      </symbol>
+      <!-- 10 · Ἄνθος: свет из пещеры -->
+      <symbol id="logo-10" viewBox="0 0 96 64">
+        <rect x="10" y="18" width="76" height="28" rx="14" fill="#0d0d11" stroke="var(--capsule)" stroke-width="1.2"/>
+        <clipPath id="archClip"><path d="M36 45.5L36 31A12 12 0 0 1 60 31L60 45.5Z"/></clipPath>
+        <g clip-path="url(#archClip)">
+          <ellipse cx="48" cy="38" rx="18" ry="15" fill="url(#caveglow)" opacity=".95">
+            <animate attributeName="opacity" values=".6;1;.6" dur="3.4s" repeatCount="indefinite"/>
+          </ellipse>
+          <circle cx="48" cy="46.5" r="10.5" fill="url(#brand)">
+            <animateTransform attributeName="transform" type="translate" values="0 0;0 -3.6;0 0" dur="3.4s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="48" cy="46.5" r="10.5" fill="url(#sph)"/>
+        </g>
+        <path d="M36 45.5L36 31A12 12 0 0 1 60 31L60 45.5" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="1.4"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <main class="grid">
+    <article class="card" data-variant="1-sphaira">
+      <h2><span class="gr">Σφέρα</span>Сфера Парменида</h2>
+      <p class="ref">Парменид, фрагмент B8 — «бытие… подобно массе хорошо округлого шара». Идея неподвижна и завершена.</p>
+      <div class="stage"><svg class="hero" viewBox="0 0 96 64"><use href="#logo-1"/></svg></div>
+      <div class="sizes">
+        <svg class="m48" viewBox="0 0 96 64"><use href="#logo-1"/></svg>
+        <svg class="m24" viewBox="0 0 96 64"><use href="#logo-1"/></svg>
+        <svg class="m16" viewBox="0 0 96 64"><use href="#logo-1"/></svg>
+        <span>48 · 24 · 16 px</span>
+      </div>
+      <p class="note">Градиентная сфера в чёрной капсуле; <b>анимация — только дыхание свечения</b>, сама сфера никогда не вращается (бытие неподвижно). Самый строгий и масштабируемый знак.</p>
+    </article>
+
+    <article class="card" data-variant="2-skia">
+      <h2><span class="gr">Σκιὰ</span>Тень и форма</h2>
+      <p class="ref">Платон, «Государство» VII — аллегория пещеры: тень на стене против самой идеи, свет и между ними.</p>
+      <div class="stage"><svg class="hero" viewBox="0 0 96 64"><use href="#logo-2"/></svg></div>
+      <div class="sizes">
+        <svg class="m48" viewBox="0 0 96 64"><use href="#logo-2"/></svg>
+        <svg class="m24" viewBox="0 0 96 64"><use href="#logo-2"/></svg>
+        <svg class="m16" viewBox="0 0 96 64"><use href="#logo-2"/></svg>
+        <span>48 · 24 · 16 px</span>
+      </div>
+      <p class="note">Пунктирная размытая окружность (тень вещи) и чёткий градиентный круг (εἶδος), луч света ведёт от тени к форме. <b>Сюжет = работа агента:</b> шум речи → смысл. Рекомендуется как hero-знак.</p>
+    </article>
+
+    <article class="card" data-variant="3-demiourgos">
+      <h2><span class="gr">Δημιουργός</span>Форма в материи</h2>
+      <p class="ref">«Тимей»: демиург лепит космос; Аристотель — форма, живущая внутри вещи.</p>
+      <div class="stage"><svg class="hero" viewBox="0 0 96 64"><use href="#logo-3"/></svg></div>
+      <div class="sizes">
+        <svg class="m48" viewBox="0 0 96 64"><use href="#logo-3"/></svg>
+        <svg class="m24" viewBox="0 0 96 64"><use href="#logo-3"/></svg>
+        <svg class="m16" viewBox="0 0 96 64"><use href="#logo-3"/></svg>
+        <span>48 · 24 · 16 px</span>
+      </div>
+      <p class="note">Строгий 12-угольник-космос вмещает живой жидкий blob — <b>прямой наследник текущего орба</b>. Хороший «мост», если хотим сохранить персонажа в логотипе.</p>
+    </article>
+
+    <article class="card" data-variant="4-nous">
+      <h2><span class="gr">Νοῦς</span>Неподвижный двигатель</h2>
+      <p class="ref">Аристотель, «Метафизика» Λ — перводвигатель движет всё, сам оставаясь точкой покоя.</p>
+      <div class="stage"><svg class="hero" viewBox="0 0 96 64"><use href="#logo-4"/></svg></div>
+      <div class="sizes">
+        <svg class="m48" viewBox="0 0 96 64"><use href="#logo-4"/></svg>
+        <svg class="m24" viewBox="0 0 96 64"><use href="#logo-4"/></svg>
+        <svg class="m16" viewBox="0 0 96 64"><use href="#logo-4"/></svg>
+        <span>48 · 24 · 16 px</span>
+      </div>
+      <p class="note">Белая точка покоя и три кольца брендовых цветов, расходящиеся, как круги gwaves микрофона. <b>Самый звуковой</b> концепт — механика уже есть в приложении.</p>
+    </article>
+
+    <article class="card" data-variant="5-epsilon">
+      <h2><span class="gr">Ἔψιλον</span>Монограмма ε</h2>
+      <p class="ref">Первая буква εἶδος; у пифагорейцев ε — знак истинной веры. Одна линия = одна волна.</p>
+      <div class="stage"><svg class="hero" viewBox="0 0 96 64"><use href="#logo-5"/></svg></div>
+      <div class="sizes">
+        <svg class="m48" viewBox="0 0 96 64"><use href="#logo-5"/></svg>
+        <svg class="m24" viewBox="0 0 96 64"><use href="#logo-5"/></svg>
+        <svg class="m16" viewBox="0 0 96 64"><use href="#logo-5"/></svg>
+        <span>48 · 24 · 16 px</span>
+      </div>
+      <p class="note">Кастомный monoline-глиф с градиентом вдоль штриха; линия читается и как ε, и как звуковая волна. <b>Лучшая работа в 16px</b> — рекомендуется как иконка окна, favicon и трей.</p>
+    </article>
+
+    <article class="card" data-variant="6-rhoe">
+      <h2><span class="gr">ῥοή</span>Поток Гераклита</h2>
+      <p class="ref">Гераклит, фрагмент B12 — «на входящих в одни и те же реки набегают то одни, то другие воды».</p>
+      <div class="stage"><svg class="hero" viewBox="0 0 96 64"><use href="#logo-6"/></svg></div>
+      <div class="sizes">
+        <svg class="m48" viewBox="0 0 96 64"><use href="#logo-6"/></svg>
+        <svg class="m24" viewBox="0 0 96 64"><use href="#logo-6"/></svg>
+        <svg class="m16" viewBox="0 0 96 64"><use href="#logo-6"/></svg>
+        <span>48 · 24 · 16 px</span>
+      </div>
+      <p class="note">Жидкий контур-капля (позу берёт у орба) с тремя потоками брендовых цветов внутри; потоки дрейфуют в противоход. Самое буквальное воплощение «жидкого» бренд-языка.</p>
+    </article>
+
+    <article class="card" data-variant="7-logos">
+      <h2><span class="gr">Λόγος μέτριος</span>Разделённая линия</h2>
+      <p class="ref">Платон, «Государство» 509d — линия делит мир на видимое и умопостигаемое.</p>
+      <div class="stage"><svg class="hero" viewBox="0 0 96 64"><use href="#logo-7"/></svg></div>
+      <div class="sizes">
+        <svg class="m48" viewBox="0 0 96 64"><use href="#logo-7"/></svg>
+        <svg class="m24" viewBox="0 0 96 64"><use href="#logo-7"/></svg>
+        <svg class="m16" viewBox="0 0 96 64"><use href="#logo-7"/></svg>
+        <span>48 · 24 · 16 px</span>
+      </div>
+      <p class="note">Капсула, разрезанная линией: верх — градиентный мир идей, низ — чёрный мир вещей, точка — зритель на границе. Знак работает <b>самим силуэтом приложения</b> (Dynamic Island).</p>
+    </article>
+
+    <article class="card" data-variant="8-sfragis">
+      <h2><span class="gr">Σφραγίς</span>Печать на воске</h2>
+      <p class="ref">Аристотель, «О душе» II.12 — душа принимает форму без материи, «как воск — отпечаток перстня».</p>
+      <div class="stage"><svg class="hero" viewBox="0 0 96 64"><use href="#logo-8"/></svg></div>
+      <div class="sizes">
+        <svg class="m48" viewBox="0 0 96 64"><use href="#logo-8"/></svg>
+        <svg class="m24" viewBox="0 0 96 64"><use href="#logo-8"/></svg>
+        <svg class="m16" viewBox="0 0 96 64"><use href="#logo-8"/></svg>
+        <span>48 · 24 · 16 px</span>
+      </div>
+      <p class="note">Градиентный перстень парит над жидкой поверхностью с подсветкой; при наведении карточки — «оттиск» вниз. <b>Метафора действия агента:</b> принять форму голоса и передать её машине.</p>
+    </article>
+
+    <article class="card" data-variant="9-tetraktys">
+      <h2><span class="gr">Τετρακτύς</span>Пифагорейская десятка</h2>
+      <p class="ref">Тетрактис 1+2+3+4 = 10 — «основание вечной природы мира» у пифагорейцев.</p>
+      <div class="stage"><svg class="hero" viewBox="0 0 96 64"><use href="#logo-9"/></svg></div>
+      <div class="sizes">
+        <svg class="m48" viewBox="0 0 96 64"><use href="#logo-9"/></svg>
+        <svg class="m24" viewBox="0 0 96 64"><use href="#logo-9"/></svg>
+        <svg class="m16" viewBox="0 0 96 64"><use href="#logo-9"/></svg>
+        <span>48 · 24 · 16 px</span>
+      </div>
+      <p class="note">Десять точек треугольником: четыре угловые — брендовые (как четыре цвета в gwaves и кольце распознавания), пульс по басам. Десятка перекликается с «десятью концептами» — и с точками-подами Dynamic Island.</p>
+    </article>
+
+    <article class="card" data-variant="10-anthos">
+      <h2><span class="gr">Ἄνθος</span>Свет из пещеры</h2>
+      <p class="ref">Платон, «Государство» — выход из пещеры: первый взгляд на источник света.</p>
+      <div class="stage"><svg class="hero" viewBox="0 0 96 64"><use href="#logo-10"/></svg></div>
+      <div class="sizes">
+        <svg class="m48" viewBox="0 0 96 64"><use href="#logo-10"/></svg>
+        <svg class="m24" viewBox="0 0 96 64"><use href="#logo-10"/></svg>
+        <svg class="m16" viewBox="0 0 96 64"><use href="#logo-10"/></svg>
+        <span>48 · 24 · 16 px</span>
+      </div>
+      <p class="note">Арка-«пещера» = силуэт висящей капсулы Dynamic Island; изнутри поднимается градиентный круг с живым свечением. Готовая система состояний: покой — полускрыт, слушаю — полный выход.</p>
+    </article>
+  </main>
+
+  <section class="final">
+    <h2>Рекомендация</h2>
+    <p><b>Монограмма №5 (Ἔψιλον)</b> — компактный знак: иконка окна, favicon, трей, остров. Читается с 16px, прямая отсылка к εἶδος, линия дублирует звуковую волну.</p>
+    <p><b>Сюжетный знак №2 (Σκιὰ)</b> — hero-логотип экрана приветствия и About: «от тени к форме» — та же работа, что делает агент: шум → смысл.</p>
+    <p>Пара живёт как одна система: монограмма = подпись, сюжет = витрина. Цвета во всех знаках — только четыре брендовых + --ink/--mut, никакого постороннего свечения.</p>
+  </section>
+
+  <footer>Эйдос · ветка re-design-ui · векторные концепты, файл самодостаточен (file://) · анимации уважают prefers-reduced-motion</footer>
+</div>
+<script>
+  // Полная статика для reduced-motion: SMIL-анимации внутри символов ставятся на паузу.
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    document.querySelectorAll("svg").forEach((s) => { try { s.pauseAnimations(); } catch (e) { /* */ } });
+  }
+</script>
+</body>
+</html>
