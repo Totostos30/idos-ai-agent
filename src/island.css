@@ -669,3 +669,7 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .widget.mixer input[type="range"] { width:100%; min-width:0; box-sizing:border-box; }
 .capsule-detail .ag-row { flex-wrap:wrap; }
 .capsule-detail .ag-row .t { white-space:normal; overflow-wrap:anywhere; flex-basis:120px; }
+
+/* Share spare wing width between equal hit-area insets, keeping the pinned cell centered. */
+.region-capsule .capsule-wing > .island-cell { flex:1 0 auto; width:auto; justify-content:center; }
+.region-capsule .capsule-wing > .island-cell > .capsule-action { flex:1 0 auto; width:100%; justify-content:center; }
