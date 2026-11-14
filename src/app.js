@@ -515,7 +515,7 @@ function weatherCityBox(cfg) {
     toast(t("Погода: ") + (r.city || city) + ", " + Math.round(r.temp) + "°", "ok");
     renderSettings();
   } }, t("Сохранить"));
-  return el("section", { class: "box" }, el("h3", {}, t("Погода")),
+  return el("section", { class: "box settings-weather" }, el("h3", {}, t("Погода")),
     el("p", { class: "mut small" }, t("Укажите город, чтобы видеть погоду на островке")),
     el("div", { class: "row2" }, input, btn));
 }
@@ -547,9 +547,8 @@ async function renderSettings() {
   if (settingsMode === "basic") {
     main.replaceChildren(el("div", { class: "page settings-page" }, header,
       el("div", { class: "settings-overview" },
-        el("div", { class: "settings-column" }, themeBox(cfg), weatherCityBox(cfg)),
-        el("div", { class: "settings-column" }, basicIslandBox(cfg), langBox())),
-      voiceBox()));
+        themeBox(cfg), langBox(), weatherCityBox(cfg)),
+      voiceBox(), basicIslandBox(cfg)));
     return;
   }
 
@@ -967,8 +966,8 @@ function drawVoices(box, info, note) {
       el("button", { class: "btn ghost", onclick: () => core.try("voice.say", { text: t("Проверка голоса. Раз, два, три.") }) }, t("Прослушать")),
       el("button", { class: "btn ghost", onclick: () => core.try("voice.stop") }, t("Стоп")),
       info.engine === "off" ? el("span", { class: "tag warn" }, t("голос выключен")) : el("button", { class: "btn ghost", onclick: () => pick("off", "", null) }, t("Выключить голос"))),
-    status, ...groups, box.dataset.advanced === "true" ? lexBox : null,
-    box.dataset.advanced === "true" ? el("div", { class: "mut small" }, t("Можно и голосом: «Эйдос, говори мужским голосом», «включи голос Байя», «говори помедленнее», «произноси ГПУ как видеокарта».")) : null);
+    status, ...groups, ...(box.dataset.advanced === "true" ? [lexBox,
+      el("div", { class: "mut small" }, t("Можно и голосом: «Эйдос, говори мужским голосом», «включи голос Байя», «говори помедленнее», «произноси ГПУ как видеокарта»."))] : []));
 }
 
 function showSelftest(r) {
