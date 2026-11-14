@@ -1,5 +1,5 @@
 // Каталог настраиваемых частей островка. Общий для островка (режим «✎ Настроить») и окна настроек.
-// Хранение: island.parts.<ключ> = false — элемент скрыт (по умолчанию всё включено),
+// Хранение: island.parts.<ключ> = true / false — явное состояние элемента; DEFAULT_OFF содержит скрытые по умолчанию,
 // island.hidden_tabs / island.hidden_tools — списки скрытых вкладок панели и кнопок инструментов.
 
 export const PARTS = [
@@ -76,7 +76,7 @@ const LEGACY = { battery: "show_battery", weather: "show_weather", lyrics: "lyri
 
 // новые блоки по умолчанию выключены («По умолчанию все иконки и дополнительные панели отключены»)
 export const DEFAULT_OFF = new Set(["load", "focus", "event", "downloads", "ticker", "sleep", "coreinfo",
-  "w_days", "w_agenda", "w_sysmon", "w_downloads", "w_mixer", "w_note", "w_health"]);
+  "w_days", "w_agenda", "w_sysmon", "w_downloads", "w_mixer", "w_note", "w_health", "obs"]);
 
 export function partOn(island, key) {
   const I = island || {};

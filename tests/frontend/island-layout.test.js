@@ -59,3 +59,23 @@ test('expanded panel sizes clamp corrupt data and respect small viewports',async
  assert.deepEqual(panelSize({w:9999,h:9999},{width:800,height:600}),{w:768,h:568});
  assert.deepEqual(panelSize({w:100,h:100},{width:320,height:240}),{w:288,h:208});
 });
+
+test('default tools form a compact balanced layout, preserve saved positions and keep OBS optional', async()=>{
+ const {partOn, RESET_VALUES}=await import('../../src/parts.js');
+ const tools=entries('tools');
+ const keys=tools.filter(item=>item.kind==='tool').map(item=>item.key);
+ const pos=placements({},'tools',keys);
+ verify(pos);
+ assert.equal(Math.max(...Object.values(pos).map(p=>p.y+p.h)),8);
+ assert.deepEqual(pos.note,{x:0,y:6,w:6,h:2});
+ assert.deepEqual(pos.timer,{x:6,y:6,w:6,h:2});
+ assert.equal(Boolean(partOn({},'obs')),false);
+ assert.equal(Boolean(partOn({parts:RESET_VALUES['island.parts']},'obs')),false);
+ assert.equal(partOn({parts:{obs:true}},'obs'),true);
+ assert.equal(Boolean(partOn({parts:{obs:false}},'obs')),false);
+ const saved={shot_area:{x:8,y:3,w:4,h:4},note:{x:2,y:0,w:6,h:3}};
+ const actual=placements({visual_layout:{tools:saved}},'tools',keys);
+ assert.deepEqual(actual.shot_area,saved.shot_area);
+ assert.deepEqual(actual.note,saved.note);
+ verify(actual);
+});

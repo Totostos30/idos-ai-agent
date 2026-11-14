@@ -28,7 +28,8 @@ export function defaultSize(region, key) {
   if (region === 'header') return {w:key.startsWith('tab_')?2:1,h:1};
   if (region === 'capsule') return {w:['clock','battery_percent','weather','layout','caps'].includes(key)?2: key === 'orb' || key === 'battery' || key === 'vpn' || key === 'privacy' ? 1 : 3,h:1};
   if (region === 'music' || region === 'activity') return {w:['music_cover','music_eq','agent_stop','mic_meter'].includes(key)?2:6,h:1};
-  return {w:region === 'tools'?4:['p_player','w_days','w_agenda','w_mixer','w_sysmon','w_downloads','pa_input','pa_reply'].includes(key)?12:6,h:key==='p_player'?4:region==='tools'?3:2};
+  if (region === 'tools') return key === 'obs' ? {w:6,h:3} : ['note','timer'].includes(key) ? {w:6,h:2} : {w:3,h:3};
+  return {w:['p_player','w_days','w_agenda','w_mixer','w_sysmon','w_downloads','pa_input','pa_reply'].includes(key)?12:6,h:key==='p_player'?4:2};
 }
 export function minimumSize(region,key) {
   if(region==='tools')return key==='obs'?{w:6,h:3}:{w:1,h:2};
