@@ -77,19 +77,31 @@ body.view-app .empty { color: var(--mut); text-align: center; padding: 26px; }
 .switch i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.3s var(--spring); }
 .switch input:checked + i { background: var(--ok); }
 .switch input:checked + i::after { transform: translateX(16px); }
+/* Настройки используют акцент как остальные выбранные элементы интерфейса. */
+.settings-page .switch i::after { background: var(--fg); }
+.settings-page .switch input:checked + i { background: var(--accent); }
+.settings-page .switch input:checked + i::after { background: var(--accent-contrast); }
+.settings-page .switch input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
+.settings-page input[type="range"] { appearance: none; -webkit-appearance: none; height: 20px; background: transparent; cursor: pointer; }
+.settings-page input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: var(--r-round); background: var(--fill-2); }
+.settings-page input[type="range"]::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5px;
+  border: 0; border-radius: 50%; background: var(--accent); }
+.settings-page input[type="range"]::-moz-range-track { height: 4px; border-radius: var(--r-round); background: var(--fill-2); }
+.settings-page input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: var(--accent); }
 .setrow { display: flex; align-items: center; gap: 12px; padding: 5px 0; border-top: 1px solid var(--line); }
 .setrow:first-of-type { border-top: 0; }
 .setrow .k { width: clamp(150px, 32%, 240px); flex: none; font-size: 12.5px; color: var(--mut); overflow: hidden; text-overflow: ellipsis; }
 .setrow > .field:not(.small) { flex: 1; }
 .wave-intro { margin: 0 0 10px; }
 .wave-subhead { margin: 14px 0 4px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--mut); text-transform: uppercase; letter-spacing: .04em; }
+.wave-setting { flex-wrap: wrap; row-gap: 2px; }
 .wave-range-wrap { flex: 1; min-width: 150px; display: flex; align-items: center; gap: 10px; }
 .wave-range { flex: 1; min-width: 80px; accent-color: var(--accent); }
 .wave-value { min-width: 46px; text-align: right; }
 .wave-color-wrap { flex: 1; display: flex; align-items: center; gap: 8px; }
 .wave-color { width: 42px; height: 32px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); }
 .wave-color-reset { padding: 5px 9px; font-size: 11px; }
-.wave-hint { flex: 1 1 100%; margin-left: calc(clamp(150px, 32%, 240px) + 12px); }
+.wave-hint { flex: 1 1 calc(100% - clamp(150px, 32%, 240px) - 12px); margin-left: calc(clamp(150px, 32%, 240px) + 12px); }
 .toolgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-top: 14px; }
 .tool { padding: 12px 14px; border-radius: 18px; background: var(--surface-1); box-shadow: inset 0 0 0 1px var(--line); }
 .tool.off { opacity: 0.55; }
@@ -161,21 +173,22 @@ button.icon.mic .gmic-wrap { flex: none; }
 
 /* ---------- voice picker ---------- */
 .voicebox .vcontrols { align-items: center; gap: 10px; flex-wrap: wrap; }
-.voicebox .vspeed { width: 180px; accent-color: var(--accent, #0a84ff); }
+.voicebox .vspeed { width: 180px; accent-color: var(--accent); }
 .voicebox .vstatus { margin: 8px 0 4px; min-height: 18px; }
 .vgroup { margin-top: 12px; padding: 10px 12px; border-radius: 16px; box-shadow: inset 0 0 0 1px var(--line); }
-.vgroup.active { box-shadow: inset 0 0 0 1.5px var(--accent, #0a84ff); }
+.vgroup.active { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .vgroup.off { opacity: .75; }
 .vhead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
-.vreason { display: flex; align-items: center; gap: 10px; color: #ff9f0a; margin-bottom: 8px; }
+.vreason { display: flex; align-items: center; gap: 10px; color: var(--warn); margin-bottom: 8px; }
 .vcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .vcard { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 9px 12px;
   border: 0; border-radius: 14px; background: var(--fill-1); color: inherit; cursor: pointer;
   transition: transform .18s cubic-bezier(.2,.8,.2,1), background .18s; }
 .vcard:hover:not([disabled]) { background: var(--fill-2); transform: translateY(-1px); }
 .vcard[disabled] { cursor: not-allowed; opacity: .5; }
-.vcard.on { background: var(--accent, #0a84ff); color: #fff; }
-.vcard.on .mut { color: rgba(255,255,255,.8); }
+.vcard.on, .vcard.on:hover:not([disabled]) { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--fg);
+  box-shadow: inset 0 0 0 1.5px var(--accent); }
+.vcard.on .mut { color: var(--mut); }
 .vcard.busy { animation: vpulse 1s ease-in-out infinite; }
 @keyframes vpulse { 50% { opacity: .55; } }
 .stepline .ms.live { color: var(--accent, #0a84ff); }
@@ -228,11 +241,9 @@ button:active > .gmic-wrap .gmic { transform: scale(.86); }
 /* pronunciation dictionary */
 .vlexbox { margin-top: 14px; display: grid; gap: 8px; }
 .vlexbox h4 { margin: 0; font-size: 13px; }
-.vlex { width: 100%; box-sizing: border-box; min-height: 96px; resize: vertical; font: 12px/1.5 ui-monospace, Consolas, monospace;
-  background: var(--fill-1); color: inherit; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 8px 10px; }
+.vlex { min-height: 96px; font: 12px/1.5 ui-monospace, Consolas, monospace; }
 .vprobe-row { flex-wrap: wrap; }
-.vprobe { flex: 1 1 260px; min-width: 0; background: var(--fill-1); color: inherit; border: 1px solid rgba(255,255,255,.1);
-  border-radius: 10px; padding: 7px 10px; }
+.vprobe-row > .vprobe { flex: 1 1 260px; min-width: 0; }
 .vheard { white-space: pre-wrap; }
 
 
@@ -545,10 +556,11 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .var-pick > span:last-child { white-space: nowrap; line-height: 1.2; }
 .var-letter { display: inline-grid; place-items: center; width: 34px; height: 40px;
   font: 700 23px Georgia, "Times New Roman", serif; cursor: pointer; user-select: none;
-  transition: transform 0.15s var(--spring), text-shadow 0.15s; }
-.var-letter:hover { transform: scale(1.14); text-shadow: 0 0 14px currentColor; }
+  filter: drop-shadow(0 0 1px var(--fg)); transition: transform 0.15s var(--spring); }
+.var-pick:hover .var-letter { transform: scale(1.14); }
 .var-letter:active { transform: scale(0.96); }
-.var-picker { position: absolute; inset: auto; width: 1px; height: 1px; opacity: 0; pointer-events: none; border: 0; }
+.var-pick:focus-within .var-letter { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-s); }
+.var-picker { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 34px; height: 40px; opacity: 0; cursor: pointer; border: 0; }
 
 /* найденная настройка подсвечивается (ревью U7) */
 .setrow.hl { background: color-mix(in srgb, var(--accent) 7%, transparent); box-shadow: inset 2px 0 0 var(--accent); }

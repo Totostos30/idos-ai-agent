@@ -549,7 +549,7 @@ async function renderSettings() {
   };
   filter.addEventListener("input", draw);
   draw();
-  main.replaceChildren(el("div", { class: "page" },
+  main.replaceChildren(el("div", { class: "page settings-page" },
     grEyebrow(TABS[5]), el("h1", {}, t("Настройки")),
     langBox(),
     themeBox(cfg),
@@ -574,7 +574,9 @@ function themeBox(cfg) {
     el("button", { class: "seg-btn" + (cur.preset === id ? " on" : ""), "data-preset": id, title: label,
       onclick: async (e) => {
         seg.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === e.currentTarget));
+        cur.preset = id;
         applyTheme({ preset: id, accent: cur.accent });
+        box.querySelector(".custom-themes textarea")?.dispatchEvent(new Event("input"));
         const r = await core.try("settings.set", { key: "theme", value: { preset: id, accent: cur.accent } });
         if (r && r.error) toast(r.error, "error");
       } }, iconNode(ic, 14), t(label))));
@@ -586,7 +588,9 @@ function themeBox(cfg) {
         title: id ? t(a.label) : t("Акцент темы"), "aria-label": id ? t(a.label) : t("Акцент темы"), style: id ? { background: hex } : {},
         onclick: async () => {
           swatches.querySelectorAll(".swatch").forEach((b) => b.classList.toggle("on", b === sw));
+          cur.accent = id;
           applyTheme({ preset: cur.preset, accent: id });
+          box.querySelector(".custom-themes textarea")?.dispatchEvent(new Event("input"));
           const r = await core.try("settings.set", { key: "theme", value: { preset: cur.preset, accent: id } });
           if (r && r.error) toast(r.error, "error");
         } }, id ? "" : "A");
@@ -664,7 +668,7 @@ function customThemesUI(cur) {
     editor.value = JSON.stringify(payload, null, 2);
   };
   const pickers = el("div", { class: "var-pickers" }, PICKS.map(([key, letter, label]) => {
-    const input = el("input", { class: "var-picker", type: "color", title: t(label), "aria-label": t(label), tabindex: "-1" });
+    const input = el("input", { class: "var-picker", type: "color", title: t(label), "aria-label": t(label) });
     const letterEl = el("span", { class: "var-letter", title: t(label) + " · " + key }, letter);
     const paint = () => {
       let vars = {};
@@ -892,9 +896,9 @@ function drawVoices(box, info, note) {
     await core.try("voice.apply", { rate: Number(speed.value), sample: true, text: t("Так я говорю с новой скоростью.") }, 600000);
   });
   const groups = info.engines.map((group) => voiceGroup(info, group, cur, pick, install));
-  const lexText = el("textarea", { class: "vlex", rows: 5, spellcheck: false, placeholder: t("ГПУ = видеокарта\nKubernetes = кубернетес") });
+  const lexText = el("textarea", { class: "field mono vlex", rows: 5, spellcheck: false, placeholder: t("ГПУ = видеокарта\nKubernetes = кубернетес") });
   lexText.value = Object.entries(info.lexicon || {}).map(([k, v]) => k + " = " + v).join("\n");
-  const probe = el("input", { class: "vprobe", value: t("Давление 760 мм рт. ст., ветер 5 м/с, NVIDIA RTX 4050, т.е. всё ок.") });
+  const probe = el("input", { class: "field vprobe", value: t("Давление 760 мм рт. ст., ветер 5 м/с, NVIDIA RTX 4050, т.е. всё ок.") });
   const heard = el("div", { class: "mut small vheard" });
   const lexBox = el("div", { class: "vlexbox" },
     el("h4", {}, t("Словарь произношения")),
