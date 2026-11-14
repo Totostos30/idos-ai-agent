@@ -98,7 +98,7 @@ export function gridRegion(I, region, nodes) {
   const pos=placements(I,region,live.map(([key])=>key));
   const grid=el('div',{class:'island-grid region-'+region,'data-grid-region':region});
 
-  if(region==='header')live.sort(([a],[b])=>pos[a].x-pos[b].x);
+  if(region==='header')live.sort(([a],[b])=>(I?.visual_layout?.header?.[a]?.x??pos[a].x)-(I?.visual_layout?.header?.[b]?.x??pos[b].x));
   for(const [key,node] of live) {
     const cell=el('div',{class:'island-cell','data-grid-key':key},node);
     if(region!=='capsule')position(cell,pos[key]);

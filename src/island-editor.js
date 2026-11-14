@@ -25,7 +25,7 @@ export function islandEditor(cfg) {
     const track=liveData.media?.track_id;
     if(liveData.media?.active)core.try('media.lyrics',{},30000).then(data=>{
       if(!data||data.error||track!==liveData.media?.track_id||!box.isConnected)return;
-      liveData.lyricsData=data;if(!drag&&!busy)draw();
+      liveData.lyricsData=data;if(!drag&&!busy&&!inspector.contains(document.activeElement))draw();
     });
   };
   const body=el('div'), inspector=el('div',{class:'island-inspector'}), status=el('span',{'aria-live':'polite',class:'mut small'});
@@ -95,7 +95,7 @@ export function islandEditor(cfg) {
       // Rebuild both wings during the gesture, so insertion next to the pinned block is exact.
       stage.replaceChildren(...nodes);
       arrangeCapsule(stage,{...cfg.island,visual_layout:{capsule:order}});
-      for(const [n,x] of old){const dx=x-n.getBoundingClientRect().left;if(dx)n.animate([{transform:`translateX(${dx}px)`},{transform:'none'}],{duration:160,easing:'ease-out'});}
+      for(const [n,x] of old){const dx=x-n.getBoundingClientRect().left;if(dx&&!matchMedia('(prefers-reduced-motion: reduce)').matches)n.animate([{transform:`translateX(${dx}px)`},{transform:'none'}],{duration:160,easing:'ease-out'});}
     };
     const cleanup=()=>{ghost.remove();document.removeEventListener('pointermove',update);document.removeEventListener('pointerup',finish);document.removeEventListener('pointercancel',cancel);document.removeEventListener('keydown',escape);drag=null;};
     const cancel=()=>{cleanup();draw();};
@@ -110,12 +110,35 @@ export function islandEditor(cfg) {
     };
     drag={cancel};document.addEventListener('pointermove',update);document.addEventListener('pointerup',finish,{once:true});document.addEventListener('pointercancel',cancel,{once:true});document.addEventListener('keydown',escape);
   };
+  const reorderHeader=(key,index,add=false)=>{
+    const keys=current().map(i=>i.key).sort((a,b)=>(cfg.island?.visual_layout?.header?.[a]?.x||0)-(cfg.island?.visual_layout?.header?.[b]?.x||0)).filter(k=>k!==key);
+    keys.splice(Math.max(0,Math.min(keys.length,index)),0,key);
+    let x=0;const layout=Object.fromEntries(keys.map(k=>{const w=k.startsWith('tab_')?2:1;const p={x,y:0,w,h:1};x+=w;return [k,p];}));
+    selected=key;
+    save({'island.visual_layout.header':layout,...(add?enable(entries('header').find(i=>i.key===key),true):{})});
+  };
+  const headerPointer=(event,key,add)=>{
+    if(busy||event.button!==0)return;
+    event.preventDefault();selected=key;
+    const stage=body.querySelector('.editor-grid'),ghost=el('div',{class:'editor-drag-ghost'},t(entries('header').find(i=>i.key===key).label));
+    const index=e=>[...stage.querySelectorAll('[data-editor-key]')].filter(n=>n.dataset.editorKey!==key).filter(n=>e.clientX>n.getBoundingClientRect().left+n.getBoundingClientRect().width/2).length;
+    let moved=false;
+    const update=e=>{if(!moved&&Math.hypot(e.clientX-event.clientX,e.clientY-event.clientY)<5)return;moved=true;if(!ghost.isConnected)document.body.append(ghost);ghost.style.left=e.clientX+12+'px';ghost.style.top=e.clientY+12+'px';};
+    const cleanup=()=>{ghost.remove();document.removeEventListener('pointermove',update);document.removeEventListener('pointerup',finish);document.removeEventListener('pointercancel',cancel);document.removeEventListener('keydown',escape);drag=null;};
+    const cancel=()=>{cleanup();draw();};
+    const escape=e=>{if(e.key==='Escape')cancel();};
+    const finish=e=>{const r=stage.getBoundingClientRect();cleanup();if(!moved){if(add)reorderHeader(key,current().length,true);else draw();}else if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top-20&&e.clientY<=r.bottom+20)reorderHeader(key,index(e),add);else draw();};
+    drag={cancel};document.addEventListener('pointermove',update);document.addEventListener('pointerup',finish,{once:true});document.addEventListener('pointercancel',cancel,{once:true});document.addEventListener('keydown',escape);
+  };
   const pointer=(event,key,resize=false,add=false)=>{
     if(region==='capsule'){capsulePointer(event,key,add);return;}
+    if(region==='header'){headerPointer(event,key,add);return;}
     if(busy||event.button!==0)return;
     event.preventDefault();selected=key;
     const stage=body.querySelector('.editor-grid'), rect=stage.getBoundingClientRect();
-    const cell=region==='capsule'?36:(rect.width+8)/COLS,row=region==='tools'?32:region==='capsule'||region==='header'?44:56;
+    const style=getComputedStyle(stage),gap=parseFloat(style.columnGap)||8;
+    const cell=(stage.clientWidth+gap)/COLS,row=(parseFloat(style.gridAutoRows)||48)+(parseFloat(style.rowGap)||8);
+    const coordinates=e=>({x:Math.floor((e.clientX-stage.getBoundingClientRect().left+stage.scrollLeft)/cell),y:Math.floor((e.clientY-stage.getBoundingClientRect().top+stage.scrollTop)/row)});
     const pos=placements(cfg.island,region,[...current().map(i=>i.key),...(add?[key]:[])])[key];
     const startX=event.clientX,startY=event.clientY;
     const ghost=el('div',{class:'editor-drag-ghost'},t(entries(region).find(i=>i.key===key).label));document.body.append(ghost);
@@ -127,7 +150,7 @@ export function islandEditor(cfg) {
       marker.hidden=!inside;if(!inside)return;
       const w=resize?Math.max(1,Math.min(COLS,pos.w+Math.round((e.clientX-startX)/cell))):pos.w;
       const h=resize?Math.max(1,Math.min(8,pos.h+Math.round((e.clientY-startY)/row))):pos.h;
-      const target={x:resize?pos.x:Math.max(0,Math.min(COLS-w,Math.floor((e.clientX-stage.getBoundingClientRect().left)/cell))),y:resize?pos.y:Math.max(0,Math.floor((e.clientY-stage.getBoundingClientRect().top)/row)),w,h};
+      const target={x:resize?pos.x:Math.max(0,Math.min(COLS-w,coordinates(e).x)),y:resize?pos.y:Math.max(0,coordinates(e).y),w,h};
       const keys=[key,...current().map(i=>i.key).filter(k=>k!==key)];
       const original=placements(cfg.island,region,keys);
       const layout={[key]:target,...Object.fromEntries(Object.entries(original).filter(([k])=>k!==key))};
@@ -138,7 +161,7 @@ export function islandEditor(cfg) {
         if(node.dataset.editorKey===key){node.style.opacity='.25';continue;}
         const before=node.getBoundingClientRect();position(node,p);const after=node.getBoundingClientRect();
         const dx=before.left-after.left,dy=before.top-after.top;
-        if(dx||dy)node.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:'none'}],{duration:160,easing:'ease-out'});
+        if((dx||dy)&&!matchMedia('(prefers-reduced-motion: reduce)').matches)node.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:'none'}],{duration:160,easing:'ease-out'});
       }
     };update(event);
     drag={cancel:()=>{ghost.remove();marker.remove();document.removeEventListener('pointermove',update);document.removeEventListener('pointerup',finish);document.removeEventListener('keydown',escape);document.removeEventListener('pointercancel',cancel);}};
@@ -150,7 +173,7 @@ export function islandEditor(cfg) {
       const dropRect=stage.getBoundingClientRect();
       if(e.clientX<dropRect.left||e.clientX>dropRect.right||e.clientY<dropRect.top||e.clientY>dropRect.bottom){draw();return;}
       move(key,resize?{w:pos.w+Math.round((e.clientX-startX)/cell),h:pos.h+Math.round((e.clientY-startY)/row)}:
-        {x:Math.floor((e.clientX-stage.getBoundingClientRect().left)/cell),y:Math.floor((e.clientY-stage.getBoundingClientRect().top)/row)},add);
+        {x:coordinates(e).x,y:coordinates(e).y},add);
     };
     document.addEventListener('pointermove',update);document.addEventListener('pointerup',finish,{once:true});document.addEventListener('keydown',escape);document.addEventListener('pointercancel',cancel,{once:true});
   };
@@ -159,7 +182,7 @@ export function islandEditor(cfg) {
     inspector.replaceChildren();if(!item){inspector.append(el('span',{class:'mut small'},t('Выберите блок на макете')));return;}
     const p=placements(cfg.island,region,current().map(i=>i.key))[item.key];
     inspector.append(el('b',{},t(item.label)));
-    for(const [key,label,max] of (region==='capsule'?[]:[['x','Колонка',COLS-p.w],['y','Строка',40],['w','Ширина',COLS],['h','Высота',8]])){
+    for(const [key,label,max] of (region==='capsule'||region==='header'?[]:[['x','Колонка',COLS-p.w],['y','Строка',40],['w','Ширина',COLS],['h','Высота',8]])){
       const input=el('input',{class:'field small',type:'number',min:key==='x'||key==='y'?0:minimumSize(region,item.key)[key],max,value:p[key],'aria-label':t(label)});
       input.onchange=()=>{const value=Number(input.value);if(Number.isFinite(value))move(item.key,{[key]:Math.round(value)});};
       inspector.append(el('label',{},el('span',{class:'mut small'},t(label)),input));
@@ -174,6 +197,11 @@ export function islandEditor(cfg) {
     inspector.append(el('button',{class:'btn ghost',type:'button',disabled:last,onclick:()=>save(enable(item,false))},t('Убрать с островка')));
   };
   const draw=()=>{
+    const focused=box.contains(document.activeElement)?document.activeElement:null;
+    const focusKey=focused?.closest('[data-editor-key]')?.dataset.editorKey;
+    const focusLabel=focused?.getAttribute('aria-label');
+    const stageScroll=body.querySelector('.editor-grid');
+    const stageOffset=renderedRegion===region&&stageScroll?[stageScroll.scrollLeft,stageScroll.scrollTop]:[0,0];
     const previousScroll=body.querySelector('.editor-scroll');
     if(previousScroll)scrollPositions[renderedRegion]=[previousScroll.scrollLeft,previousScroll.scrollTop];
     renderedRegion=region;
@@ -188,11 +216,11 @@ export function islandEditor(cfg) {
     for(const item of list){
       const node=el('div',{class:'island-cell editor-cell'+(selected===item.key?' selected':''),tabindex:'0',role:'group','aria-label':t(item.label),title:t(item.label),'data-editor-key':item.key,
         onpointerdown:e=>pointer(e,item.key),onkeydown:e=>{
-          if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();selected=item.key;const p=pos[item.key];if(region==='capsule'&&(e.shiftKey||e.key==='ArrowUp'||e.key==='ArrowDown'))return;const dx=e.key==='ArrowLeft'?-1:e.key==='ArrowRight'?1:0,dy=e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0;move(item.key,e.shiftKey?{w:p.w+dx,h:p.h+dy}:{x:p.x+dx,y:p.y+dy});}
+          if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();selected=item.key;const p=pos[item.key];if(['capsule','header'].includes(region)&&(e.shiftKey||e.key==='ArrowUp'||e.key==='ArrowDown'))return;if(region==='header'){const keys=[...grid.querySelectorAll('[data-editor-key]')].map(n=>n.dataset.editorKey);reorderHeader(item.key,keys.indexOf(item.key)+(e.key==='ArrowLeft'?-1:1));return;}const dx=e.key==='ArrowLeft'?-1:e.key==='ArrowRight'?1:0,dy=e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0;move(item.key,e.shiftKey?{w:p.w+dx,h:p.h+dy}:{x:p.x+dx,y:p.y+dy});}
           if(e.key==='Enter'||e.key===' '){e.preventDefault();selected=item.key;draw();}
         }}, ...[...liveNodes.get(item.key).childNodes].map(n=>{if(n instanceof HTMLElement)n.inert=true;return n;}));
       const handle=el('button',{class:'editor-resize',type:'button',title:t('Потяните для изменения размера'),'aria-label':t('Изменить размер')+' · '+t(item.label),onpointerdown:e=>{e.stopPropagation();pointer(e,item.key,true);}},'◢');
-      if(region!=='capsule'){node.append(handle);position(node,pos[item.key]);}
+      if(region!=='capsule'){if(region!=='header')node.append(handle);position(node,pos[item.key]);}
       if(region==='tools'){node.classList.toggle('icon-only',pos[item.key].w<3);node.classList.toggle('horizontal',pos[item.key].w>=3&&pos[item.key].h<3);}
       grid.append(node);
     }
@@ -204,14 +232,19 @@ export function islandEditor(cfg) {
       header.inert=true;shell.append(header);
     }
     if(region==='capsule')arrangeCapsule(grid,cfg.island);
-    if(region==='header')grid.replaceChildren(...[...grid.children].sort((a,b)=>pos[a.dataset.editorKey].x-pos[b.dataset.editorKey].x));
+    if(region==='header')grid.replaceChildren(...[...grid.children].sort((a,b)=>(cfg.island?.visual_layout?.header?.[a.dataset.editorKey]?.x??pos[a.dataset.editorKey].x)-(cfg.island?.visual_layout?.header?.[b.dataset.editorKey]?.x??pos[b.dataset.editorKey].x)));
     shell.append(grid);
     if(!['capsule','header'].includes(region))resizePanel(shell,cfg.island?.panel_size?.[region],{start:()=>{drag={};},finish:size=>{drag=null;save({['island.panel_size.'+region]:size});},cancel:()=>{drag=null;draw();}});
     body.replaceChildren(el('div',{class:'editor-scroll'},shell),
-      el('h4',{},t('Доступные элементы')),el('p',{class:'mut small'},t('Макет повторяет островок. Нажмите блок в самом островке, чтобы открыть подробности или управление.')),tray.childNodes.length?tray:el('p',{class:'mut small'},t('Все элементы уже на островке')));
+      el('h4',{},t('Доступные элементы')),el('p',{class:'mut small'},t('Нажмите на элемент в списке, чтобы добавить его, или перетащите на макет. В капсуле блок можно убрать, перетащив за её пределы. Escape — отмена перемещения.')),tray.childNodes.length?tray:el('p',{class:'mut small'},t('Все элементы уже на островке')));
     const scroll=body.querySelector('.editor-scroll'),savedScroll=scrollPositions[region]||[0,0];
     scroll.scrollLeft=savedScroll[0];scroll.scrollTop=savedScroll[1];
+    grid.scrollLeft=stageOffset[0];grid.scrollTop=stageOffset[1];
     inspect();
+    if(focused&&!focused.isConnected){
+      const next=focusKey?[...grid.querySelectorAll('[data-editor-key]')].find(n=>n.dataset.editorKey===focusKey):focusLabel?[...inspector.querySelectorAll('[aria-label]')].find(n=>n.getAttribute('aria-label')===focusLabel):null;
+      next?.focus({preventScroll:true});
+    }
   };
   for(const [id,label] of REGIONS)nav.append(el('button',{class:'settings-mode',type:'button','data-region':id,onclick:()=>{if(!busy){region=id;visibleKeys=null;selected=null;draw();}}},t(label)));
   box.append(el('h3',{},t('Настройка островка')),el('p',{class:'mut small'},t('Перетащите блок на макете или из списка. Потяните за угол, чтобы изменить размер. Стрелки — перемещение, Shift + стрелки — размер.')),nav,body,inspector,
@@ -219,9 +252,9 @@ export function islandEditor(cfg) {
   draw();refresh();
   const refreshEvents=['status.state','weather.state','sysmon.state','calendar.changed','downloads.changed','ticker.changed','mixer.changed','notes.changed','media.state','router.status','status.keyboard','status.privacy','media.lyrics'];
   const fields={ 'status.state':'status','weather.state':'weather','sysmon.state':'sysmon','calendar.changed':'calendar','downloads.changed':'downloads','ticker.changed':'ticker','mixer.changed':'mixer','notes.changed':'notes','media.state':'media','status.keyboard':'kbd','status.privacy':'privacy','media.lyrics':'lyricsData' };
-  const off=refreshEvents.map(event=>core.on(event,data=>{if(!box.isConnected)return;if(event==='router.status')liveData.router=data.active_label||data.active||'';else liveData[fields[event]]=data;if(!drag&&!busy)draw();}));
+  const off=refreshEvents.map(event=>core.on(event,data=>{if(!box.isConnected)return;if(event==='router.status')liveData.router=data.active_label||data.active||'';else liveData[fields[event]]=data;if(!drag&&!busy&&!inspector.contains(document.activeElement))draw();}));
   let mounted=false;
-  const observer=new MutationObserver(()=>{if(box.isConnected)mounted=true;else if(mounted){off.forEach(fn=>fn());observer.disconnect();}});
+  const observer=new MutationObserver(()=>{if(box.isConnected)mounted=true;else if(mounted){drag?.cancel?.();document.querySelectorAll('.capsule-drag-ghost,.editor-drag-ghost').forEach(n=>n.remove());off.forEach(fn=>fn());observer.disconnect();}});
   observer.observe(document.body,{childList:true,subtree:true});
   return box;
 }

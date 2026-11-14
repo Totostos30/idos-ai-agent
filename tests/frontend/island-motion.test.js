@@ -15,3 +15,10 @@ test('rings stay active with constant audio, stop on pause, and respond to level
  assert.notEqual(ringPath(bands,true,0,1),ringPath(Array(12).fill(1),true,0,1));
  assert.ok(!ringPath([],true,1,2).includes('NaN'));
 });
+test('alternating audio bins produce bounded smooth closed curves',()=>{
+ const path=ringPath(Array.from({length:32},(_,i)=>i%2),true,1,12.5);
+ assert.equal((path.match(/ C/g)||[]).length,120);
+ assert.ok(path.endsWith(' Z'));
+ const numbers=path.match(/-?\d+\.\d+/g).map(Number);
+ assert.ok(numbers.every(n=>Number.isFinite(n)&&n>0&&n<64));
+});

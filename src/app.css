@@ -669,3 +669,12 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .visual-editor .editor-island.expanded > .region-header { min-height:36px; }
 .visual-editor .editor-island.expanded > .editor-grid { flex:1; min-height:0!important; overflow:auto; align-content:start; padding-bottom:12px; }
 .editor-drop-preview[hidden] { display:none; }
+
+/* Editing controls stay reachable with a keyboard and on touch screens. */
+.editor-cell:focus-visible { outline:2px solid var(--accent)!important; outline-offset:2px; }
+.editor-resize { width:24px; height:24px; border-radius:8px; background:var(--bg); opacity:.65; }
+.editor-cell:hover > .editor-resize, .editor-resize:focus-visible { opacity:1; }
+.editor-palette button { min-height:36px; }
+.visual-editor > .settings-modes { flex-wrap:wrap; height:auto; }
+/* Repacking blocks during a drag must not move the viewport's scroll anchor. */
+.editor-grid { overflow-anchor:none; }

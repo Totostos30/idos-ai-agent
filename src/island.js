@@ -119,10 +119,12 @@ function animateRings() {
   let last=0;
   const frame=now=>{
     requestAnimationFrame(frame);
-    if(now-last<32)return;last=now;
+    if(now-last<16 || document.hidden)return;last=now;
     const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
     document.querySelectorAll('.eq-ring').forEach(box=>{
-      box.querySelectorAll('path').forEach((path,i)=>path.setAttribute('d',ringPath(box._bands||[],box.dataset.playing==='true',i,reduced?0:now/1000)));
+      const target=box._bands||[], previous=box._smooth||target;
+      box._smooth=target.map((v,i)=>(previous[i]||0)+(v-(previous[i]||0))*.16);
+      box.querySelectorAll('path').forEach((path,i)=>path.setAttribute('d',ringPath(box._smooth,box.dataset.playing==='true',i,reduced?0:now/1000)));
     });
   };
   requestAnimationFrame(frame);
@@ -131,7 +133,7 @@ function eq() {
   const box=el('span',{class:'eq eq-ring',role:'img','aria-label':t('Эквалайзер')});
   box._bands=[...S.bands];box.dataset.playing=String(!!S.media.playing);animateRings();
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 64 64');
-  for(let i=0;i<2;i++){const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',ringPath(S.bands,S.media.playing,i));svg.append(path);}
+  for(let i=0;i<2;i++){const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',ringPath(S.bands,S.media.playing,i,matchMedia('(prefers-reduced-motion: reduce)').matches?0:performance.now()/1000));svg.append(path);}
   box.append(svg);return box;
 }
 
@@ -855,12 +857,18 @@ function mixerWidget() {
 
 function noteWidget() {
   const last = (S.notes || [])[0];
-  const input = el("input", { class: "bar-input small", placeholder: t("Быстрая заметка — Enter сохранит…") });
+  const input = el("input", { class: "bar-input small", 'data-focus-key': 'quick-note', value:S.noteDraft||'', placeholder: t("Быстрая заметка — Enter сохранит…") });
+  input.addEventListener("input",()=>{S.noteDraft=input.value;});
+  input.addEventListener("focus",()=>invoke("island_focus",{focus:true}));
+  input.addEventListener("blur",()=>invoke("island_focus",{focus:false}));
   input.addEventListener("pointerdown", (e) => e.stopPropagation());
   input.addEventListener("keydown", async (e) => {
-    if (e.key === "Enter" && input.value.trim()) {
-      await core.try("notes.add", { text: input.value.trim() });
-      input.value = "";
+    if (e.key === "Enter" && input.value.trim() && !S.noteSaving) {
+      const draft=input.value;S.noteSaving=true;
+      const result=await core.try("notes.add", { text: draft.trim() });
+      S.noteSaving=false;
+      if(!result||result.error){pushCard({title:t("Не удалось сохранить"),text:result?.error||'',kind:'error'});return;}
+      if(S.noteDraft===draft){S.noteDraft='';input.value='';}
       pushCard({ title: t("Заметка сохранена"), kind: "ok", icon: "note", timeout: 2 });
     }
     if (e.key === "Escape") input.blur();
@@ -1550,7 +1558,7 @@ export function mountIsland() {
     clearTimeout(leaveTimer);
   });
   isl.addEventListener("mouseleave", () => {
-    leaveTimer = setTimeout(() => { if (S.expanded && !S.pinned) { S.expanded = false; render(); } }, 420);
+    leaveTimer = setTimeout(() => { if (S.expanded && !S.pinned && !isl.contains(document.activeElement?.closest("input,textarea,[contenteditable=true]"))) { S.expanded = false; render(); } }, 420);
   });
   document.addEventListener("pointerdown",e=>{if(!e.target.closest(".lyrics-full")){S.lyricsScroll=false;document.querySelectorAll(".lyrics-full").forEach(n=>n.classList.remove("scroll-enabled"));}},true);
   isl.addEventListener("click", (e) => {

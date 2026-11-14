@@ -627,3 +627,7 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .lyrics-panel .lyrics-full { overflow:hidden; cursor:pointer; }
 .lyrics-panel .lyrics-full.scroll-enabled { overflow:auto; overscroll-behavior:contain; cursor:text; user-select:text; }
 .lyrics-full.scroll-enabled:focus-visible { outline:1px solid var(--accent); outline-offset:-1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .stage, .stage *, .stage *::before, .stage *::after { animation:none!important; transition:none!important; }
+}
