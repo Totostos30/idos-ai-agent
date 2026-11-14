@@ -24,7 +24,10 @@ NOW = time.time()
 def cfg() -> dict:
     return {
         "theme": {"preset": "dark", "accent": ""},
-        "island": {"parts": {}, "hidden_tabs": [], "hidden_tools": [], "music_pill": "wide",
+        "island": {"parts": {"load": True, "ticker": True, "event": True, "downloads": True, "sleep": True,
+                            "w_days": True, "w_agenda": True, "w_sysmon": True, "w_downloads": True,
+                            "w_mixer": True, "w_note": True, "w_health": True},
+                   "hidden_tabs": [], "hidden_tools": [], "music_pill": "wide",
                    "monitor": 0, "offset_x": 0, "offset_y": 0, "scale": 1,
                    "opacity_collapsed": 1, "opacity_open": 1, "show_in_capture": True,
                    "waves": {"full_width_enabled": True, "full_width_duration_s": 3, "lip_breath_enabled": True}},
@@ -123,6 +126,15 @@ TIMERS = []
 # Погода: по умолчанию город не задан (как в живом ядре с включённым островом) —
 # остров показывает чип «город?» и виджет-заглушку; weather.set_city «настраивает» её.
 WEATHER = {"ok": False, "reason": "укажите город в настройках погоды"}
+# после weather.set_city появляется и 5-дневный прогноз (days) — как в живом ядре
+WEATHER_SET = {"ok": True, "temp": 9, "feels": 7, "wind": 4.2, "humidity": 82, "kind": "rain", "night": False,
+               "text": "небольшой дождь", "city": "Казань", "icon": "🌧️",
+               "days": [{"date": "2026-11-14", "min": 5, "max": 9, "kind": "rain", "symbol": "rain", "text": "дождь"},
+                        {"date": "2026-11-15", "min": 3, "max": 7, "kind": "partly", "symbol": "partlycloudy_day", "text": "переменная облачность"},
+                        {"date": "2026-11-16", "min": 2, "max": 6, "kind": "cloudy", "symbol": "cloudy", "text": "облачно"},
+                        {"date": "2026-11-17", "min": 0, "max": 4, "kind": "snow", "symbol": "snow", "text": "снег"},
+                        {"date": "2026-11-18", "min": -1, "max": 3, "kind": "partly", "symbol": "partlycloudy_day", "text": "переменная облачность"}]}
+WEATHER.update(WEATHER_SET)
 # Буфер обмена: пара записей с полными текстами для проверки кнопки «Копировать».
 CLIP = [
     {"id": "c1", "kind": "text", "preview": "Пароль от Wi-Fi: otdelnyi-dom-5G", "length": 62, "pinned": True},
@@ -132,6 +144,23 @@ CLIP_TEXT = {
     "c1": "Пароль от Wi-Fi: otdelnyi-dom-5G (гостевая сеть: dom-gost-2G, пароль тот же)",
     "c2": "Казань, ул. Баумана, 44, офис 307 — вход со двора, третий этаж, домофон 44К",
 }
+
+# Новые источники островка: монитор, календарь, загрузки, курс, микшер, заметки.
+SYSMON = {"cpu": 37, "ram": 62, "disk": 8, "updated": 0.0}
+CALENDAR = {"configured": True, "events": [
+    {"start": NOW + 1500, "end": NOW + 3300, "title": "Планёрка"},
+    {"start": NOW + 12600, "end": NOW + 16200, "title": "Спортзал"}], "updated": NOW, "error": ""}
+DOWNLOADS = {"active": [
+    {"name": "update.zip", "size": 734003200, "total": 1073741824, "progress": 0.683, "speed": 5242880, "eta": 103, "updated": NOW},
+    {"name": "design.fig", "size": 15728640, "total": 0, "progress": None, "speed": 262144, "eta": None, "updated": NOW}],
+    "recent": []}
+TICKER = {"rates": {"usd": {"value": 92.4, "prev": 92.1, "diff": 0.3}, "eur": {"value": 99.8, "prev": 100.1, "diff": -0.3}},
+          "updated": NOW, "error": ""}
+MIXER = {"master": 62, "apps": [
+    {"pid": 4012, "name": "Yandex.Music.exe", "volume": 40, "mute": False},
+    {"pid": 9184, "name": "Discord.exe", "volume": 85, "mute": False},
+    {"pid": 7300, "name": "chrome.exe", "volume": 55, "mute": True}]}
+NOTES = [{"id": 1, "text": "идея: добавить тёмный смузи-режим", "done": False, "pinned": False, "created": NOW, "updated": NOW}]
 
 
 def handle(method: str, params: dict):
@@ -264,9 +293,32 @@ def handle(method: str, params: dict):
         return WEATHER
     if method == "weather.set_city":
         WEATHER.clear()
-        WEATHER.update({"ok": True, "temp": 9, "text": "небольшой дождь",
-                        "city": (params or {}).get("city") or "Казань"})
+        WEATHER.clear()
+        WEATHER.update(WEATHER_SET)
+        WEATHER["city"] = (params or {}).get("city") or "Казань"
         return dict(WEATHER)
+    if method == "sysmon.state":
+        return SYSMON
+    if method == "calendar.state":
+        return CALENDAR
+    if method == "calendar.refresh":
+        return CALENDAR
+    if method == "downloads.state":
+        return DOWNLOADS
+    if method == "ticker.state":
+        return TICKER
+    if method == "mixer.state":
+        return MIXER
+    if method == "mixer.set":
+        return {"ok": True}
+    if method == "system.power":
+        return {"ok": True, "text": "перевожу компьютер в сон"}
+    if method == "notes.list":
+        return NOTES
+    if method == "notes.add":
+        NOTES.insert(0, {"id": len(NOTES) + 1, "text": params.get("text", ""), "done": False, "pinned": False,
+                         "created": time.time(), "updated": time.time()})
+        return NOTES[0]
     if method == "clipboard.list":
         return {"items": CLIP}
     if method == "clipboard.get":

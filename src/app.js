@@ -69,6 +69,7 @@ const SETTING_LABELS = {
   "notifications.mirror": "Зеркалить уведомления", "notifications.skip_apps": "Пропускать приложения",
   "integrations.claude_code": "Claude Code", "integrations.codex": "Codex", "integrations.obs": "OBS (настройка)",
   "integrations.vpn_ip_lookup": "Показывать IP VPN", "integrations.downloads": "Следить за загрузками",
+  "integrations.calendar_url": "Адрес iCal (Google Календарь)", "integrations.downloads_folder": "Папка загрузок",
   "web.search_provider": "Поисковик", "web.searxng_url": "Адрес SearXNG", "web.region": "Регион поиска",
   "web.tavily_key": "Ключ Tavily", "web.brave_key": "Ключ Brave",
   "browser.channel": "Канал браузера", "browser.cdp_url": "Адрес CDP", "browser.headless": "Без окна",

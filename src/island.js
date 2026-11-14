@@ -43,10 +43,20 @@ const S = {
   musicView: "auto",
   kbd: {},
   privacy: {},
+  sysmon: {},
+  calendar: {},
+  downloads: {},
+  ticker: {},
+  mixer: {},
+  notes: [],
+  focus: null,
+  sleep: null,
+  editMode: "parts",
 };
 
 let root, isl, cardsBox, fluid, lip, leaveTimer = null, barTimer = null;
 let clipLoadRequest = 0, clipOpenRequest = 0;
+try { S.focus = JSON.parse(localStorage.getItem("idos.focus") || "null"); } catch (e) { /* пусто */ }
 // автоскрытие: полоска → (навели) капсула → (держишь курсор) большая панель
 let quietSince = Date.now(), tuckTimer = null, peeked = false, lastSig = "";
 const mic = new Mic((st) => { S.mic = st; document.querySelectorAll("button.mic").forEach((b) => setMicState(b, st)); if (st.state === "error") pushCard({ title: t("Микрофон"), text: st.text, kind: "error" }); render(); });
@@ -142,25 +152,167 @@ function clockNode() {
     String(d.getMinutes()).padStart(2, "0"));
 }
 
+// ------------------------------------------------------------------ блоки капсулы и раскладка
+
+// Логотип всегда слева, часы всегда по центру; остальные блоки раскладываются
+// редактором по плечам: island.layout = { left: [...], right: [...], width: 0 }.
+
+function batBlock() {
+  const b = batInfo();
+  if (!b) return null;
+  return el("span", { class: "bat-mini" + (b.charging ? " charging" : "") + (b.percent < 20 ? " low" : ""),
+    title: (b.charging ? t("Заряжается") : t("Батарея")) + " · " + Math.round(b.percent) + "%" },
+    el("i", { style: { height: Math.max(8, Math.min(100, b.percent)) + "%" } }));
+}
+
+function batPctBlock() {
+  const b = batInfo();
+  if (!b) return null;
+  return el("span", { class: "bat-pct mono" }, Math.round(b.percent) + "%");
+}
+
+function weatherBlock() {
+  const w = S.weather || {};
+  const temp = w.temp !== undefined && w.temp !== null
+    ? el("span", { class: "temp" }, (w.icon || "") + Math.round(w.temp) + "°") : null;
+  const cityAsk = !temp && S.online
+    ? el("button", { class: "chip w-ask", title: (S.weather && S.weather.reason) || t("Погоде нужен город — Настройки · Погода"),
+      onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "settings" }); } }, t("город?")) : null;
+  return temp || cityAsk;
+}
+
+function loadBlock() {
+  const st = S.sysmon || {};
+  if (st.cpu === undefined || st.cpu === null) return null;
+  return el("span", { class: "cblk mono", title: t("ЦП {cpu}% · ОЗУ {ram}% · Диск {disk}%",
+    { cpu: st.cpu, ram: st.ram ?? "—", disk: st.disk ?? "—" }) },
+    iconNode("gauge", 13), el("b", {}, st.cpu + "%"), el("i", { class: "sep" }, "·"), el("b", {}, (st.ram ?? "—") + "%"));
+}
+
+function focusBlock() {
+  const f = S.focus;
+  if (!f) return null;
+  const left = f.endsAt ? Math.max(0, f.endsAt - Date.now() / 1000) : (f.left || 0);
+  if (!f.endsAt && !f.left) return null;
+  return el("button", { class: "cblk mono focus " + f.phase,
+    title: (f.phase === "break" ? t("Перерыв") : t("Фокус-сессия")) + " — " + t("пауза/продолжить"),
+    onclick: (e) => { e.stopPropagation(); toggleFocus(); } },
+    iconNode("ring", 13), el("b", {}, fmtTime(left)), el("i", { class: "sub-t" }, f.phase === "break" ? t("перерыв") : t("фокус")));
+}
+
+function eventBlock() {
+  const evs = (S.calendar && S.calendar.events) || [];
+  const now = Date.now() / 1000;
+  const ev = evs.find((e) => e.end > now);
+  if (!ev) return null;
+  const time = new Date(ev.start * 1000).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
+  const inMin = Math.round((ev.start - now) / 60);
+  const when = inMin > 0 && inMin < 1440 ? t("через {n} мин", { n: inMin }) : "";
+  return el("span", { class: "cblk", title: ev.title + (when ? " · " + when : "") },
+    iconNode("calendar", 13), el("b", {}, time), el("i", { class: "ev-t" }, ev.title.slice(0, 22)), when ? el("i", { class: "sub-t" }, when) : null);
+}
+
+function dlBlock() {
+  const act = (S.downloads && S.downloads.active) || [];
+  if (!act.length) return null;
+  const d = act[0];
+  const pct = d.progress != null ? Math.round(d.progress * 100) : null;
+  return el("span", { class: "cblk", title: d.name + (d.speed ? " · " + speedText(d.speed) : "") },
+    iconNode("download", 13),
+    pct !== null ? el("b", {}, pct + "%") : null,
+    el("span", { class: "thin c" }, el("i", { style: { width: Math.round((d.progress || 0) * 100) + "%" } })));
+}
+
+function tickerBlock() {
+  const rates = (S.ticker && S.ticker.rates) || {};
+  const usd = rates.usd, eur = rates.eur;
+  if (!usd && !eur) return null;
+  const cell = (r, sym) => el("span", { class: "tk mono" }, sym + " " + (r.value < 1000 ? r.value.toFixed(1) : Math.round(r.value))
+    + (r.diff > 0 ? " ↑" : r.diff < 0 ? " ↓" : ""));
+  return el("span", { class: "cblk", title: t("Курс ЦБ на {d}", { d: new Date((S.ticker.updated || Date.now() / 1000) * 1000).toLocaleDateString(locale()) }) },
+    iconNode("dollar", 13), usd ? cell(usd, "$") : null, eur ? cell(eur, "€") : null);
+}
+
+function sleepStart() {
+  S.sleep = { endsAt: Date.now() / 1000 + 30 * 60 };
+  pushCard({ title: t("Таймер сна"), text: t("Компьютер уснёт через 30 минут. Повторный клик по значку отменит."), kind: "info", icon: "hourglass", timeout: 5 });
+  render();
+}
+
+function sleepBlock() {
+  const sl = S.sleep;
+  if (!sl || !sl.endsAt) {
+    return el("button", { class: "cblk dim", title: t("Таймер сна: уснуть через 30 минут"),
+      onclick: (e) => { e.stopPropagation(); sleepStart(); } }, iconNode("hourglass", 13));
+  }
+  const left = Math.max(0, sl.endsAt - Date.now() / 1000);
+  return el("button", { class: "cblk mono", title: t("Отменить сон"),
+    onclick: (e) => { e.stopPropagation(); S.sleep = null; render(); } },
+    iconNode("hourglass", 13), el("b", {}, fmtTime(left)), el("i", { class: "sub-t" }, t("сон")));
+}
+
+function coreinfoBlock() {
+  const st = S.status || {};
+  const ms = st.model_status || st.model;
+  if (ms && Number(ms.progress ?? ms.percent) > 0) {
+    const pct = Math.round(Number(ms.progress ?? ms.percent));
+    return el("span", { class: "cblk", title: ms.name || t("Модель") },
+      iconNode("chipic", 13), el("span", { class: "thin c" }, el("i", { style: { width: pct + "%" } })), el("b", {}, pct + "%"));
+  }
+  return null;
+}
+
+// Реестр блоков капсулы. dots() возвращает массив — flatMap раскрывает его.
+const CAPS_BLOCKS = {
+  dots: () => dots(),
+  battery: batBlock,
+  battery_percent: batPctBlock,
+  weather: weatherBlock,
+  core_status: () => (!S.online ? el("span", { class: "chip warn" }, t("ядро…")) : null),
+  load: loadBlock,
+  focus: focusBlock,
+  event: eventBlock,
+  downloads: dlBlock,
+  ticker: tickerBlock,
+  sleep: sleepBlock,
+  coreinfo: coreinfoBlock,
+};
+const CAPS_ALL = Object.keys(CAPS_BLOCKS);
+const CAPS_DEFAULT = { left: ["dots"], right: ["battery", "battery_percent", "weather"] };
+
+function capsLayout() {
+  const saved = (S.cfg.island && S.cfg.island.layout) || {};
+  const enabled = CAPS_ALL.filter((k) => on(k));
+  const clean = (arr) => (Array.isArray(arr) && arr.length ? arr.filter((k) => enabled.includes(k)) : null);
+  const left = clean(saved.left) || CAPS_DEFAULT.left.filter((k) => enabled.includes(k));
+  let right = clean(saved.right) || CAPS_DEFAULT.right.filter((k) => enabled.includes(k));
+  const seen = new Set([...left, ...right]);
+  right = right.concat(enabled.filter((k) => !seen.has(k)));
+  return { left, right };
+}
+
+function speedText(b) {
+  if (!b || b <= 0) return "—";
+  return b >= 1048576 ? (b / 1048576).toFixed(1) + " " + t("МБ/с") : Math.max(1, Math.round(b / 1024)) + " " + t("КБ/с");
+}
+
 const VIEWS = {
   idle: () => {
     const liquid = (S.cfg.island.character || "liquid") === "liquid";
-    const bat = on("battery") && batInfo()
-      ? el("span", { class: "bat-mini" + (batInfo().charging ? " charging" : "") + (batInfo().percent < 20 ? " low" : "") },
-        el("i", { style: { width: Math.max(8, Math.min(100, batInfo().percent)) + "%" } }), el("b", {}, Math.round(batInfo().percent))) : null;
-    const temp = on("weather") && S.weather && S.weather.temp !== undefined && S.weather.temp !== null
-      ? el("span", { class: "temp" }, (S.weather.icon || "") + Math.round(S.weather.temp) + "°") : null;
-    // Погода без города не исчезает молча: справа появляется чип «город?» → настройки.
-    const cityAsk = on("weather") && !temp && S.online
-      ? el("button", { class: "chip w-ask", title: (S.weather && S.weather.reason) || t("Погоде нужен город — Настройки · Погода"),
-        onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "settings" }); } }, t("город?")) : null;
     if (on("volume_osd") && S.vol && Date.now() - S.vol.at < 1200) return [el("div", { class: "row pill" }, el("span", { class: "ic" }, S.vol.v ? "🔊" : "🔇"),
       el("span", { class: "vol" }, el("i", { style: { width: S.vol.v + "%" } })), el("span", { class: "mono sub" }, String(S.vol.v)))];
+    const lay = capsLayout();
+    const cell = (k) => {
+      let n = null;
+      try { n = CAPS_BLOCKS[k] && CAPS_BLOCKS[k](); } catch (e) { n = null; }
+      if (n === null || n === undefined) return [];
+      return Array.isArray(n) ? n : [n];
+    };
+    // лого — слева, часы — всегда по центру, блоки раскладываются по плечам редактором
     return [el("div", { class: "row pill tri" },
-      el("span", { class: "side l" }, on("orb") ? orb() : null, ...dots()),
-      // в центре только часы: батарея и погода живут по краям, чтобы время не съезжало
+      el("span", { class: "side l" }, on("orb") ? orb() : null, ...lay.left.flatMap(cell)),
       el("span", { class: "mid" }, on("clock") ? clockNode() : null),
-      el("span", { class: "side r" }, bat, !S.online && on("core_status") ? el("span", { class: "chip warn" }, "ядро…") : (temp || cityAsk)))];
+      el("span", { class: "side r" }, ...lay.right.flatMap(cell)))];
   },
   music: () => {
     const kind = musicKind();
@@ -267,7 +419,7 @@ function dots() {
   if (on("privacy") && p.camera) out.push(el("span", { class: "dot cam", title: p.camera_app ? "Камера: " + p.camera_app : "Камера включена" }));
   if (on("caps") && S.kbd.caps) out.push(el("span", { class: "chip caps" }, "⇪"));
   if (on("layout") && S.kbd.layout && S.kbdShow) out.push(el("span", { class: "chip lay" }, S.kbd.layout));
-  if (on("vpn") && S.status && S.status.vpn && S.status.vpn.on) out.push(el("span", { class: "chip vpn", title: (S.status.vpn.name || "VPN") + " — защищённое соединение" }, iconNode("shield", 12)));
+  if (on("vpn") && S.status && S.status.vpn && S.status.vpn.on) out.push(el("span", { class: "chip vpn", title: (S.status.vpn.name || "VPN") + " — защищённое соединение" }, iconNode("shield", 14)));
   return out;
 }
 
@@ -346,8 +498,18 @@ function editGroup(title, chips) {
   return el("div", { class: "edit-group" }, el("div", { class: "eg-t" }, title), el("div", { class: "chips" }, chips));
 }
 
-// Режим «✎»: каждый элемент капсулы и панели — переключатель-чип, изменения видны сразу.
+// Режим «✎»: две вкладки — «Элементы» (чипы вкл/выкл) и «Раскладка» (перетаскивание блоков
+// капсулы, ширина островка, порядок и ширина виджетов панели по сетке).
 function panelEdit() {
+  if (!S.editMode) S.editMode = "parts";
+  const out = [el("div", { class: "row edit-mode" },
+    el("button", { class: "tab" + (S.editMode === "parts" ? " on" : ""), onclick: (e) => { e.stopPropagation(); S.editMode = "parts"; render(); } }, t("Элементы")),
+    el("button", { class: "tab" + (S.editMode === "layout" ? " on" : ""), onclick: (e) => { e.stopPropagation(); S.editMode = "layout"; render(); } }, t("Раскладка")))];
+  out.push(S.editMode === "layout" ? layoutEditor() : partsEditor());
+  return out;
+}
+
+function partsEditor() {
   const I = S.cfg.island;
   const groups = new Map();
   for (const [key, label, group] of PARTS) {
@@ -373,6 +535,321 @@ function panelEdit() {
   return out;
 }
 
+// ---------- редактор раскладки ----------
+
+function saveLayout(patch) {
+  saveValues({ "island.layout": Object.assign({}, (S.cfg.island.layout || {}), patch) });
+}
+
+function savePanelLayout(patch) {
+  saveValues({ "island.panel_layout": Object.assign({}, (S.cfg.island.panel_layout || {}), patch) });
+}
+
+const LAYOUT_LABELS = () => ({
+  dots: t("Микрофон · камера · VPN"), battery: t("Значок батареи"), battery_percent: t("Процент батареи"),
+  weather: t("Погода"), core_status: t("Статус ядра"), load: t("Загрузка ЦП и ОЗУ"), focus: t("Фокус-сессия"),
+  event: t("Ближайшее событие"), downloads: t("Скачивания"), ticker: t("Курс валют"), sleep: t("Таймер сна"),
+  coreinfo: t("Статус модели"),
+});
+
+// Капсула: левое плечо — лого (несъёмное), центр — часы (несъёмные), блоки перетаскиваются
+// между плечами и внутри них; ниже — выключенные блоки (клик добавляет) и ширина островка.
+function layoutEditor() {
+  const lay = capsLayout();
+  const labels = LAYOUT_LABELS();
+  const drag = { key: null, from: null };
+
+  const chip = (key) => el("div", { class: "lay-chip", draggable: "true" }, labels[key] || key,
+    el("button", { class: "lay-x", title: t("Убрать"), onclick: (e) => { e.stopPropagation(); saveValues(partValues(key, false)); } }, "✕"));
+
+  const zone = (side) => {
+    const z = el("div", { class: "lay-zone" }, el("span", { class: "lz-t" }, side === "left" ? t("Слева от часов") : t("Справа от часов")));
+    const keyAt = (x) => {
+      let idx = 0;
+      for (const c of z.querySelectorAll(".lay-chip")) {
+        const r = c.getBoundingClientRect();
+        if (x < r.left + r.width / 2) break;
+        idx++;
+      }
+      return idx;
+    };
+    z.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      z.classList.add("over");
+      const dragged = z.parentElement.querySelector(".lay-chip.drag");
+      if (dragged) {
+        const chips = [...z.querySelectorAll(".lay-chip:not(.drag)")];
+        const idx = keyAt(e.clientX);
+        const ref = chips[Math.min(idx, chips.length - 1)];
+        z.insertBefore(dragged, idx >= chips.length ? null : ref);
+      }
+    });
+    z.addEventListener("dragleave", () => z.classList.remove("over"));
+    z.addEventListener("drop", (e) => {
+      e.preventDefault();
+      z.classList.remove("over");
+      commit();
+    });
+    return z;
+  };
+  const leftZ = zone("left");
+  const rightZ = zone("right");
+  const commit = () => {
+    const read = (z) => [...z.querySelectorAll(".lay-chip")].map((c) => c.firstChild.textContent.trim()
+      && Object.keys(labels).find((k) => labels[k] === c.firstChild.textContent.trim()));
+    const left = read(leftZ).filter(Boolean);
+    const right = read(rightZ).filter(Boolean);
+    saveLayout({ left, right });
+    render();
+  };
+  for (const k of lay.left) leftZ.append(chip(k));
+  for (const k of lay.right) rightZ.append(chip(k));
+
+  const dragStart = (c, key) => {
+    c.addEventListener("dragstart", (e) => { drag.key = key; c.classList.add("drag"); e.dataTransfer.effectAllowed = "move"; });
+    c.addEventListener("dragend", () => { drag.key = null; c.classList.remove("drag"); });
+  };
+  for (const c of [...leftZ.querySelectorAll(".lay-chip"), ...rightZ.querySelectorAll(".lay-chip")]) {
+    const label = c.firstChild.textContent.trim();
+    dragStart(c, Object.keys(labels).find((k) => labels[k] === label));
+  }
+
+  const mid = el("div", { class: "lay-mid" }, iconNode("clock", 13), t("Часы"));
+  const capsule = el("div", { class: "lay-capsule" }, leftZ, mid, rightZ);
+
+  // выключенные блоки: клик включает их в правом плече
+  const disabled = CAPS_ALL.filter((k) => !on(k) && k !== "core_status");
+  const addRow = disabled.length ? editGroup(t("Добавить блок"), disabled.map((k) =>
+    chipT("＋ " + (labels[k] || k), false, () => saveValues(partValues(k, true))))) : null;
+
+  // ширина островка: «авто» или фикс в диапазоне 150–520
+  const W = Number((S.cfg.island.layout || {}).width) || 0;
+  const range = el("input", { type: "range", min: "150", max: "760", step: "2", value: String(W >= 150 ? W : 280) });
+  range.addEventListener("input", () => saveLayout({ width: Number(range.value) }));
+  range.addEventListener("pointerdown", (e) => e.stopPropagation());
+  const widthRow = el("div", { class: "edit-group width-row" },
+    el("div", { class: "eg-t" }, t("Длина островка")),
+    el("div", { class: "row" },
+      chipT(t("Авто"), W < 150, () => saveLayout({ width: 0 })),
+      range, el("span", { class: "mono w-val" }, W >= 150 ? W + "px" : t("авто"))));
+
+  // панель: карточки в сетке — перетаскивание меняет порядок, кнопка — ширину (½ или вся)
+  const defs = panelOrdered(widgetDescriptors().filter((d) => on(d.key)));
+  const partLabel = new Map(PARTS.map(([k, label]) => [k, label]));
+  const grid = el("div", { class: "panel-lay" });
+  const pdrag = { key: null };
+  for (const d of defs) {
+    const wide = panelSpan(d.key, d.span) === 2;
+    const card = el("div", { class: "pl-card" + (wide ? " wide" : ""), draggable: "true" },
+      el("span", { class: "t" }, t(partLabel.get(d.key) || d.key)),
+      el("button", { class: "lay-x", title: wide ? t("Половина ширины") : t("Во всю ширину"),
+        onclick: () => savePanelLayout({ span: Object.assign({}, (S.cfg.island.panel_layout || {}).span || {},
+          { [d.key]: wide ? 1 : 2 }) }) }, wide ? "⇤⇥" : "↔"));
+    card.addEventListener("dragstart", () => { pdrag.key = d.key; card.classList.add("drag"); });
+    card.addEventListener("dragend", () => {
+      if (pdrag.key) {
+        const order = [...grid.querySelectorAll(".pl-card")].map((c) =>
+          defs.find((x) => (partLabel.get(x.key) || x.key) === c.firstChild.textContent.trim())?.key).filter(Boolean);
+        savePanelLayout({ order });
+        render();
+      }
+      pdrag.key = null; card.classList.remove("drag");
+    });
+    grid.append(card);
+  }
+  grid.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    if (!pdrag.key) return;
+    const cards = [...grid.querySelectorAll(".pl-card:not(.drag)")];
+    const dragged = grid.querySelector(".pl-card.drag");
+    if (!dragged) return;
+    let before = null;
+    for (const c of cards) { const r = c.getBoundingClientRect(); if (e.clientY < r.top + r.height / 2) { before = c; break; } }
+    grid.insertBefore(dragged, before);
+  });
+
+  return [el("div", { class: "sub edit-hint" }, t("Перетащи блоки капсулы между плечами. Лого всегда слева, часы — по центру.")),
+    capsule, addRow, widthRow,
+    editGroup(t("Виджеты панели — порядок и ширина"), [grid])];
+}
+
+// ---------- виджеты панели «Сейчас»: сетка с раскладкой (порядок и ширина — в редакторе) ----------
+
+const KIND_ICON = { clear: "☀️", partly: "⛅", cloudy: "☁️", fog: "🌫️", rain: "🌧️", sleet: "🌨️", snow: "❄️", thunder: "⛈️" };
+
+function wHead(ic, label) {
+  return el("div", { class: "w-t" }, iconNode(ic, 13), t(label));
+}
+
+function daysWidget() {
+  const days = (S.weather && S.weather.days) || [];
+  if (!days.length) {
+    return el("button", { class: "widget hint span2", onclick: () => invoke("show_main", { tab: "settings" }) },
+      wHead("gauge", "Прогноз на 5 дней"),
+      el("div", { class: "sub" }, (S.weather && (S.weather.reason || S.weather.error)) || t("Укажите город в настройках погоды")));
+  }
+  return el("div", { class: "widget days span2" }, days.slice(0, 5).map((d, i) => {
+    const date = new Date(d.date + "T12:00:00");
+    return el("div", { class: "day" + (i === 0 ? " today" : "") },
+      el("span", { class: "d" }, i === 0 ? t("Сегодня") : date.toLocaleDateString(locale(), { weekday: "short" })),
+      el("span", { class: "ic" }, KIND_ICON[d.kind] || "☁️"),
+      el("span", { class: "t mono" }, d.min + "° " + d.max + "°"));
+  }));
+}
+
+function agendaWidget() {
+  const cal = S.calendar || {};
+  const now = Date.now() / 1000;
+  const evs = (cal.events || []).filter((e) => e.end > now).slice(0, 4);
+  if (!evs.length) {
+    return el("button", { class: "widget hint span2", onclick: () => invoke("show_main", { tab: "settings" }) },
+      wHead("calendar", "Повестка дня"),
+      el("div", { class: "sub" }, cal.configured === false ? t("Подключите Google Календарь: адрес iCal — Настройки · Интеграции")
+        : (cal.error ? cal.error : t("Ближайших событий нет"))));
+  }
+  return el("div", { class: "widget agenda span2" }, wHead("calendar", "Повестка дня"),
+    evs.map((ev) => {
+      const inMin = Math.round((ev.start - now) / 60);
+      const time = new Date(ev.start * 1000).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
+      return el("div", { class: "ag-row" }, el("b", { class: "mono" }, time),
+        el("span", { class: "t" }, ev.title),
+        inMin > 0 ? el("span", { class: "chip" }, t("через {n} мин", { n: inMin })) : null);
+    }));
+}
+
+function sysmonWidget() {
+  const st = S.sysmon || {};
+  if (st.cpu === undefined || st.cpu === null) return null;
+  const row = (label, val) => el("div", { class: "mon-row" }, el("span", { class: "lbl" }, label),
+    el("span", { class: "bar" }, el("i", { style: { width: Math.min(100, val || 0) + "%" } })),
+    el("span", { class: "mono" }, (val ?? "—") + "%"));
+  return el("div", { class: "widget span2" }, wHead("gauge", "Система"),
+    row(t("ЦП"), st.cpu), row(t("ОЗУ"), st.ram), row(t("Диск"), st.disk));
+}
+
+function dlWidget() {
+  const act = (S.downloads && S.downloads.active) || [];
+  if (!act.length) {
+    return el("div", { class: "widget span2" }, wHead("download", "Загрузки"),
+      el("div", { class: "sub" }, t("Активных загрузок нет")));
+  }
+  return el("div", { class: "widget span2 dl" }, wHead("download", "Загрузки"),
+    act.slice(0, 3).map((d) => el("div", { class: "dl-row" },
+      el("span", { class: "t" }, d.name),
+      el("span", { class: "bar" }, el("i", { style: { width: Math.round((d.progress || 0) * 100) + "%" } })),
+      d.progress != null ? el("span", { class: "mono" }, Math.round(d.progress * 100) + "%") : null,
+      el("span", { class: "mono s" }, speedText(d.speed) + (d.eta ? " · " + t("осталось {t}", { t: fmtTime(d.eta) }) : "")))));
+}
+
+function mixerWidget() {
+  const st = S.mixer || {};
+  if (st.error && !st.apps) {
+    return el("div", { class: "widget span2" }, wHead("mixer", "Микшер"), el("div", { class: "sub" }, st.error));
+  }
+  const slider = (val, fn) => {
+    const i = el("input", { type: "range", min: "0", max: "100", value: String(Math.max(0, Math.min(100, val ?? 0))) });
+    i.addEventListener("input", () => fn(Number(i.value)));
+    i.addEventListener("pointerdown", (e) => e.stopPropagation());
+    return i;
+  };
+  const rows = [el("div", { class: "mx-row master" }, iconNode("volume", 14),
+    el("b", { class: "t" }, t("Общая громкость")), slider(st.master ?? 0, (v) => core.try("mixer.set", { pid: 0, volume: v })))];
+  for (const a of (st.apps || []).slice(0, 6)) {
+    rows.push(el("div", { class: "mx-row" }, el("span", { class: "t" }, String(a.name || "").replace(/\.exe$/i, "")),
+      slider(a.volume, (v) => core.try("mixer.set", { pid: a.pid, volume: v }))));
+  }
+  return el("div", { class: "widget span2 mixer" }, wHead("mixer", "Микшер громкости"), ...rows);
+}
+
+function noteWidget() {
+  const last = (S.notes || [])[0];
+  const input = el("input", { class: "bar-input small", placeholder: t("Быстрая заметка — Enter сохранит…") });
+  input.addEventListener("pointerdown", (e) => e.stopPropagation());
+  input.addEventListener("keydown", async (e) => {
+    if (e.key === "Enter" && input.value.trim()) {
+      await core.try("notes.add", { text: input.value.trim() });
+      input.value = "";
+      pushCard({ title: t("Заметка сохранена"), kind: "ok", icon: "note", timeout: 2 });
+    }
+    if (e.key === "Escape") input.blur();
+  });
+  return el("div", { class: "widget span2 note-w" }, wHead("note", "Заметка"),
+    el("div", { class: "row" }, input),
+    last ? el("div", { class: "sub note-last" }, String(last.text || "")) : null);
+}
+
+function healthWidget() {
+  const H = (S.cfg.island && S.cfg.island.health) || {};
+  const enabled = !!H.enabled;
+  const setHealth = (patch) => saveValues({ "island.health": Object.assign({}, H, patch) });
+  const left = enabled && S.healthAt
+    ? Math.max(0, Math.ceil(((H.interval || 45) * 60000 - (Date.now() - S.healthAt)) / 1000)) : 0;
+  return el("div", { class: "widget health" }, wHead("eye", "Перерывы"),
+    el("div", { class: "row" },
+      el("button", { class: "btn" + (enabled ? " primary" : " ghost"), onclick: () => setHealth({ enabled: !enabled }) },
+        enabled ? t("Включены") : t("Выключены")),
+      [20, 30, 45, 60].map((m) => el("button", { class: "chip-t" + ((H.interval || 45) === m ? " on" : ""),
+        onclick: () => setHealth({ interval: m }) }, m))),
+    el("div", { class: "sub" }, enabled
+      ? (left > 0 ? t("Перерыв через {t}", { t: fmtTime(left) }) : t("Перерыв идёт…"))
+      : t("Островок напомнит встать и размяться")));
+}
+
+// Дескрипторы виджетов панели: ключ, ширина по умолчанию (колонки сетки), построитель.
+function widgetDescriptors() {
+  return [
+    { key: "w_weather", span: 1, make: () => panelWeatherWidget() },
+    { key: "w_days", span: 2, make: daysWidget },
+    { key: "w_agenda", span: 2, make: agendaWidget },
+    { key: "w_sysmon", span: 2, make: sysmonWidget },
+    { key: "w_downloads", span: 2, make: dlWidget },
+    { key: "w_mixer", span: 2, make: mixerWidget },
+    { key: "w_note", span: 2, make: noteWidget },
+    { key: "w_health", span: 1, make: healthWidget },
+    { key: "w_clock", span: 1, make: () => el("div", { class: "widget" }, el("div", { class: "big mono" }, clockNode()),
+      el("div", { class: "sub" }, new Date().toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" }))) },
+    { key: "w_battery", span: 1, make: () => batInfo() ? el("div", { class: "widget" },
+      el("div", { class: "big" }, (batInfo().charging ? "⚡ " : "") + Math.round(batInfo().percent) + "%"),
+      el("div", { class: "sub" }, batInfo().charging ? t("Заряжается") : t("Батарея"))) : null },
+    { key: "w_timers", span: 1, make: () => {
+      const list = [...S.timers.values()].slice(0, 3);
+      if (!list.length) return null;
+      return el("div", { class: "widget" }, list.map((tm) => {
+        const left = tm.state === "running" && tm.ends_at ? tm.ends_at - Date.now() / 1000 : 0;
+        return el("div", { class: "trow " + tm.state },
+          el("div", { class: "big mono" }, tm.state === "done" ? t("Готово") : fmtTime(left)),
+          el("div", { class: "sub" }, tm.label || t("Таймер")),
+          el("button", { class: "x", onclick: () => { core.try("island.cancel_timer", { timer_id: tm.id }); S.timers.delete(tm.id); render(); } }, "✕"));
+      }));
+    } },
+  ];
+}
+
+function panelWeatherWidget() {
+  const w = S.weather || {};
+  const hasTemp = w.temp !== undefined && w.temp !== null;
+  return hasTemp
+    ? el("div", { class: "widget" }, el("div", { class: "big" }, (w.icon || "") + " " + Math.round(w.temp) + "°"),
+      el("div", { class: "sub" }, [w.city, w.text || w.desc].filter(Boolean).join(" · ")))
+    : el("button", { class: "widget hint", title: "Открыть настройки погоды", onclick: () => invoke("show_main", { tab: "settings" }) },
+      el("div", { class: "big" }, "Погода"),
+      el("div", { class: "sub" }, w.reason || w.error || "Укажите город в Настройках"));
+}
+
+function panelSpan(key, def) {
+  const span = ((S.cfg.island.panel_layout || {}).span || {})[key];
+  return span === 1 || span === 2 ? span : def;
+}
+
+function panelOrdered(defs) {
+  const saved = (S.cfg.island.panel_layout || {}).order;
+  if (!Array.isArray(saved)) return defs;
+  const byKey = new Map(defs.map((d) => [d.key, d]));
+  const out = saved.map((k) => byKey.get(k)).filter(Boolean);
+  out.push(...defs.filter((d) => !saved.includes(d.key)));
+  return out;
+}
+
 function panelNow() {
   const blocks = [];
   if (on("p_player") && S.media.active) {
@@ -392,29 +869,15 @@ function panelNow() {
           el("button", { class: "icon", disabled: !m.can_next, onclick: () => core.try("media.control", { action: "next" }) }, iconNode("next", 14)),
           on("p_eq") ? eq(9) : null))));
   }
-  const widgets = el("div", { class: "widgets" });
-  // Погода в панели всегда на месте: без данных — кликабельная заглушка «укажите город».
-  if (on("w_weather")) {
-    const w = S.weather || {};
-    const hasTemp = w.temp !== undefined && w.temp !== null;
-    widgets.append(hasTemp
-      ? el("div", { class: "widget" }, el("div", { class: "big" }, (w.icon || "") + " " + Math.round(w.temp) + "°"),
-        el("div", { class: "sub" }, [w.city, w.text || w.desc].filter(Boolean).join(" · ")))
-      : el("button", { class: "widget hint", title: "Открыть настройки погоды", onclick: () => invoke("show_main", { tab: "settings" }) },
-        el("div", { class: "big" }, "Погода"),
-        el("div", { class: "sub" }, w.reason || w.error || "Укажите город в Настройках")));
-  }
-  if (on("w_clock")) widgets.append(el("div", { class: "widget" }, el("div", { class: "big mono" }, clockNode()),
-    el("div", { class: "sub" }, new Date().toLocaleDateString(locale(), { weekday: "long", day: "numeric", month: "long" }))));
-  if (on("w_battery") && batInfo())
-    widgets.append(el("div", { class: "widget" }, el("div", { class: "big" }, (batInfo().charging ? "⚡ " : "") + Math.round(batInfo().percent) + "%"),
-      el("div", { class: "sub" }, batInfo().charging ? t("Заряжается") : t("Батарея"))));
-  for (const t of on("w_timers") ? S.timers.values() : []) {
-    const left = t.state === "running" && t.ends_at ? t.ends_at - Date.now() / 1000 : 0;
-    widgets.append(el("div", { class: "widget timer " + t.state },
-      el("div", { class: "big mono" }, t.state === "done" ? t("Готово") : fmtTime(left)),
-      el("div", { class: "sub" }, t.label || t("Таймер")),
-      el("button", { class: "x", onclick: () => { core.try("island.cancel_timer", { timer_id: t.id }); S.timers.delete(t.id); render(); } }, "✕")));
+  const defs = panelOrdered(widgetDescriptors().filter((d) => on(d.key)));
+  const widgets = el("div", { class: "widgets wgrid" });
+  for (const d of defs) {
+    let node = null;
+    try { node = d.make(); } catch (e) { node = null; }
+    if (node) {
+      node.classList.add("lay-" + d.key, "span" + panelSpan(d.key, d.span));
+      widgets.append(node);
+    }
   }
   if (widgets.children.length) blocks.push(widgets);
   if (!blocks.length) blocks.push(el("div", { class: "empty" }, t("Здесь всё скрыто — нажмите ✎, чтобы вернуть элементы")));
@@ -431,7 +894,7 @@ const TOOL_BUTTONS = [
   ["record_area", "shot", "Запись области", () => invoke("open_selector", { purpose: "record" })],
   ["dictation", "keyboard", "Диктовка", () => hotkey("dictation")],
   ["note", "note", "Заметка", () => openBar("заметка: ")],
-  ["timer", "clock", "Таймер", () => openBar("таймер ")],
+  ["timer", "timer", "Таймер", () => openBar("таймер ")],
 ];
 
 function panelTools() {
@@ -628,16 +1091,22 @@ function render() {
   // плечи слева и справа делаются равными — часы стоят ровно по центру островка.
   // Волны флюида читают offsetWidth каждый кадр и следуют за шириной сами.
   if (m === "idle") {
-    const row = isl.querySelector(".row.tri");
-    if (row && row.children.length >= 3) {
-      isl.style.width = "max-content";
-      const [l, mid, r] = [...row.children].slice(0, 3).map((c) => c.getBoundingClientRect().width);
-      const side = Math.max(l, r);
-      // 12px — паддинг капсулы (6+6), 16px — два гэпа сетки по 8
-      const total = Math.max(150, Math.min(520, Math.ceil(mid + side * 2 + 16 + 12)));
-      isl.style.width = total + "px";
-      root.style.setProperty("--lip-width", total + "px");
-    } else isl.style.width = "";
+    const fixed = Number((S.cfg.island.layout || {}).width) || 0;
+    if (fixed >= 150) {
+      isl.style.width = fixed + "px";
+      root.style.setProperty("--lip-width", fixed + "px");
+    } else {
+      const row = isl.querySelector(".row.tri");
+      if (row && row.children.length >= 3) {
+        isl.style.width = "max-content";
+        const [l, mid, r] = [...row.children].slice(0, 3).map((c) => c.getBoundingClientRect().width);
+        const side = Math.max(l, r);
+        // 12px — паддинг капсулы (6+6), 16px — два гэпа сетки по 8
+        const total = Math.max(150, Math.min(760, Math.ceil(mid + side * 2 + 16 + 12)));
+        isl.style.width = total + "px";
+        root.style.setProperty("--lip-width", total + "px");
+      } else isl.style.width = "";
+    }
   } else if (isl.style.width) isl.style.width = "";
   renderCards();
   scheduleHit();
@@ -779,6 +1248,72 @@ async function reportResult(title, promise, quiet = false) {
   render();
 }
 
+// ------------------------------------------------------------------ фокус-сессия, таймер сна, здоровье
+
+const FOCUS_KEY = "idos.focus";
+function saveFocus() {
+  try { localStorage.setItem(FOCUS_KEY, JSON.stringify(S.focus)); } catch (e) { /* приватный режим */ }
+}
+
+function focusStart(phase) {
+  const mins = phase === "break" ? (S.focus && S.focus.breakMin) || 5 : (S.focus && S.focus.focusMin) || 25;
+  S.focus = Object.assign(S.focus || { focusMin: 25, breakMin: 5 }, { phase, endsAt: Date.now() / 1000 + mins * 60, left: 0 });
+  saveFocus();
+}
+
+// клик по блоку: нет сессии — старт (25 минут), идёт — пауза/продолжить
+function toggleFocus() {
+  const f = S.focus;
+  if (!f) {
+    focusStart("focus");
+    pushCard({ title: t("Фокус-сессия"), text: t("25 минут работы — затем перерыв"), kind: "info", icon: "ring", timeout: 4 });
+    render();
+    return;
+  }
+  if (f.endsAt) { f.left = Math.max(0, f.endsAt - Date.now() / 1000); f.endsAt = 0; }
+  else { f.endsAt = Date.now() / 1000 + (f.left || (f.phase === "break" ? 5 : 25) * 60); f.left = 0; }
+  saveFocus();
+  render();
+}
+
+function focusTick() {
+  const f = S.focus;
+  if (!f || !f.endsAt || f.endsAt - Date.now() / 1000 > 0) return;
+  if (f.phase === "focus") {
+    f.phase = "break";
+    f.endsAt = Date.now() / 1000 + (f.breakMin || 5) * 60;
+    pushCard({ title: t("Перерыв"), text: t("Фокус-сессия завершена — {n} минут перерыва", { n: f.breakMin || 5 }), kind: "ok", icon: "ring", timeout: 6 });
+    if (fluid) fluid.bead();
+  } else {
+    f.phase = "focus";
+    f.endsAt = Date.now() / 1000 + (f.focusMin || 25) * 60;
+    pushCard({ title: t("Фокус-сессия"), text: t("Перерыв закончен — за работу"), kind: "info", icon: "ring", timeout: 5 });
+  }
+  saveFocus();
+}
+
+function sleepTick() {
+  const sl = S.sleep;
+  if (!sl || !sl.endsAt || sl.endsAt - Date.now() / 1000 > 0) return;
+  S.sleep = null;
+  core.try("system.power", { action: "sleep" });
+  pushCard({ title: t("Таймер сна"), text: t("Перевожу компьютер в сон"), kind: "info", icon: "hourglass", timeout: 5 });
+}
+
+// Здоровье: раз в заданный интервал карточка «перерыв»; островок сам всплывает, если включено.
+function healthTick() {
+  const H = (S.cfg.island && S.cfg.island.health) || {};
+  if (!H.enabled || S.cards.some((c) => c.id === "health-break")) return;
+  if (Date.now() - (S.healthAt || 0) >= (H.interval || 45) * 60000) {
+    S.healthAt = Date.now();
+    pushCard({ id: "health-break", title: t("Пора сделать перерыв"), text: t("Встань и пройдись — глаза отдохнут. 20 секунд смотри вдаль."), kind: "info", icon: "eye", timeout: 30,
+      actions: [{ id: "done", label: t("Готово"), primary: true }] });
+    if (root && root.classList.contains("hidden")) peek();
+    S.stick = true;
+    render();
+  }
+}
+
 async function applyConfig(cfg) {
   S.cfg = Object.assign({ island: {}, hotkeys: {} }, cfg || {});
   const isl0 = S.cfg.island;
@@ -814,6 +1349,7 @@ async function applyConfig(cfg) {
 
 export function mountIsland() {
   document.body.classList.add("view-island");
+  S.healthAt = Date.now();
   root = el("div", { class: "stage" });
   isl = el("div", { class: "island", "data-mode": "idle" });
   cardsBox = el("div", { class: "cards" });
@@ -913,15 +1449,24 @@ export function mountIsland() {
 
   core.on("core.connected", async () => {
     S.online = true;
-    const [cfg, media, status, weather, timers, rec, router] = await Promise.all([
+    const [cfg, media, status, weather, timers, rec, router, calendar, downloads, ticker, mixer, sysmon, notes] = await Promise.all([
       core.try("settings.get"), core.try("media.state"), core.try("status.state"), core.try("weather.state"),
-      core.try("island.timers"), core.try("recorder.state"), core.try("router.status")]);
+      core.try("island.timers"), core.try("recorder.state"), core.try("router.status"),
+      core.try("calendar.state"), core.try("downloads.state"), core.try("ticker.state"),
+      core.try("mixer.state"), core.try("sysmon.state"), core.try("notes.list", {})]);
     if (media && !media.error) S.media = media;
     if (status && !status.error) S.status = status;
     if (weather && !weather.error) S.weather = weather;
     if (Array.isArray(timers)) timers.forEach((t) => S.timers.set(t.id, t));
     if (rec && !rec.error) S.rec = rec;
     if (router && !router.error) S.router = router.active_label || router.active || "";
+    if (calendar && !calendar.error) S.calendar = calendar;
+    if (downloads && !downloads.error) S.downloads = downloads;
+    if (ticker && !ticker.error) S.ticker = ticker;
+    if (mixer && !mixer.error) S.mixer = mixer;
+    if (sysmon && !sysmon.error) S.sysmon = sysmon;
+    if (Array.isArray(notes)) S.notes = notes;
+    S.healthAt = Date.now();
     await applyConfig(cfg && !cfg.error ? cfg : {});
   });
   core.on("core.lost", () => { S.online = false; render(); });
@@ -1000,6 +1545,12 @@ export function mountIsland() {
     render();
   });
   core.on("weather.state", (w) => { S.weather = w || {}; render(); });
+  core.on("sysmon.state", (d) => { S.sysmon = d || {}; if (mode() === "idle" || (mode() === "panel" && S.tab === "now")) render(); });
+  core.on("calendar.changed", (d) => { S.calendar = d || {}; render(); });
+  core.on("downloads.changed", (d) => { S.downloads = Object.assign({}, S.downloads, d); if (mode() === "idle" || (mode() === "panel" && S.tab === "now")) render(); });
+  core.on("ticker.changed", (d) => { S.ticker = d || {}; render(); });
+  core.on("mixer.changed", (d) => { S.mixer = d || {}; if (mode() === "panel" && S.tab === "now") render(); });
+  core.on("notes.changed", (d) => { if (Array.isArray(d && d.items)) S.notes = d.items; if (mode() === "panel" && S.tab === "now") render(); });
   core.on("router.status", (r) => { S.router = (r && (r.active_label || r.active)) || S.router; });
   core.on("status.keyboard", (k) => {
     const changed = S.kbd.layout && k && k.layout && k.layout !== S.kbd.layout;
@@ -1026,7 +1577,16 @@ export function mountIsland() {
   core.on("voice.stt", (d) => { if (d && d.partial && S.mic.state === "listening") { S.mic.partial = d.partial; } });
 
   // Часы, таймеры и счётчик записи тикают раз в секунду без лишних перерисовок сложных режимов.
-  setInterval(() => { const m = mode(); if (m === "idle" || m === "timer" || m === "rec" || (m === "panel" && S.tab === "now")) render(); }, 1000);
+  setInterval(() => {
+    const m = mode();
+    const ticking = (S.focus && S.focus.endsAt) || (S.sleep && S.sleep.endsAt);
+    if (m === "idle" || m === "timer" || m === "rec" || (m === "panel" && S.tab === "now") || ticking) {
+      focusTick();
+      sleepTick();
+      render();
+    }
+    healthTick();
+  }, 1000);
   window.addEventListener("idos.lang", render);
   if (!inTauri) document.body.classList.add("demo");
   render();
