@@ -18,7 +18,7 @@ export function islandEditor(cfg) {
     const results=await Promise.all(Object.entries(methods).map(async([key,method])=>[key,await core.try(method,{},8000)]));
     liveData=Object.fromEntries(results.filter(([,value])=>value&&!value.error));
     liveData.agent={state:'idle',steps:[],lastReply:'',...liveData.agent};
-    const timers=await core.try('island.timers',{},8000);if(Array.isArray(timers))liveData.timers=new Map(timers.map(item=>[item.id,item]));
+    const timers=await core.try('island.timers',{},8000);if(Array.isArray(timers))liveData.timers=new Map(timers.map(item=>[item.id,{state:"running",...item}]));
     const router=await core.try('router.status',{},8000);liveData.router=router?.active_label||router?.active||'';
     const indicators=await core.try('status.indicators',{},8000);if(indicators&&!indicators.error){liveData.kbd=indicators.keyboard||{};liveData.privacy=indicators.privacy||{};}
     if(box.isConnected&&!drag&&!busy)draw();

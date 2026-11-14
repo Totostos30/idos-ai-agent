@@ -263,7 +263,8 @@ fn hit_loop(app: AppHandle) {
         let raw_inside = if hidden {
             false
         } else if focused {
-            true
+            // Keep the screen-edge gap click-through even while a text field owns focus.
+            cursor_in_window(&app, &window).is_some_and(|(_, y)| y >= hit.1)
         } else {
             cursor_in_window(&app, &window)
                 .is_some_and(|(x, y)| x >= hit.0 && y >= hit.1 && x <= hit.0 + hit.2 && y <= hit.1 + hit.3)

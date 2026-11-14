@@ -621,3 +621,9 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .lyrics-panel { display:flex; flex-direction:column; gap:4px; min-width:0; height:100%; }
 .lyrics-panel .row { flex:none; }
 .lyrics-panel .lyrics-full { min-height:0; flex:1; padding:4px 8px; }
+
+/* Lyrics capture scrolling only after explicit interaction. */
+.region-now .island-cell:has(.lyrics-panel) { overflow:hidden; }
+.lyrics-panel .lyrics-full { overflow:hidden; cursor:pointer; }
+.lyrics-panel .lyrics-full.scroll-enabled { overflow:auto; overscroll-behavior:contain; cursor:text; user-select:text; }
+.lyrics-full.scroll-enabled:focus-visible { outline:1px solid var(--accent); outline-offset:-1px; }

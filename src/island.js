@@ -8,7 +8,8 @@ import { createNous } from "./nous.js";
 import { iconNode } from "./icons.js";
 import { t, locale } from "./i18n.js";
 import { entries, shown, gridRegion } from "./island-layout.js";
-import { resizePanel } from "./island-panel.js";
+import { panelSize } from "./island-panel.js";
+import { ringPath, timerSeconds } from "./island-motion.js";
 import { Fluid } from "./fluid.js";
 import { PARTS, TAB_LIST, TOOL_LIST, partOn, listOn, partValues, RESET_VALUES, applyValues } from "./parts.js";
 
@@ -85,14 +86,7 @@ function mode() {
 }
 
 const runningTimers = () => [...S.timers.values()].filter((t) => t.state === "running");
-function timerLeft(t) {
-  const rawEnd = Number(t.ends_at ?? t.ends);
-  if (Number.isFinite(rawEnd) && rawEnd > 0) {
-    const endSeconds = rawEnd > 100_000_000_000 ? rawEnd / 1000 : rawEnd;
-    return endSeconds - Date.now() / 1000;
-  }
-  return Number(t.seconds) || 0;
-}
+const timerLeft = timerSeconds;
 
 // ------------------------------------------------------------------ rendering
 
@@ -118,20 +112,26 @@ function orb(extra = "") {
   return el("span", { class: "orb nous-wrap " + extra }, inst.el);
 }
 
-function wavePath(bands, playing, ring=0) {
-  const count=96,points=[];
-  for(let i=0;i<count;i++){
-    const angle=i/count*Math.PI*2,at=i/count*(bands.length||1),index=Math.floor(at);
-    const v=playing?Math.max(0,Math.min(1,(bands[index%bands.length]||0)*(1-at%1)+(bands[(index+1)%bands.length]||0)*(at%1))):0;
-    const r=17+ring*5+v*(5+Math.sin(angle*6+ring)*2);
-    points.push((32+Math.cos(angle)*r).toFixed(2)+','+(32+Math.sin(angle)*r).toFixed(2));
-  }
-  return 'M'+points.join(' L')+' Z';
+let waveAnimationStarted=false;
+function animateRings() {
+  if(waveAnimationStarted)return;
+  waveAnimationStarted=true;
+  let last=0;
+  const frame=now=>{
+    requestAnimationFrame(frame);
+    if(now-last<32)return;last=now;
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelectorAll('.eq-ring').forEach(box=>{
+      box.querySelectorAll('path').forEach((path,i)=>path.setAttribute('d',ringPath(box._bands||[],box.dataset.playing==='true',i,reduced?0:now/1000)));
+    });
+  };
+  requestAnimationFrame(frame);
 }
 function eq() {
   const box=el('span',{class:'eq eq-ring',role:'img','aria-label':t('Эквалайзер')});
+  box._bands=[...S.bands];box.dataset.playing=String(!!S.media.playing);animateRings();
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 64 64');
-  for(let i=0;i<2;i++){const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',wavePath(S.bands,S.media.playing,i));svg.append(path);}
+  for(let i=0;i<2;i++){const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',ringPath(S.bands,S.media.playing,i));svg.append(path);}
   box.append(svg);return box;
 }
 
@@ -448,12 +448,12 @@ const VIEWS = {
       el("button", { class: "icon stop", title: "Остановить запись", onclick: (e) => { e.stopPropagation(); core.try("recorder.stop"); } }, iconNode("stop", 14))),
   ],
   timer: () => {
-    const t = runningTimers().sort((a, b) => timerLeft(a) - timerLeft(b))[0];
-    const left = timerLeft(t);
+    const timer = runningTimers().sort((a, b) => timerLeft(a) - timerLeft(b))[0];
+    const left = timerLeft(timer);
     return [el("div", { class: "row pill" }, el("span", { class: "ic" }, icon("timer")),
-      el("span", { class: "label mono" }, fmtTime(left)), el("span", { class: "sub" }, t.label || ""),
+      el("span", { class: "label mono" }, fmtTime(left)), el("span", { class: "sub" }, timer.label || ""),
       el("span", { class: "grow" }),
-      el("button", { class: "icon", title: t("Отменить"), onclick: (e) => { e.stopPropagation(); core.try("island.cancel_timer", { timer_id: t.id }); } }, "✕"))];
+      el("button", { class: "icon", title: t("Отменить"), onclick: (e) => { e.stopPropagation(); core.try("island.cancel_timer", { timer_id: timer.id }); } }, "✕"))];
   },
   confirm: () => {
     const c = S.agent.confirm;
@@ -907,7 +907,7 @@ function widgetDescriptors() {
       const list = [...S.timers.values()].slice(0, 3);
       if (!list.length) return el("button",{class:"widget hint",onclick:()=>openBar("таймер ")},wHead("timer","Таймеры"),el("div",{class:"sub"},t("Создать таймер")));
       return el("div", { class: "widget" }, list.map((tm) => {
-        const left = tm.state === "running" && tm.ends_at ? tm.ends_at - Date.now() / 1000 : 0;
+        const left = tm.state === "running" ? timerLeft(tm) : 0;
         return el("div", { class: "trow " + tm.state },
           el("div", { class: "big mono" }, tm.state === "done" ? t("Готово") : fmtTime(left)),
           el("div", { class: "sub" }, tm.label || t("Таймер")),
@@ -979,7 +979,7 @@ function panelNow() {
       if(on('p_lyrics')){
         const data=S.lyricsData;
         const text=data?.plain||(data?.lines||[]).map(l=>l.text).join('\n')||t('Текст песни пока недоступен');
-        nodes.push(['p_lyrics',el('div',{class:'lyrics-panel'},el('div',{class:'row'},el('span',{class:'sub grow'},data?.source||'LRCLIB'),el('button',{class:'icon',title:t('Обновить текст песни'),onclick:()=>loadTrackLyrics(true)},iconNode('refresh',14))),el('div',{class:'lyrics-full'},text))]);
+        nodes.push(['p_lyrics',el('div',{class:'lyrics-panel'},el('div',{class:'row'},el('span',{class:'sub grow'},data?.source||'LRCLIB'),el('button',{class:'icon',title:t('Обновить текст песни'),onclick:()=>loadTrackLyrics(true)},iconNode('refresh',14))),el('div',{class:'lyrics-full'+(S.lyricsScroll?' scroll-enabled':''),tabindex:'0',role:'region','aria-label':t('Текст песни'),onclick:e=>{e.stopPropagation();S.lyricsScroll=true;e.currentTarget.classList.add('scroll-enabled');},onkeydown:e=>{if(e.key==='Enter'){S.lyricsScroll=true;e.currentTarget.classList.add('scroll-enabled');}}},text))]);
       }
       if(visualizer)nodes.push(['p_eq',visualizer]);
       if(on("p_player"))nodes.unshift(["p_player",player]);
@@ -1135,6 +1135,9 @@ function panelAgent() {
 }
 
 function renderCards() {
+  const signature=JSON.stringify(S.cards);
+  if(cardsBox.dataset.signature===signature)return;
+  cardsBox.dataset.signature=signature;
   cardsBox.replaceChildren(...S.cards.map((c) =>
     el("div", { class: "card " + (c.kind || "info") + (c.out ? " out" : "") },
       c.swatch ? el("span", { class: "ic swatch", style: { background: c.swatch } }) : el("span", { class: "ic" }, icon(c.icon || (c.kind === "ok" ? "check" : c.kind === "error" ? "close" : c.kind === "warn" ? "alert" : "info"))),
@@ -1224,7 +1227,7 @@ function render() {
   void focusedValue;
   isl.dataset.panelTab=m==='panel'?S.tab:'';
   if(m==='panel'){
-    resizePanel(isl,S.cfg.island.panel_size?.[S.tab],{start:()=>{S.resizing=true;},change:scheduleHit,finish:size=>{S.resizing=false;saveValues({['island.panel_size.'+S.tab]:size});},cancel:()=>{S.resizing=false;render();}});
+    const size=panelSize(S.cfg.island.panel_size?.[S.tab]);isl.style.width=size.w+'px';isl.style.height=size.h+'px';
     const saved=panelScroll.get(S.tab)||[];
     scrollNodes().forEach((n,i)=>{if(saved[i]){n.scrollLeft=saved[i].x;n.scrollTop=saved[i].y;}});
     if(focused){const next=isl.querySelector(`[data-focus-key="${focused}"]`);if(next){next.focus({preventScroll:true});if(selection)next.setSelectionRange(...selection);}}
@@ -1269,7 +1272,7 @@ function scheduleHit() {
     const r = isl.getBoundingClientRect();
     if (root.classList.contains("through")) { invoke("set_hit_region", { x: 0, y: 0, width: 0, height: 0 }); return; }
     if (root.classList.contains("hidden")) { const lr = lip.getBoundingClientRect(); invoke("set_hit_region", { x: Math.round(lr.left), y: 0, width: Math.round(lr.width), height: 12 }); return; }
-    let x1 = r.left, y1 = 0, x2 = r.right, y2 = r.bottom;
+    let x1 = r.left, y1 = r.top, x2 = r.right, y2 = r.bottom;
     for (const c of cardsBox.children) {
       const cr = c.getBoundingClientRect();
       x1 = Math.min(x1, cr.left); x2 = Math.max(x2, cr.right); y2 = Math.max(y2, cr.bottom);
@@ -1549,6 +1552,7 @@ export function mountIsland() {
   isl.addEventListener("mouseleave", () => {
     leaveTimer = setTimeout(() => { if (S.expanded && !S.pinned) { S.expanded = false; render(); } }, 420);
   });
+  document.addEventListener("pointerdown",e=>{if(!e.target.closest(".lyrics-full")){S.lyricsScroll=false;document.querySelectorAll(".lyrics-full").forEach(n=>n.classList.remove("scroll-enabled"));}},true);
   isl.addEventListener("click", (e) => {
     if (e.target.closest("button,input,.bar-item,.clip,.progress")) return;
     const m = mode();
@@ -1604,7 +1608,7 @@ export function mountIsland() {
     if (media && !media.error) {S.media=media;loadTrackLyrics();}
     if (status && !status.error) S.status = status;
     if (weather && !weather.error) S.weather = weather;
-    if (Array.isArray(timers)) timers.forEach((t) => S.timers.set(t.id, t));
+    if (Array.isArray(timers)) timers.forEach((t) => S.timers.set(t.id, {state:"running",...t}));
     if (rec && !rec.error) S.rec = rec;
     if (router && !router.error) S.router = router.active_label || router.active || "";
     if (calendar && !calendar.error) S.calendar = calendar;
@@ -1655,10 +1659,10 @@ export function mountIsland() {
   core.on("agent.confirm_done", (d) => { if (S.agent.confirm && S.agent.confirm.id === d.id) { S.agent.confirm = null; render(); } });
   core.on("island.card", (c) => pushCard(c));
   core.on("island.clear", () => { S.cards = []; render(); });
-  core.on("island.timer", (t) => {
-    S.timers.set(t.id, t);
-    if (t.state === "done") { pushCard({ title: t("Время вышло"), text: t.label || t("Таймер"), kind: "ok", icon: "timer", timeout: 12 }); setTimeout(() => { S.timers.delete(t.id); render(); }, 15000); }
-    if (t.state === "cancelled") S.timers.delete(t.id);
+  core.on('island.timer',timer=>{
+    if(timer.state==='done'||timer.state==='cancelled')S.timers.delete(timer.id);
+    else S.timers.set(timer.id,{...S.timers.get(timer.id),...timer});
+    // Completion alerts (sticky, with dismiss action) are sent by core as island.card.
     render();
   });
   core.on("media.state", (m) => { const old=S.media.track_id||S.media.title;S.media=m||{active:false};if(!S.media.active){S.musicView="auto";S.lyricsKey=null;S.lyricsData=null;S.lyric="";}else if(old!==(S.media.track_id||S.media.title)){S.lyricsKey=null;loadTrackLyrics();}render(); });
@@ -1669,7 +1673,7 @@ export function mountIsland() {
     const bass = S.bands.length ? Math.max(S.bands[0] || 0, S.bands[1] || 0) : 0;
     isl.style.setProperty("--lvl", (S.media.playing ? Math.min(1, avg * 1.3) : 0).toFixed(3));
     isl.style.setProperty("--bass", (S.media.playing ? Math.min(1, bass) : 0).toFixed(3));
-    isl.querySelectorAll('.eq-ring path').forEach((path,i)=>path.setAttribute('d',wavePath(S.bands,S.media.playing,i%2)));
+    isl.querySelectorAll('.eq-ring').forEach(box=>{box._bands=S.bands;box.dataset.playing=String(!!S.media.playing);});
   });
   core.on('media.lyrics',d=>{if(d?.track_id&&d.track_id!==S.media.track_id)return;if(d?.lines||d?.plain){S.lyricsData=d;syncLyric();}else S.lyric=d?.line||d?.text||'';if(mode()==='panel'||mode()==='music')render();});
   core.on("recorder.state", (r) => { const was = S.rec.recording; S.rec = r || {}; if (was && !S.rec.recording && S.rec.path) pushCard({ title: t("Запись сохранена"), text: S.rec.path, kind: "ok", icon: "rec" }); render(); });
