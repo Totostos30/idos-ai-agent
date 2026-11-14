@@ -48,6 +48,12 @@ export function initI18n(core) {
 
 // Английские соответствия русских строк интерфейса. Дополняется по мере обёртки строк в t().
 const EN = {
+  "Вид островка": "Island view",
+  "Раскрытый островок": "Expanded island",
+  "Элементы компактного островка. Индикаторы появляются, когда для них есть данные.": "Compact island elements. Indicators appear when data is available.",
+  "Вкладки, виджеты и кнопки раскрытого островка. Хотя бы одна вкладка остаётся включённой.": "Tabs, widgets and buttons of the expanded island. At least one tab stays enabled.",
+  "Изменения применяются сразу. Порядок и ширину блоков можно изменить в редакторе самого островка.": "Changes apply immediately. Use the island editor to change block order and width.",
+  "Вернуть стандартный набор": "Restore default elements",
   // --- главное окно: каркас
   "Эйдос": "Eidos",
   "Νοῦς — двигатель состояний": "Νοῦς — the engine of states",

@@ -548,7 +548,7 @@ async function renderSettings() {
     main.replaceChildren(el("div", { class: "page settings-page" }, header,
       el("div", { class: "settings-overview" },
         themeBox(cfg), langBox(), weatherCityBox(cfg)),
-      voiceBox(), basicIslandBox(cfg)));
+      voiceBox(), islandPartsBox(cfg)));
     return;
   }
 
@@ -573,38 +573,12 @@ async function renderSettings() {
     inTauri ? el("button", { class: "btn ghost", onclick: () => invoke("restart_core") }, t("Перезапустить ядро")) : null),
     settingsFold("Своя тема", themeBox(cfg, true)),
     settingsFold("Словарь произношения", voiceBox(true)),
-    settingsFold("Островок: что показывать", islandPartsBox(cfg)),
     settingsFold("Эффекты волн", waveSettingsBox(cfg)),
-    body));
+    body, settingsFold("Островок", islandPartsBox(cfg))));
 }
 
 function settingsFold(title, content) {
   return el("details", { class: "settings-fold" }, el("summary", {}, t(title)), content);
-}
-
-function basicIslandBox(cfg) {
-  const choices = [["clock", "Часы"], ["battery", "Значок батареи"], ["weather", "Погода"],
-    ["music_controls", "Кнопки плеера"], ["lyrics", "Строка песни"]];
-  const rows = choices.map(([key, label]) => {
-    const name = t(label);
-    const input = el("input", { type: "checkbox", checked: partOn(cfg.island, key), "aria-label": name });
-    input.addEventListener("change", async () => {
-      const previous = !input.checked;
-      input.disabled = true;
-      const values = partValues(key, input.checked);
-      applyValues(cfg, values);
-      const result = await core.try("settings.update", { values });
-      if (result && result.error) {
-        applyValues(cfg, partValues(key, previous));
-        input.checked = previous;
-        toast(result.error, "error");
-      }
-      input.disabled = false;
-    });
-    return el("div", { class: "settings-quick-row" }, el("span", {}, name), el("label", { class: "switch" }, input, el("i")));
-  });
-  return el("section", { class: "box settings-island" }, el("h3", {}, t("Островок")),
-    el("p", { class: "mut small" }, t("Выберите, что показывать в капсуле")), rows);
 }
 
 // «Внешний вид»: пресет темы + акцент (гайдбук §9, THEMES §5). Имена пресетов — по Γλῶτте.
@@ -819,35 +793,80 @@ function waveSettingsBox(cfg) {
 const PARTS_KEYS = new Set(["parts", "hidden_tabs", "hidden_tools"]);
 
 function islandPartsBox(cfg) {
-  const box = el("section", { class: "box parts-box" });
-  const save = async (values) => {
-    applyValues(cfg, values);
-    draw();
+  const box = el("section", { class: "box settings-island" });
+  let view = "capsule";
+  const opened = new Set(["Капсула", "Вкладки панели"]);
+  const body = el("div", { class: "island-settings-body" });
+  const nav = el("div", { class: "settings-modes island-settings-nav", role: "group", "aria-label": t("Вид островка") });
+  for (const [id, label, glyph] of [["capsule", "Капсула", "end"], ["panel", "Раскрытый островок", "app"]]) {
+    nav.append(el("button", { class: "settings-mode", type: "button", "data-island-view": id,
+      onclick: () => { view = id; draw(); } }, iconNode(glyph, 16), t(label)));
+  }
+  // Сохраняем через общий каталог частей: настройки и редактор островка используют одни ключи.
+  const save = async (values, control) => {
+    const controls = [...box.querySelectorAll("input, button")].map((node) => [node, node.disabled]);
+    for (const [node] of controls) node.disabled = true;
     const r = await core.try("settings.update", { values });
-    if (r && r.error) toast(r.error, "error");
+    if (r && !r.error) applyValues(cfg, values);
+    else toast(r && r.error || t("Не удалось сохранить"), "error");
+    for (const [node, disabled] of controls) node.disabled = disabled;
+    const key = control.dataset.islandKey;
+    draw();
+    const next = [...body.querySelectorAll("input")].find((node) => node.dataset.islandKey === key);
+    if (next) next.focus();
   };
-  const sw = (shown, values) => el("label", { class: "switch" }, el("input", { type: "checkbox", checked: shown, onchange: () => save(values) }), el("i"));
-  const row = (label, shown, values) => el("div", { class: "setrow" }, el("span", { class: "k" }, label), sw(shown, values));
-  const hidden = (kind, id, show) => {
-    const cur = new Set((cfg.island || {})["hidden_" + kind] || []);
-    if (show) cur.delete(id); else cur.add(id);
-    return { ["island.hidden_" + kind]: [...cur] };
+  const row = (label, key, shown, values, disabled = false) => {
+    const input = el("input", { type: "checkbox", checked: shown, disabled,
+      "data-island-key": key, "aria-label": t(label), onchange: () => save(values(input.checked), input) });
+    return el("label", { class: "island-option" }, el("span", {}, t(label)),
+      el("span", { class: "switch" }, input, el("i")));
+  };
+  const listRows = (kind, list) => list.map(([id, name]) => {
+    const I = cfg.island || {};
+    const shown = listOn(I, kind, id);
+    // В раскрытой панели всегда остаётся хотя бы одна доступная вкладка.
+    const lastTab = kind === "tabs" && shown && list.filter(([key]) => listOn(I, kind, key)).length === 1;
+    return row(name, kind + "." + id, shown, (show) => {
+      const hidden = new Set((cfg.island || {})["hidden_" + kind] || []);
+      if (show) hidden.delete(id); else hidden.add(id);
+      return { ["island.hidden_" + kind]: [...hidden] };
+    }, lastTab);
+  });
+  const group = (title, glyph, rows) => {
+    const details = el("details", { class: "island-options", open: opened.has(title) },
+      el("summary", {}, iconNode(glyph, 16), t(title)), el("div", { class: "island-option-list" }, rows));
+    details.addEventListener("toggle", () => { if (details.open) opened.add(title); else opened.delete(title); });
+    return details;
   };
   const draw = () => {
-    const I = cfg.island || {};
-    const groups = new Map([[t("Вкладки панели"), TAB_LIST.map(([id, name]) => row(t(name), listOn(I, "tabs", id), hidden("tabs", id, !listOn(I, "tabs", id))))]]);
-    for (const [key, label, group] of PARTS) {
-      const g = t(group);
-      if (!groups.has(g)) groups.set(g, []);
-      groups.get(g).push(row(t(label), partOn(I, key), partValues(key, !partOn(I, key))));
+    nav.querySelectorAll("button").forEach((b) => {
+      const selected = b.dataset.islandView === view;
+      b.classList.toggle("on", selected);
+      b.setAttribute("aria-pressed", String(selected));
+    });
+    const groups = new Map();
+    for (const [key, label, title] of PARTS) {
+      const capsule = ["Капсула", "Музыка в капсуле", "Агент в капсуле"].includes(title);
+      if (capsule !== (view === "capsule")) continue;
+      if (!groups.has(title)) groups.set(title, []);
+      groups.get(title).push(row(label, key, partOn(cfg.island, key), (show) => partValues(key, show)));
     }
-    groups.set(t("Кнопки «Инструменты»"), TOOL_LIST.map(([id, name]) => row(t(name), listOn(I, "tools", id), hidden("tools", id, !listOn(I, "tools", id)))));
-    box.replaceChildren(
-      el("h3", {}, t("Островок: что показывать")),
-      el("div", { class: "mut small" }, t("Выключите лишнее — островок изменится сразу. То же можно сделать прямо в островке: раскройте его и нажмите ✎.")),
-      el("div", { class: "parts-grid" }, [...groups].map(([g, rows]) => el("div", { class: "parts-col" }, el("h4", {}, g), rows))),
-      el("div", { class: "row2 end" }, el("button", { class: "btn ghost", onclick: () => save(RESET_VALUES) }, t("Показать всё"))));
+    const glyphs = { "Капсула": "end", "Музыка в капсуле": "music", "Агент в капсуле": "spark",
+      "Панель: «Сейчас»": "app", "Панель: «Инструменты»": "tools", "Панель: «Агент»": "spark", "Заголовок панели": "settings" };
+    const sections = [...groups].map(([title, rows]) => group(title, glyphs[title], rows));
+    if (view === "panel") {
+      sections.unshift(group("Вкладки панели", "app", listRows("tabs", TAB_LIST)));
+      sections.push(group("Кнопки «Инструменты»", "tools", listRows("tools", TOOL_LIST)));
+    }
+    body.replaceChildren(el("p", { class: "mut small island-settings-hint" }, t(view === "capsule"
+      ? "Элементы компактного островка. Индикаторы появляются, когда для них есть данные."
+      : "Вкладки, виджеты и кнопки раскрытого островка. Хотя бы одна вкладка остаётся включённой.")),
+      ...sections);
   };
+  box.append(el("div", { class: "island-settings-header" }, el("h3", {}, t("Островок")), nav), body,
+    el("div", { class: "island-settings-footer" },
+      el("span", { class: "mut small" }, t("Изменения применяются сразу. Порядок и ширину блоков можно изменить в редакторе самого островка.")),
+      el("button", { class: "btn ghost", type: "button", onclick: (e) => save(RESET_VALUES, e.currentTarget) }, t("Вернуть стандартный набор"))));
   draw();
   return box;
 }
