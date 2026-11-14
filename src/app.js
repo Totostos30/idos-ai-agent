@@ -641,10 +641,9 @@ function themeBox(cfg, advanced = false) {
           const r = await core.try("settings.set", { key: "theme", value: { preset: cur.preset, accent: id } });
           if (r && r.error) toast(r.error, "error");
         } }, id ? a.letter : "α");
-      if (id) {
-        sw.style.setProperty("--swatch-dark", a.dark);
-        sw.style.setProperty("--swatch-light", a.light);
-      }
+      const color = a || ACCENTS.nous;
+      sw.style.setProperty("--swatch-dark", color.dark);
+      sw.style.setProperty("--swatch-light", color.light);
       return sw;
     }));
   box.append(el("div", { class: "setrow" }, el("span", { class: "k" }, t("Тема")), seg),
@@ -893,8 +892,8 @@ function voiceGroup(info, group, current, pick, install) {
     card.addEventListener("click", () => pick(group.engine, voice.id, card));
     return card;
   });
-  return el("div", { class: "vgroup" + (active ? " active" : "") + (group.available ? "" : " off") },
-    el("div", { class: "vhead" }, el("b", {}, group.title), el("span", { class: "mut small" }, group.note), active ? el("span", { class: "tag ok" }, t("сейчас")) : null),
+  return el("div", { class: "vgroup" + (active ? " active" : "") + (group.available ? "" : " off"),
+    role: "group", "aria-label": group.title || t("Голос") },
     group.available ? null : el("div", { class: "vreason small" }, el("span", {}, group.reason || "недоступен"),
       group.installable ? el("button", { class: "btn ghost", onclick: () => install(group) }, t("Установить")) : null),
     el("div", { class: "vcards" }, cards));
