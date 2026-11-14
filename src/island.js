@@ -9,7 +9,7 @@ import { iconNode } from "./icons.js";
 import { t, locale } from "./i18n.js";
 import { entries, shown, gridRegion } from "./island-layout.js";
 import { panelSize } from "./island-panel.js";
-import { ringPath, timerSeconds } from "./island-motion.js";
+import { visualizerPath, timerSeconds } from "./island-motion.js";
 import { Fluid } from "./fluid.js";
 import { PARTS, TAB_LIST, TOOL_LIST, partOn, listOn, partValues, RESET_VALUES, applyValues } from "./parts.js";
 
@@ -64,7 +64,7 @@ let root, isl, cardsBox, fluid, lip, leaveTimer = null, barTimer = null;
 let clipLoadRequest = 0, clipOpenRequest = 0;
 try { S.focus = JSON.parse(localStorage.getItem("idos.focus") || "null"); } catch (e) { /* пусто */ }
 // автоскрытие: полоска → (навели) капсула → (держишь курсор) большая панель
-let quietSince = Date.now(), tuckTimer = null, peeked = false, lastSig = "";
+let quietSince = Date.now(), tuckTimer = null, peeked = false;
 const mic = new Mic((st) => { S.mic = st; document.querySelectorAll("button.mic").forEach((b) => setMicState(b, st)); if (st.state === "error") pushCard({ title: t("Микрофон"), text: st.text, kind: "error" }); render(); });
 
 // ------------------------------------------------------------------ mode selection
@@ -124,16 +124,16 @@ function animateRings() {
     document.querySelectorAll('.eq-ring').forEach(box=>{
       const target=box._bands||[], previous=box._smooth||target;
       box._smooth=target.map((v,i)=>(previous[i]||0)+(v-(previous[i]||0))*.16);
-      box.querySelectorAll('path').forEach((path,i)=>path.setAttribute('d',ringPath(box._smooth,box.dataset.playing==='true',i,reduced?0:now/1000)));
+      box.querySelectorAll('path').forEach((path,i)=>path.setAttribute('d',visualizerPath(box._smooth,box.dataset.playing==='true',i,reduced?0:now/1000,box.dataset.style)));
     });
   };
   requestAnimationFrame(frame);
 }
 function eq() {
   const box=el('span',{class:'eq eq-ring',role:'img','aria-label':t('Эквалайзер')});
-  box._bands=[...S.bands];box.dataset.playing=String(!!S.media.playing);animateRings();
-  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 64 64');
-  for(let i=0;i<2;i++){const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',ringPath(S.bands,S.media.playing,i,matchMedia('(prefers-reduced-motion: reduce)').matches?0:performance.now()/1000));svg.append(path);}
+  box.dataset.style=S.cfg.island.waves?.visualizer||'waves';box._bands=[...S.bands];box.dataset.playing=String(!!S.media.playing);animateRings();
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 128 48');
+  for(let i=0;i<(box.dataset.style!=='waves'?1:4);i++){const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',visualizerPath(S.bands,S.media.playing,i,matchMedia('(prefers-reduced-motion: reduce)').matches?0:performance.now()/1000,box.dataset.style));svg.append(path);}
   box.append(svg);return box;
 }
 
@@ -1168,17 +1168,11 @@ function updateNear(x, y) {
 
 function tucked(m) {
   const I = S.cfg.island;
-  // Смена режима, трека или состояния воспроизведения запускает новый короткий показ.
-  const sig = m + "|" + (S.media.track_id || S.media.title || "") + "|" + (S.media.playing ? 1 : 0);
-  if (sig !== lastSig) { lastSig = sig; quietSince = Date.now(); }
-  // Обычные задачи не скрываем. Автоскрытие действует только для покоя и музыки.
-  const transient = m === "idle" || m === "music";
-  // S.stick: капсула раскрыта по клику на полоске и не прячется, пока не откроют панель
-  // S.near: курсор рядом с капсулой — не прячем, пусть человек успеет навести
-  const quiet = !!I.auto_hide && !S.hover && !S.near && !S.stick && !S.expanded && !S.pinned && transient && !S.cards.length && !S.bar.open;
-  if (!quiet) { quietSince = Date.now(); clearTimeout(tuckTimer); tuckTimer = null; return false; }
-  const idleDelay = Number(I.auto_hide_delay);
-  const wait = m === "music" ? 3000 : (Number.isFinite(idleDelay) && idleDelay >= 0 ? idleDelay : 1) * 1000;
+  const editing=isl.contains(document.activeElement?.closest('input,textarea,[contenteditable=true]'));
+  const quiet=!!I.auto_hide&&!S.hover&&!S.expanded&&!S.pinned&&!editing&&!S.cards.length&&!S.bar.open&&['idle','music'].includes(m);
+  if(!quiet){quietSince=Date.now();clearTimeout(tuckTimer);tuckTimer=null;return false;}
+  if(S.hideRequested)return true;
+  const wait=1000;
   const left = quietSince + wait - Date.now();
   if (left <= 0) { peeked = false; return true; }
   if (!tuckTimer) tuckTimer = setTimeout(() => { tuckTimer = null; render(); }, left + 30);
@@ -1187,7 +1181,7 @@ function tucked(m) {
 
 function peek() {
   if (!root.classList.contains("hidden")) return;
-  peeked = true; S.hover = true; S.peekAt = Date.now();
+  S.hideRequested=false;peeked = true; S.hover = true; S.peekAt = Date.now();
   clearTimeout(leaveTimer);
   render();
 }
@@ -1286,6 +1280,8 @@ function scheduleHit() {
       x1 = Math.min(x1, cr.left); x2 = Math.max(x2, cr.right); y2 = Math.max(y2, cr.bottom);
     }
     const pad = S.cfg.island.edge_open === false ? 4 : 8;
+    const halo=root.querySelector('.island-halo');
+    if(halo)Object.assign(halo.style,{left:(r.left-pad)+'px',top:r.top+'px',width:(r.width+pad*2)+'px',height:(r.height+pad)+'px'});
     invoke("set_hit_region", { x: x1 - pad, y: y1, width: x2 - x1 + pad * 2, height: y2 - y1 + pad });
   });
 }
@@ -1544,21 +1540,25 @@ export function mountIsland() {
   // Клик по полоске при скрытом островке: капсула раскрывается и ОСТАЁТСЯ открытой
   // (первый клик — «обычный островок»); второй клик по капсуле откроет панель.
   lip.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); peek(); S.stick = true; });
-  root.addEventListener("mouseleave", () => {
-    if (!S.hover) return;
-    setTimeout(() => { if (!isl.matches(":hover") && !lip.matches(":hover")) { S.hover = false; render(); } }, 500);
-  });
+  const enter=()=>{S.hover=true;S.hideRequested=false;clearTimeout(leaveTimer);};
+  const leave=()=>{
+    clearTimeout(leaveTimer);
+    leaveTimer=setTimeout(()=>{
+      if(S.pinned||isl.contains(document.activeElement?.closest('input,textarea,[contenteditable=true]')))return;
+      S.hover=false;S.near=false;S.stick=false;S.expanded=false;S.hideRequested=true;render();
+    },1000);
+  };
+  const halo=el('div',{class:'island-halo',onclick:()=>isl.click()});root.prepend(halo);
+  for(const node of [isl,halo,lip]){node.addEventListener('mouseenter',enter);node.addEventListener('mouseleave',leave);}
   document.body.append(root);
   new ResizeObserver(scheduleHit).observe(isl);
   new ResizeObserver(scheduleHit).observe(cardsBox);
-  isl.addEventListener("transitionend", scheduleHit);
-
-  isl.addEventListener("mouseenter", () => {
-    S.hover = true;
-    clearTimeout(leaveTimer);
-  });
-  isl.addEventListener("mouseleave", () => {
-    leaveTimer = setTimeout(() => { if (S.expanded && !S.pinned && !isl.contains(document.activeElement?.closest("input,textarea,[contenteditable=true]"))) { S.expanded = false; render(); } }, 420);
+  isl.addEventListener('transitionend',scheduleHit);
+  isl.addEventListener('click',e=>{
+    const cell=e.target.closest('.island-cell');
+    if(!cell||e.target.closest('button,input,textarea,a'))return;
+    const buttons=cell.querySelectorAll('button');
+    if(buttons.length===1&&!cell.querySelector('input,textarea')){e.stopPropagation();buttons[0].click();}
   });
   document.addEventListener("pointerdown",e=>{if(!e.target.closest(".lyrics-full")){S.lyricsScroll=false;document.querySelectorAll(".lyrics-full").forEach(n=>n.classList.remove("scroll-enabled"));}},true);
   isl.addEventListener("click", (e) => {
@@ -1598,11 +1598,7 @@ export function mountIsland() {
   listen("island-hover", (inside) => {
     // Rust releases the strip hit-region only after the 2-second dwell.
     if (inside && root.classList.contains("hidden")) peek();
-    if (!inside) {
-      S.hover = false;
-      if (S.cfg.island.auto_hide) render();
-    }
-    if (!inside && S.expanded && !S.pinned) { leaveTimer = setTimeout(() => { S.expanded = false; render(); }, 420); }
+    if(inside)enter();else leave();
   });
   listen("core-restarted", () => pushCard({ title: t("Ядро перезапущено"), kind: "ok", timeout: 3 }));
 

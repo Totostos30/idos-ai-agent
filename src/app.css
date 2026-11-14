@@ -678,3 +678,6 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .visual-editor > .settings-modes { flex-wrap:wrap; height:auto; }
 /* Repacking blocks during a drag must not move the viewport's scroll anchor. */
 .editor-grid { overflow-anchor:none; }
+.editor-grid.region-header { min-height:36px!important; height:36px; margin-bottom:0; }
+.visual-editor .editor-island.expanded:has(> .region-header.editor-grid) { min-height:0; height:auto; display:block; }
+.visual-editor .editor-island.expanded > .editor-grid.region-header { flex:none; padding-bottom:0; }

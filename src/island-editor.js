@@ -210,7 +210,7 @@ export function islandEditor(cfg) {
     const liveNodes=new Map([...(live?.querySelectorAll('[data-grid-key]')||[])].map(n=>[n.dataset.gridKey,n]));
     visibleKeys=new Set(liveNodes.keys());
     const list=current(), pos=placements(cfg.island,region,list.map(i=>i.key));
-    const height=region==='capsule'?1:Math.max(1,...Object.values(pos).map(p=>p.y+p.h));
+    const height=['capsule','header'].includes(region)?1:Math.max(1,...Object.values(pos).map(p=>p.y+p.h));
     const grid=el('div',{class:'island-grid editor-grid region-'+region,'data-editor-region':region,style:{minHeight:(height*(region==='tools'?32:region==='capsule'||region==='header'?44:56)-8)+'px'}});
 
     for(const item of list){
@@ -247,7 +247,9 @@ export function islandEditor(cfg) {
     }
   };
   for(const [id,label] of REGIONS)nav.append(el('button',{class:'settings-mode',type:'button','data-region':id,onclick:()=>{if(!busy){region=id;visibleKeys=null;selected=null;draw();}}},t(label)));
-  box.append(el('h3',{},t('Настройка островка')),el('p',{class:'mut small'},t('Перетащите блок на макете или из списка. Потяните за угол, чтобы изменить размер. Стрелки — перемещение, Shift + стрелки — размер.')),nav,body,inspector,
+  const visualizer=el('select',{class:'field','aria-label':t('Вид эквалайзера')},[['waves','Плавные волны'],['spectrum','Спектр'],['waveform','Звуковая дорожка']].map(([value,label])=>el('option',{value,selected:(cfg.island?.waves?.visualizer||'waves')===value},t(label))));
+  visualizer.onchange=()=>save({'island.waves.visualizer':visualizer.value});
+  box.append(el('label',{class:'row'},t('Эквалайзер'),visualizer),el('h3',{},t('Настройка островка')),el('p',{class:'mut small'},t('Перетащите блок на макете или из списка. Потяните за угол, чтобы изменить размер. Стрелки — перемещение, Shift + стрелки — размер.')),nav,body,inspector,
     el('div',{class:'island-settings-footer'},status,el('button',{class:'btn ghost',type:'button',onclick:()=>save({...RESET_VALUES,'island.visual_layout':{},'island.layout':{},'island.panel_layout':{},'island.capsule_center':'','island.battery_display':'icon'})},t('Вернуть стандартный набор'))));
   draw();refresh();
   const refreshEvents=['status.state','weather.state','sysmon.state','calendar.changed','downloads.changed','ticker.changed','mixer.changed','notes.changed','media.state','router.status','status.keyboard','status.privacy','media.lyrics'];

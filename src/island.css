@@ -629,3 +629,13 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 @media (prefers-reduced-motion: reduce) {
   .stage, .stage *, .stage *::before, .stage *::after { animation:none!important; transition:none!important; }
 }
+
+.eq.eq-ring { width:64px; height:28px; }
+.region-now [data-grid-key="p_eq"] .eq-ring, .editor-grid [data-editor-key="p_eq"] .eq-ring { width:100%; height:64px; }
+.eq-ring path { stroke-width:1.3; stroke-linecap:round; }
+.eq-ring path:nth-child(3) { opacity:.3; }
+.eq-ring path:nth-child(4) { opacity:.18; }
+.island-halo { position:fixed; pointer-events:auto; z-index:0; }
+.stage.hidden > .island-halo, .stage.through > .island-halo { display:none; }
+.island-cell > button:only-child { flex:1; align-self:stretch; width:100%; }
+.region-capsule .island-cell > button:only-child { justify-content:center; }
