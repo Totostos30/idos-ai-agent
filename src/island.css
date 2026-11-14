@@ -550,3 +550,6 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .island.visual-capsule, .island.visual-music { max-height:540px; overflow:auto; }
 
 .region-now .island-cell > div { width:100%; }
+
+.island.visual-capsule { width:max-content; max-width:calc(100vw - 32px); overflow-x:auto; overflow-y:hidden; border-radius:28px; }
+.region-capsule { width:max-content; grid-auto-flow:column; }

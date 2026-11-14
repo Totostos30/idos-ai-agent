@@ -644,3 +644,9 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .editor-panel-header { padding:0 0 16px; gap:8px; font-size:11px; }
 
 .visual-editor .editor-scroll { max-height:600px; }
+
+.editor-island.compact { width:max-content; min-width:150px; padding:6px; }
+.editor-grid .editor-cell { flex-direction:row; background:transparent; border-color:transparent; gap:0; }
+.editor-grid .editor-cell:hover, .editor-grid .editor-cell.selected { border-color:var(--accent); }
+.editor-cell > [inert] { pointer-events:none; }
+.editor-grid.region-capsule { min-height:36px !important; }

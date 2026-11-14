@@ -12,7 +12,8 @@ import { Fluid } from "./fluid.js";
 import { PARTS, TAB_LIST, TOOL_LIST, partOn, listOn, partValues, RESET_VALUES, applyValues } from "./parts.js";
 
 // видна ли часть интерфейса (настраивается в панели кнопкой ✎ или в настройках)
-const on = (key) => partOn(S.cfg.island, key);
+const AUTOMATIC_PARTS = new Set(["music_cover","music_title","music_progress","music_eq","music_controls","lyrics","agent_steps","agent_stop","reply_text","mic_meter"]);
+const on = (key) => AUTOMATIC_PARTS.has(key) || partOn(S.cfg.island, key);
 
 const icon = (name, size = 15) => iconNode(name, size);
 
@@ -192,7 +193,7 @@ function loadBlock() {
 
 function focusBlock() {
   const f = S.focus;
-  if (!f) return null;
+  if (!f) return el("button", {class:"cblk",title:t("Начать фокус-сессию"),onclick:e=>{e.stopPropagation();toggleFocus();}},iconNode("ring",13),"25:00");
   const left = f.endsAt ? Math.max(0, f.endsAt - Date.now() / 1000) : (f.left || 0);
   if (!f.endsAt && !f.left) return null;
   return el("button", { class: "cblk mono focus " + f.phase,
@@ -260,7 +261,7 @@ function coreinfoBlock() {
     return el("span", { class: "cblk", title: ms.name || t("Модель") },
       iconNode("chipic", 13), el("span", { class: "thin c" }, el("i", { style: { width: pct + "%" } })), el("b", {}, pct + "%"));
   }
-  return null;
+  return el("span", {class:"cblk",title:S.router || t("Модель")},iconNode("chipic",13),S.router || "—");
 }
 
 // Реестр блоков капсулы. dots() возвращает массив — flatMap раскрывает его.
@@ -269,7 +270,7 @@ const CAPS_BLOCKS = {
   battery: batBlock,
   battery_percent: batPctBlock,
   weather: weatherBlock,
-  core_status: () => (!S.online ? el("span", { class: "chip warn" }, t("ядро…")) : null),
+  core_status: () => el("span", { class: "chip" + (S.online ? "" : " warn"), title:t("Статус ядра") }, iconNode("wifi",13), S.online ? t("Готов") : t("ядро…")),
   load: loadBlock,
   focus: focusBlock,
   event: eventBlock,
@@ -1374,6 +1375,7 @@ function healthTick() {
 
 async function applyConfig(cfg) {
   S.cfg = Object.assign({ island: {}, hotkeys: {} }, cfg || {});
+  S.cfg.island = normalizedIsland(S.cfg.island);
   const isl0 = S.cfg.island;
   const waves = isl0.waves || {};
   const lipPeriod = Math.max(0.5, Math.min(6, Number(waves.lip_breath_period_s ?? 2.4)));
@@ -1609,7 +1611,7 @@ export function mountIsland() {
   core.on("ticker.changed", (d) => { S.ticker = d || {}; render(); });
   core.on("mixer.changed", (d) => { S.mixer = d || {}; if (mode() === "panel" && S.tab === "now") render(); });
   core.on("notes.changed", (d) => { if (Array.isArray(d && d.items)) S.notes = d.items; if (mode() === "panel" && S.tab === "now") render(); });
-  core.on("router.status", (r) => { S.router = (r && (r.active_label || r.active)) || S.router; });
+  core.on("router.status", (r) => { S.router = (r && (r.active_label || r.active)) || S.router; render(); });
   core.on("status.keyboard", (k) => {
     const changed = S.kbd.layout && k && k.layout && k.layout !== S.kbd.layout;
     S.kbd = k || {};
@@ -1651,3 +1653,21 @@ export function mountIsland() {
 }
 
 export { hotkey as islandHotkey, S as islandState, pushCard };
+
+// Редактор использует те же построители DOM, что и настоящее окно, и реальные снимки ядра.
+export function normalizedIsland(I = {}) {
+  const visual_layout={capsule:{},header:{},now:{},tools:{},agent:{},...I.visual_layout};
+  delete visual_layout.music;delete visual_layout.activity;
+  return {...I,visual_layout,lyrics:true};
+}
+export function renderEditorRegion(cfg, region, data = {}) {
+  const previous={...S};
+  try {
+    Object.assign(S,data,{cfg:{...cfg,island:normalizedIsland(cfg.island)},tab:region==='header'?(data.previewTab||'now'):region,online:core.connected});
+    if(region==='capsule')return visualCapsule();
+    if(region==='header')return panel()[0];
+    if(region==='now')return panelNow()[0];
+    if(region==='tools')return panelTools()[0];
+    return panelAgent().find(node=>node?.dataset?.gridRegion==='agent');
+  } finally {Object.assign(S,previous);}
+}

@@ -48,6 +48,8 @@ export function initI18n(core) {
 
 // Английские соответствия русских строк интерфейса. Дополняется по мере обёртки строк в t().
 const EN = {
+  "Позиция": "Position", "Начать фокус-сессию": "Start focus session",
+  "Макет показывает текущие данные. События и индикаторы появляются при наличии данных.": "The preview shows current data. Events and indicators appear when data is available.",
   "Перетащите блок на макете или из списка. Потяните за угол, чтобы изменить размер. Стрелки — перемещение, Shift + стрелки — размер.": "Drag a block on the preview or from the palette. Drag its corner to resize. Arrow keys move; Shift + arrows resize.",
   "Сохранение…": "Saving…", "Сохранено": "Saved", "Выберите блок на макете": "Select a block on the preview",
   "Колонка": "Column", "Строка": "Row", "Ширина": "Width", "Высота": "Height",

@@ -4,7 +4,7 @@ import { el } from './shell.js';
 
 export const COLS = 12;
 export const REGIONS = [
-  ['capsule', 'Капсула'], ['music', 'Музыка в капсуле'], ['activity', 'Агент в капсуле'],
+  ['capsule', 'Капсула'],
   ['header', 'Заголовок панели'], ['now', 'Панель: «Сейчас»'],
   ['tools', 'Панель: «Инструменты»'], ['agent', 'Панель: «Агент»'],
 ];
@@ -35,6 +35,13 @@ const integer = (v, fallback, max) => Number.isFinite(Number(v)) ? Math.max(1,Ma
 export function placements(I, region, keys) {
   const saved = I?.visual_layout?.[region] || {};
   const occupied = new Set(), result = {};
+  if(region==='capsule') {
+    // Старые многострочные координаты превращаются в порядок в единственном ряду.
+    const ordered=[...keys].sort((a,b)=>(Number(saved[a]?.y)||0)-(Number(saved[b]?.y)||0)||(Number(saved[a]?.x)||0)-(Number(saved[b]?.x)||0));
+    let x=0;
+    for(const key of ordered){const w=integer(saved[key]?.w,defaultSize(region,key).w,COLS);result[key]={x,y:0,w,h:1};x+=w;}
+    return result;
+  }
   const fits = (x,y,w,h) => {
     for(let a=x;a<x+w;a++) for(let b=y;b<y+h;b++) if(occupied.has(a+','+b)) return false;
     return true;
@@ -62,6 +69,7 @@ export function gridRegion(I, region, nodes) {
   const live=nodes.filter(([,node])=>node!=null);
   const pos=placements(I,region,live.map(([key])=>key));
   const grid=el('div',{class:'island-grid region-'+region,'data-grid-region':region});
+  if(region==='capsule')grid.style.gridTemplateColumns=`repeat(${Math.max(1,...Object.values(pos).map(p=>p.x+p.w))},28px)`;
   for(const [key,node] of live) {
     const cell=el('div',{class:'island-cell','data-grid-key':key},node);
     position(cell,pos[key]);grid.append(cell);
