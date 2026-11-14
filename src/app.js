@@ -624,24 +624,31 @@ function themeBox(cfg, advanced = false) {
         const r = await core.try("settings.set", { key: "theme", value: { preset: id, accent: cur.accent } });
         if (r && r.error) toast(r.error, "error");
       } }, iconNode(ic, 14), t(label))));
-  const swatches = el("div", { class: "swatches" },
-    [["", "Авто"], ...Object.entries(ACCENTS)].map(([id, a]) => {
-      const hex = id ? (document.documentElement.dataset.theme === "light" ? a.light : a.dark) : "";
+  const swatches = el("div", { class: "swatches", role: "group", "aria-label": t("Акцент") },
+    [["", null], ...Object.entries(ACCENTS)].map(([id, a]) => {
       const sw = el("button", {
         class: "swatch" + ((cur.accent || "") === id ? " on" : "") + (id ? "" : " auto"),
-        title: id ? t(a.label) : t("Акцент темы"), "aria-label": id ? t(a.label) : t("Акцент темы"), style: id ? { background: hex } : {},
+        title: id ? t(a.label) : t("Авто"), "aria-label": id ? t(a.label) : t("Авто"),
+        "aria-pressed": (cur.accent || "") === id ? "true" : "false", "data-accent": id,
         onclick: async () => {
-          swatches.querySelectorAll(".swatch").forEach((b) => b.classList.toggle("on", b === sw));
+          swatches.querySelectorAll(".swatch").forEach((b) => {
+            b.classList.toggle("on", b === sw);
+            b.setAttribute("aria-pressed", b === sw ? "true" : "false");
+          });
           cur.accent = id;
           applyTheme({ preset: cur.preset, accent: id });
           box.querySelector(".custom-themes textarea")?.dispatchEvent(new Event("input"));
           const r = await core.try("settings.set", { key: "theme", value: { preset: cur.preset, accent: id } });
           if (r && r.error) toast(r.error, "error");
-        } }, id ? "" : "A");
+        } }, id ? a.letter : "α");
+      if (id) {
+        sw.style.setProperty("--swatch-dark", a.dark);
+        sw.style.setProperty("--swatch-light", a.light);
+      }
       return sw;
     }));
   box.append(el("div", { class: "setrow" }, el("span", { class: "k" }, t("Тема")), seg),
-    el("div", { class: "setrow" }, el("span", { class: "k" }, t("Акцент")), swatches));
+    el("div", { class: "setrow accent-row" }, el("span", { class: "k" }, t("Акцент")), swatches));
   if (advanced) box.append(customThemesUI(cur));
   return box;
 }
