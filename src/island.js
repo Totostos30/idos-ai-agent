@@ -348,7 +348,7 @@ function capsuleDetail() {
   else if(key==="coreinfo")content=[text(S.router||t("Модель пока не выбрана")),setting("Ключи и модели","models")];
   else if(key==="ticker")content=[text(S.ticker.error||t("Курс ЦБ")),tickerBlock(),el("button",{class:"btn ghost",onclick:async e=>{const button=e.currentTarget;button.disabled=true;const r=await core.try("ticker.refresh",{},30000);if(r&&!r.error)S.ticker=r;else toastCard(t("Курс валют"),r?.error||t("Не удалось обновить"));render();}},t("Обновить"))];
   else content=[text(S.online?t("Ядро подключено"):t("Ядро не подключено")),setting("Настройки")];
-  return [el("div",{class:"row"},el("b",{class:"grow"},t(title)),el("button",{class:"btn ghost",onclick:()=>{S.capsuleDetail=null;S.pinned=false;S.expanded=false;render();}},t("Назад"))),el("div",{class:"capsule-detail"},...content)];
+  return [el("div",{class:"row"},el("b",{class:"grow"},t(title)),el("button",{class:"btn ghost",onclick:()=>{S.capsuleDetail=null;S.pinned=false;S.expanded=false;render();}},t("Назад"))),el("div",{class:"panel-body capsule-detail"},...content)];
 }
 
 function visualCapsule() {
@@ -824,7 +824,7 @@ function dlWidget() {
   }
   return el("div", { class: "widget span2 dl" }, wHead("download", "Загрузки"),
     act.slice(0, 3).map((d) => el("div", { class: "dl-row" },
-      el("span", { class: "t" }, d.name),
+      el("span", { class: "t", title:d.name }, d.name),
       el("span", { class: "bar" }, el("i", { style: { width: Math.round((d.progress || 0) * 100) + "%" } })),
       d.progress != null ? el("span", { class: "mono" }, Math.round(d.progress * 100) + "%") : null,
       el("span", { class: "mono s" }, speedText(d.speed) + (d.eta ? " · " + t("осталось {t}", { t: fmtTime(d.eta) }) : "")))));
