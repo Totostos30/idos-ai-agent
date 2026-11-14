@@ -95,6 +95,7 @@ export function placements(I, region, keys) {
   return result;
 }
 export function position(node,p) {
+  node.style.setProperty('--cell-rows',p.h);
   node.style.gridColumn=`${p.x+1} / span ${p.w}`;
   node.style.gridRow=`${p.y+1} / span ${p.h}`;
 }

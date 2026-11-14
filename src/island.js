@@ -1223,11 +1223,11 @@ function render() {
   void focusedValue;
   isl.dataset.panelTab=m==='panel'?S.tab:'';
   if(m==='panel'){
-    const size=panelSize(S.cfg.island.panel_size?.[S.tab]);isl.style.width=size.w+'px';isl.style.height=S.capsuleDetail?'auto':size.h+'px';isl.style.minHeight=S.capsuleDetail?'0':'';
+    const size=panelSize(S.cfg.island.panel_size?.[S.tab]);isl.style.width=size.w+'px';isl.style.height='auto';isl.style.minHeight='0';isl.style.maxHeight=Math.max(120,(innerHeight-20)/(Number(S.cfg.island.scale)||1))+'px';
     const saved=panelScroll.get(S.tab)||[];
     scrollNodes().forEach((n,i)=>{if(saved[i]){n.scrollLeft=saved[i].x;n.scrollTop=saved[i].y;}});
     if(focused){const next=isl.querySelector(`[data-focus-key="${focused}"]`);if(next){next.focus({preventScroll:true});if(selection)next.setSelectionRange(...selection);}}
-  }else{isl.style.height='';}
+  }else{isl.style.height='';isl.style.minHeight='';isl.style.maxHeight='';}
   const waveColor=(S.cfg.island.waves?.color||S.media.active&&S.media.accent||getComputedStyle(isl).getPropertyValue('--accent')).trim();
   isl.style.setProperty('--music-color',waveColor);
   isl.classList.toggle('music-tinted',m!=='panel'&&!!S.media.active);
@@ -1727,6 +1727,7 @@ export function mountIsland() {
     healthTick();
   }, 1000);
   window.addEventListener("idos.lang", render);
+  window.addEventListener("resize",render);
   if (!inTauri) document.body.classList.add("demo");
   render();
 }

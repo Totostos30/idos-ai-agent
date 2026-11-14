@@ -644,3 +644,13 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .widget.health .sub { white-space:normal; line-height:1.4; }
 .health-interval { width:auto; min-width:80px; flex:1; }
 .island[data-mode="panel"]:has(> .capsule-detail) { max-height:calc(100vh - 16px); overflow:auto; }
+
+/* Content grows the window; only the panel body scrolls at the screen limit. */
+.island[data-mode="panel"] > .panel-body { flex:0 1 auto; overflow-x:hidden; overflow-y:auto; scrollbar-gutter:auto; }
+.island[data-mode="panel"] .region-now { grid-auto-rows:minmax(48px,auto); }
+.island[data-mode="panel"] .region-now .island-cell { overflow:visible; }
+.island[data-mode="panel"] .region-now .island-cell > .widget { height:auto; min-height:min-content; overflow:visible; }
+.island[data-mode="panel"] .region-now .island-cell:has(.lyrics-panel) { overflow:hidden; }
+.island[data-mode="panel"] .lyrics-panel { max-height:calc(var(--cell-rows,2) * 56px - 24px); }
+.island[data-mode="panel"] .region-now .row { flex-wrap:wrap; }
+.island[data-mode="panel"] .widget .sub { white-space:normal; overflow-wrap:anywhere; }
