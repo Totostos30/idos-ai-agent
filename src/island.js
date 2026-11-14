@@ -486,8 +486,8 @@ function panel() {
       : el("span", { class: "label" }, t(tabs[0][1])),
     el("span", { class: "grow" }),
     on("h_edit") || editing ? el("button", { class: "icon" + (editing ? " on" : ""), title: t("Настройка островка"), onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "island-settings" }); } }, editing ? iconNode("check", 13) : iconNode("edit", 20)) : null,
-    on("h_pin") && !editing ? el("button", { class: "icon" + (S.pinned ? " on" : ""), title: t("Закрепить"), onclick: (e) => { e.stopPropagation(); S.pinned = !S.pinned; render(); } }, iconNode("home", 20)) : null,
-    on("h_open") && !editing ? el("button", { class: "icon", title: t("Окно Эйдоса"), onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "chat" }); } }, iconNode("expand", 20)) : null);
+    on("h_pin") && !editing ? el("button", { class: "icon" + (S.pinned ? " on" : ""), title: t("Закрепить"), onclick: (e) => { e.stopPropagation(); S.pinned = !S.pinned; render(); } }, iconNode("pin", 20)) : null,
+    on("h_open") && !editing ? el("button", { class: "icon", title: t("Окно Эйдоса"), onclick: (e) => { e.stopPropagation(); invoke("show_main", { tab: "chat" }); } }, iconNode("open", 20)) : null);
   if (S.cfg.island.visual_layout?.header && !editing) {
     const tabNodes = [...head.querySelectorAll("button.tab")];
     const buttons = [...head.querySelectorAll("button.icon")];

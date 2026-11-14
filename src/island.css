@@ -553,3 +553,21 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 
 .island.visual-capsule { width:max-content; max-width:calc(100vw - 32px); overflow-x:auto; overflow-y:hidden; border-radius:28px; }
 .region-capsule { width:max-content; grid-auto-flow:column; }
+
+/* Лента капсулы: ширина по содержимому, одинаковые отступы в обоих окнах. */
+.island-grid.region-capsule { display:flex; align-items:center; gap:8px; width:max-content; min-height:36px; }
+.region-capsule .island-cell { flex:none; width:max-content; min-width:28px; height:36px; padding:4px; overflow:visible; }
+.region-capsule .island-cell > * { max-width:none; flex:none; }
+.capsule-wing { display:flex; align-items:center; gap:8px; flex:none; min-width:0; }
+.capsule-wing.right { justify-content:flex-end; }
+.region-tools { grid-auto-rows:24px; }
+.region-tools .island-cell { padding:4px; }
+.region-tools .tile { min-width:0; padding:6px; overflow:hidden; gap:4px; }
+.region-tools .tile > span:last-child { white-space:normal; overflow-wrap:anywhere; font-size:11px; }
+.region-tools .icon-only .tile { display:grid; place-items:center; padding:0; }
+.region-tools .icon-only .tile > span:last-child { display:none; }
+.region-tools .icon-only .tile .ic { margin:0; width:24px; height:24px; display:grid; place-items:center; }
+.region-tools .tile svg { width:20px; height:20px; }
+.region-now .widget { min-height:min-content; }
+.region-now .widget .t, .region-now .widget .sub, .region-now .widget .note-last { white-space:normal; overflow-wrap:anywhere; }
+.region-now .island-cell { overflow:auto; }

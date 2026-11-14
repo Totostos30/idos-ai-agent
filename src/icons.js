@@ -1,6 +1,9 @@
 // Monoline SVG-иконки (гайдбук §3): сетка 24, stroke 1.7, currentColor, без эмодзи.
 // Иконка возвращает строку SVG — вставляется через el()/innerHTML, где нужен Node — iconNode().
 const P = {
+  pin: '<path d="M8 4.5h8M9 4.5v5l-3 4v1h12v-1l-3-4v-5M12 14.5v6"/>',
+  open: '<path d="M13 4.5h6.5V11M19.5 4.5 10 14M9 5H5.5A1.5 1.5 0 0 0 4 6.5v12A1.5 1.5 0 0 0 5.5 20h12a1.5 1.5 0 0 0 1.5-1.5V15"/>',
+
   chat: '<path d="M6.6 5h10.8A1.6 1.6 0 0 1 19 6.6v7.8a1.6 1.6 0 0 1-1.6 1.6h-7L6 19.5V16h-.4A1.6 1.6 0 0 1 4 14.4V6.6A1.6 1.6 0 0 1 5.6 5Z"/>',
   memory: '<path d="M12 6.6C10.4 5.1 8 4.6 5.6 4.9a1 1 0 0 0-.9 1v10.3a1 1 0 0 0 1.1 1c2.3-.2 4.5.2 6.2 1.6 1.7-1.4 3.9-1.8 6.2-1.6a1 1 0 0 0 1.1-1V5.9a1 1 0 0 0-.9-1C16 4.6 13.6 5.1 12 6.6Zm0 0v12.3"/>',
   key: '<circle cx="8" cy="8" r="3.6"/><path d="M10.6 10.6 19.4 19.4M16.4 16.4l2.2-2.2M13.4 13.4l2.2-2.2"/>',
@@ -72,7 +75,7 @@ const P = {
 export function icon(name, size = 16) {
   const body = P[name] || P.spark;
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" `
-    + `stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+    + `stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 }
 
 export function iconNode(name, size = 16) {

@@ -650,3 +650,17 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .editor-grid .editor-cell:hover, .editor-grid .editor-cell.selected { border-color:var(--accent); }
 .editor-cell > [inert] { pointer-events:none; }
 .editor-grid.region-capsule { min-height:36px !important; }
+
+.visual-editor .editor-island { font:13px/1.35 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif; }
+.editor-grid.region-capsule { background:none; }
+.editor-grid.region-capsule .editor-cell { border:0; outline:1px solid transparent; }
+.editor-grid.region-capsule .editor-cell:hover, .editor-grid.region-capsule .editor-cell.selected { outline-color:var(--accent); }
+.editor-grid.region-tools { grid-auto-rows:24px; background-size:calc((100% + 8px)/12) 32px; }
+.capsule-drag-ghost { position:fixed; z-index:10000; pointer-events:none; display:flex; gap:8px; padding:4px; height:36px; width:max-content; background:var(--bg); color:var(--fg); border:1px solid var(--accent); box-shadow:var(--shadow-1); font:13px/1.35 "Segoe UI",sans-serif; }
+.capsule-drag-ghost.discard { border-color:var(--err); opacity:.65; }
+.drag-placeholder { opacity:.25; }
+
+.editor-island.expanded { padding:12px 14px 14px; border:0; border-radius:32px; }
+.editor-island.compact { border:0; }
+.editor-grid .editor-cell { border:0; outline:1px solid transparent; }
+.editor-grid .editor-cell:hover, .editor-grid .editor-cell.selected { outline-color:var(--accent); }

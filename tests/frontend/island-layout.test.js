@@ -38,3 +38,11 @@ test('capsule remains one row even with all blocks and old multiline layouts',()
  const pos=placements(I,'capsule',keys);verify(pos,true);
  for(const p of Object.values(pos)){assert.equal(p.y,0);assert.equal(p.h,1);}
 });
+
+test('widgets enforce readable minima while tools allow icon buttons',()=>{
+ const region='now',keys=['p_player','w_clock','w_mixer'];
+ const pos=placements({visual_layout:{now:Object.fromEntries(keys.map(k=>[k,{w:1,h:1}]))}},region,keys);
+ assert.equal(pos.p_player.w,12);assert.ok(pos.w_clock.w>=6);assert.equal(pos.w_mixer.w,12);verify(pos);
+ const tools=placements({visual_layout:{tools:{shot_area:{w:1,h:1}}}},'tools',['shot_area']);
+ assert.equal(tools.shot_area.w,1);assert.equal(tools.shot_area.h,2);
+});
