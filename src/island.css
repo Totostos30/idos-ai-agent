@@ -685,3 +685,8 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
   border-radius:18px;
   box-shadow:inset 0 0 0 1px var(--line);
 }
+
+/* Weather remains readable at compact sizes; panel waves use the whole available width. */
+.weather-summary .big { font-size:26px; line-height:1.15; }
+.weather-summary .sub { font-size:13px; line-height:1.35; white-space:normal; overflow-wrap:anywhere; }
+.region-now .island-cell:has(> .eq) .eq-ring path { vector-effect:non-scaling-stroke; }

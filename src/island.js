@@ -9,7 +9,7 @@ import { iconNode } from "./icons.js";
 import { t, locale } from "./i18n.js";
 import { entries, shown, gridRegion } from "./island-layout.js";
 import { panelSize } from "./island-panel.js";
-import { visualizerPath, timerSeconds } from "./island-motion.js";
+import { visualizerPath, smoothBands, timerSeconds } from "./island-motion.js";
 import { Fluid } from "./fluid.js";
 import { PARTS, TAB_LIST, TOOL_LIST, partOn, listOn, partValues, RESET_VALUES, applyValues } from "./parts.js";
 
@@ -119,11 +119,12 @@ function animateRings() {
   let last=0;
   const frame=now=>{
     requestAnimationFrame(frame);
-    if(now-last<16 || document.hidden)return;last=now;
+    if(now-last<16 || document.hidden)return;
+    const elapsed=last?(now-last)/1000:1/60;last=now;
     const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
     document.querySelectorAll('.eq-ring').forEach(box=>{
       const target=box._bands||[], previous=box._smooth||target;
-      box._smooth=target.map((v,i)=>(previous[i]||0)+(v-(previous[i]||0))*.4);
+      box._smooth=smoothBands(previous,target,elapsed);
       box.querySelectorAll('path').forEach((path,i)=>path.setAttribute('d',visualizerPath(box._smooth,box.dataset.playing==='true',i,reduced?0:now/1000,box.dataset.style)));
     });
   };
@@ -135,6 +136,12 @@ function eq() {
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 128 48');
   for(let i=0;i<(box.dataset.style!=='waves'?1:4);i++){const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',visualizerPath(S.bands,S.media.playing,i,matchMedia('(prefers-reduced-motion: reduce)').matches?0:performance.now()/1000,box.dataset.style));svg.append(path);}
   box.append(svg);return box;
+}
+
+// A panel can be much wider than the compact pill, so fill its available SVG viewport.
+function panelVisualizer(box) {
+  box.querySelector('svg')?.setAttribute('preserveAspectRatio','none');
+  return box;
 }
 
 function syncLyric() {
@@ -923,9 +930,9 @@ function panelWeatherWidget() {
   const w = S.weather || {};
   const hasTemp = w.temp !== undefined && w.temp !== null;
   return hasTemp
-    ? el("div", { class: "widget" }, el("div", { class: "big" }, (w.icon || "") + " " + Math.round(w.temp) + "°"),
+    ? el("div", { class: "widget weather-summary" }, el("div", { class: "big" }, (w.icon || "") + " " + Math.round(w.temp) + "°"),
       el("div", { class: "sub" }, [w.city, w.text || w.desc].filter(Boolean).join(" · ")))
-    : el("button", { class: "widget hint", title: "Открыть настройки погоды", onclick: () => invoke("show_main", { tab: "settings" }) },
+    : el("button", { class: "widget hint weather-summary", title: "Открыть настройки погоды", onclick: () => invoke("show_main", { tab: "settings" }) },
       el("div", { class: "big" }, "Погода"),
       el("div", { class: "sub" }, w.reason || w.error || "Укажите город в Настройках"));
 }
@@ -983,11 +990,11 @@ function panelNow() {
         const text=data?.plain||(data?.lines||[]).map(l=>l.text).join('\n')||t('Текст песни пока недоступен');
         nodes.push(['p_lyrics',el('div',{class:'lyrics-panel'},el('div',{class:'row'},el('span',{class:'sub grow'},data?.source||'LRCLIB'),el('button',{class:'icon',title:t('Обновить текст песни'),onclick:()=>loadTrackLyrics(true)},iconNode('refresh',14))),el('div',{class:'lyrics-full'+(S.lyricsScroll?' scroll-enabled':''),tabindex:'0',role:'region','aria-label':t('Текст песни'),onclick:e=>{e.stopPropagation();S.lyricsScroll=true;e.currentTarget.classList.add('scroll-enabled');},onkeydown:e=>{if(e.key==='Enter'){S.lyricsScroll=true;e.currentTarget.classList.add('scroll-enabled');}}},text))]);
       }
-      if(visualizer)nodes.push(['p_eq',visualizer]);
+      if(visualizer)nodes.push(['p_eq',panelVisualizer(visualizer)]);
       if(on("p_player"))nodes.unshift(["p_player",player]);
     }
     for(const d of defs) {const node=widgets.querySelector(".lay-"+d.key);if(node)nodes.push([d.key,node]);}
-    const empty={p_player:()=>el("div",{class:"widget"},wHead("music","Плеер"),el("div",{class:"sub"},t("Запустите музыку в любом плеере"))),p_lyrics:()=>el("div",{class:"widget"},wHead("note","Текст песни"),el("div",{class:"sub"},t("Текст песни пока недоступен"))),p_eq:()=>eq(9)};
+    const empty={p_player:()=>el("div",{class:"widget"},wHead("music","Плеер"),el("div",{class:"sub"},t("Запустите музыку в любом плеере"))),p_lyrics:()=>el("div",{class:"widget"},wHead("note","Текст песни"),el("div",{class:"sub"},t("Текст песни пока недоступен"))),p_eq:()=>panelVisualizer(eq())};
     for(const [key,make]of Object.entries(empty))if(on(key)&&!nodes.some(([k])=>k===key))nodes.push([key,make()]);
     return [gridRegion(S.cfg.island,"now",nodes)];
   }
