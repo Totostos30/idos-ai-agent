@@ -559,7 +559,7 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .capsule-wing { justify-content:space-between; }
 .capsule-wing:has(> :only-child) { justify-content:center; }
 .region-tools { grid-auto-rows:24px; }
-.region-tools .island-cell { padding:4px; }
+.region-tools .island-cell { padding:0; }
 .region-tools .tile { min-width:0; padding:6px; overflow:hidden; gap:4px; }
 .region-tools .tile > span:last-child { white-space:normal; overflow-wrap:anywhere; font-size:11px; }
 .region-tools .icon-only .tile { display:grid; place-items:center; padding:0; }
@@ -646,9 +646,10 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 
 /* Content grows the window; only the panel body scrolls at the screen limit. */
 .island[data-mode="panel"] > .panel-body { flex:0 1 auto; overflow-x:hidden; overflow-y:auto; scrollbar-gutter:auto; }
-.island[data-mode="panel"] .region-now { grid-auto-rows:minmax(48px,auto); }
+.island[data-mode="panel"] .region-now { grid-auto-rows:minmax(48px,1fr); }
 .island[data-mode="panel"] .region-now .island-cell { overflow:visible; }
-.island[data-mode="panel"] .region-now .island-cell > .widget { height:auto; min-height:min-content; overflow:visible; }
+.region-now .island-cell:has(> .widget) { padding:0; }
+.island[data-mode="panel"] .region-now .island-cell > .widget { height:100%; min-height:min-content; overflow:visible; }
 .island[data-mode="panel"] .region-now .island-cell:has(.lyrics-panel) { overflow:hidden; }
 .island[data-mode="panel"] .lyrics-panel { max-height:calc(var(--cell-rows,2) * 56px - 24px); }
 .island[data-mode="panel"] .region-now .row { flex-wrap:wrap; }

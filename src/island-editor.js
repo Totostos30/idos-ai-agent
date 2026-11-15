@@ -10,7 +10,7 @@ import { COLS, REGIONS, GLYPHS, entries, shown, placements, position, arrangeCap
 
 export function islandEditor(cfg) {
   const box=el('section',{class:'box settings-island visual-editor',id:'island-editor'});
-  let region='capsule', renderedRegion='capsule', selected=null, busy=false, drag=null;
+  let region='capsule', renderedRegion='capsule', selected=null, busy=false, drag=null, rowObserver=null;
   const scrollPositions={};
   let visibleKeys=null;
   let liveData={};
@@ -138,7 +138,10 @@ export function islandEditor(cfg) {
     event.preventDefault();selected=key;
     const stage=body.querySelector('.editor-grid'), rect=stage.getBoundingClientRect();
     const style=getComputedStyle(stage),gap=parseFloat(style.columnGap)||8;
-    const cell=(stage.clientWidth+gap)/COLS,row=(parseFloat(style.gridAutoRows)||48)+(parseFloat(style.rowGap)||8);
+    const rowHeight=parseFloat(style.gridTemplateRows)||parseFloat(style.gridAutoRows)||48;
+    const cell=(stage.clientWidth+gap)/COLS,row=rowHeight+(parseFloat(style.rowGap)||8);
+    // Freeze flexible tracks while dragging, so adding a preview cannot shift the target rows.
+    if(region==='now')stage.style.gridAutoRows=`${rowHeight}px`;
     const coordinates=e=>({x:Math.floor((e.clientX-stage.getBoundingClientRect().left+stage.scrollLeft)/cell),y:Math.floor((e.clientY-stage.getBoundingClientRect().top+stage.scrollTop)/row)});
     const pos=placements(cfg.island,region,[...current().map(i=>i.key),...(add?[key]:[])])[key];
     const startX=event.clientX,startY=event.clientY;
@@ -165,7 +168,7 @@ export function islandEditor(cfg) {
         if((dx||dy)&&!matchMedia('(prefers-reduced-motion: reduce)').matches)node.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:'none'}],{duration:160,easing:'ease-out'});
       }
     };update(event);
-    drag={cancel:()=>{ghost.remove();marker.remove();document.removeEventListener('pointermove',update);document.removeEventListener('pointerup',finish);document.removeEventListener('keydown',escape);document.removeEventListener('pointercancel',cancel);}};
+    drag={cancel:()=>{if(region==='now')stage.style.removeProperty('grid-auto-rows');ghost.remove();marker.remove();document.removeEventListener('pointermove',update);document.removeEventListener('pointerup',finish);document.removeEventListener('keydown',escape);document.removeEventListener('pointercancel',cancel);}};
     const cancel=()=>{drag?.cancel();drag=null;draw();};
     const escape=e=>{if(e.key==='Escape'){drag.cancel();drag=null;draw();}};
     const finish=e=>{
@@ -198,6 +201,7 @@ export function islandEditor(cfg) {
     inspector.append(el('button',{class:'btn ghost',type:'button',disabled:last,onclick:()=>save(enable(item,false))},t('Убрать с островка')));
   };
   const draw=()=>{
+    rowObserver?.disconnect();rowObserver=null;
     const focused=box.contains(document.activeElement)?document.activeElement:null;
     const focusKey=focused?.closest('[data-editor-key]')?.dataset.editorKey;
     const focusLabel=focused?.getAttribute('aria-label');
@@ -238,6 +242,10 @@ export function islandEditor(cfg) {
     if(!['capsule','header'].includes(region))resizePanel(shell,cfg.island?.panel_size?.[region],{start:()=>{drag={};},finish:size=>{drag=null;save({['island.panel_size.'+region]:size});},cancel:()=>{drag=null;draw();}});
     body.replaceChildren(el('div',{class:'editor-scroll'},shell),
       el('h4',{},t('Доступные элементы')),el('p',{class:'mut small'},t('Нажмите на элемент в списке, чтобы добавить его, или перетащите на макет. В капсуле блок можно убрать, перетащив за её пределы. Escape — отмена перемещения.')),tray.childNodes.length?tray:el('p',{class:'mut small'},t('Все элементы уже на островке')));
+    if(region==='now') {
+      const updateRows=()=>{const style=getComputedStyle(grid),row=parseFloat(style.gridTemplateRows);if(row)grid.style.setProperty('--editor-row-step',`${row+(parseFloat(style.rowGap)||0)}px`);};
+      rowObserver=new ResizeObserver(updateRows);rowObserver.observe(grid);updateRows();
+    }
     const scroll=body.querySelector('.editor-scroll'),savedScroll=scrollPositions[region]||[0,0];
     scroll.scrollLeft=savedScroll[0];scroll.scrollTop=savedScroll[1];
     grid.scrollLeft=stageOffset[0];grid.scrollTop=stageOffset[1];
@@ -268,7 +276,7 @@ export function islandEditor(cfg) {
   const fields={ 'status.state':'status','weather.state':'weather','sysmon.state':'sysmon','calendar.changed':'calendar','downloads.changed':'downloads','ticker.changed':'ticker','mixer.changed':'mixer','notes.changed':'notes','media.state':'media','status.keyboard':'kbd','status.privacy':'privacy','media.lyrics':'lyricsData' };
   const off=refreshEvents.map(event=>core.on(event,data=>{if(!box.isConnected)return;if(event==='router.status')liveData.router=data.active_label||data.active||'';else liveData[fields[event]]=data;if(!drag&&!busy&&!inspector.contains(document.activeElement))draw();}));
   let mounted=false;
-  const observer=new MutationObserver(()=>{if(box.isConnected)mounted=true;else if(mounted){drag?.cancel?.();document.querySelectorAll('.capsule-drag-ghost,.editor-drag-ghost').forEach(n=>n.remove());off.forEach(fn=>fn());observer.disconnect();}});
+  const observer=new MutationObserver(()=>{if(box.isConnected)mounted=true;else if(mounted){rowObserver?.disconnect();drag?.cancel?.();document.querySelectorAll('.capsule-drag-ghost,.editor-drag-ghost').forEach(n=>n.remove());off.forEach(fn=>fn());observer.disconnect();}});
   observer.observe(document.body,{childList:true,subtree:true});
   return box;
 }

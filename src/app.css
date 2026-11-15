@@ -681,3 +681,8 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 .editor-grid.region-header { min-height:36px!important; height:36px; margin-bottom:0; }
 .visual-editor .editor-island.expanded:has(> .region-header.editor-grid) { min-height:0; height:auto; display:block; }
 .visual-editor .editor-island.expanded > .editor-grid.region-header { flex:none; padding-bottom:0; }
+
+/* Keep the editor surfaces aligned with the live grid and its selection outline. */
+.editor-grid.region-now { grid-auto-rows:minmax(48px,1fr); background-size:calc((100% + 8px)/12) var(--editor-row-step,56px); }
+.editor-grid:is(.region-now, .region-tools) .editor-cell { border:0; outline:1px solid transparent; outline-offset:-1px; }
+.editor-grid:is(.region-now, .region-tools) .editor-cell:hover, .editor-grid:is(.region-now, .region-tools) .editor-cell.selected { outline-color:var(--accent); }
