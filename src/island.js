@@ -336,6 +336,10 @@ function openCapsuleDetail(key) {
   S.capsuleDetail=key;S.expanded=true;S.pinned=true;render();
 }
 
+function openExpandedIsland() {
+  S.capsuleDetail=null;S.expanded=true;S.stick=false;render();
+}
+
 function capsuleDetail() {
   const key=S.capsuleDetail;
   const title=entries("capsule").find(i=>i.key===key)?.label||t("Островок");
@@ -348,7 +352,6 @@ function capsuleDetail() {
   else if(key==="load")content=[sysmonWidget()];
   else if(key==="volume_osd")content=[mixerWidget()];
   else if(key==="battery")content=[text(batInfo()?`${batInfo().percent}% · ${t(batInfo().charging?"Заряжается":"Работа от батареи")}`:t(S.status.battery?.no_battery?"Питание от сети · батарея не обнаружена":"Данные питания пока недоступны")),setting("Вид питания","island-settings")];
-  else if(key==="clock")content=[text(new Date().toLocaleDateString(locale(),{weekday:"long",day:"numeric",month:"long",year:"numeric"})),agendaWidget(),el("button",{class:"btn ghost",onclick:()=>openBar("таймер ")},t("Создать таймер"))];
   else if(key==="privacy")content=[text([S.privacy.mic?t("Микрофон")+": "+(S.privacy.mic_app||t("Занят")):t("Микрофон свободен"),S.privacy.camera?t("Камера")+": "+(S.privacy.camera_app||t("Занята")):t("Камера свободна")].join(" · ")),el("button",{class:"btn ghost",onclick:()=>core.try("status.mic_mute",{})},t("Включить / выключить микрофон"))];
   else if(key==="vpn")content=[text(S.status.vpn?.on?(S.status.vpn.name||"VPN"):t("VPN не подключён"))];
   else if(key==="caps"||key==="layout")content=[text(`${t("Раскладка клавиатуры")}: ${S.kbd.layout||"—"} · Caps Lock: ${t(S.kbd.caps?"Включён":"Выключен")}`)];
@@ -371,7 +374,7 @@ function visualCapsule() {
     if(!node||["focus","sleep"].includes(key))return [key,node];
     // Existing buttons keep their direct actions; passive blocks open their controls inside the island.
     if(node.tagName==="BUTTON")return [key,node];
-    return [key,el("button",{class:"capsule-action",title:t(label),"aria-label":t(label),onclick:e=>{e.stopPropagation();if(key==="orb")invoke("show_main",{tab:"chat"});else openCapsuleDetail(key);}},node)];
+    return [key,el("button",{class:"capsule-action",title:t(label),"aria-label":t(label),onclick:e=>{e.stopPropagation();if(key==="orb")invoke("show_main",{tab:"chat"});else if(key==="clock")openExpandedIsland();else openCapsuleDetail(key);}},node)];
   }));
 }
 
@@ -1565,7 +1568,7 @@ export function mountIsland() {
   isl.addEventListener("click", (e) => {
     if (e.target.closest("button,input,.bar-item,.clip,.progress")) return;
     const m = mode();
-    if (m === "idle" || m === "music" || m === "timer") { S.expanded = true; S.stick = false; render(); }
+    if (m === "idle" || m === "music" || m === "timer") openExpandedIsland();
   });
   // Двойной клик открывает окно только на капсуле; в раскрытой панели это обычный жест
   // (двойной клик по записи буфера не должен тянуть за собой окно Эйдоса).
