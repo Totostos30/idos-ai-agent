@@ -672,3 +672,15 @@ button:hover > .gmic-wrap .g-spark { transform: rotate(45deg) scale(1.25); }
 /* Share spare wing width between equal hit-area insets, keeping the pinned cell centered. */
 .region-capsule .capsule-wing > .island-cell { flex:1 0 auto; width:auto; justify-content:center; }
 .region-capsule .capsule-wing > .island-cell > .capsule-action { flex:1 0 auto; width:100%; justify-content:center; }
+
+/* Outline panels that have no filled surface in both the island and its editor. */
+.region-now .island-cell:has(> :is(.player, .lyrics-panel, .eq)) {
+  border-radius:18px;
+  box-shadow:inset 0 0 0 1px var(--line);
+}
+.island[data-mode="panel"] > .panel-body > .player {
+  box-sizing:border-box;
+  padding:8px;
+  border-radius:18px;
+  box-shadow:inset 0 0 0 1px var(--line);
+}
