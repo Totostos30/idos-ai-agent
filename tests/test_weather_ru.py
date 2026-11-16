@@ -91,10 +91,10 @@ class FallbackTest(BusCase):
         return weather_mod.create(self.app)
 
     def test_order(self):
-        self.assertEqual(self.make().providers(), ["open-meteo", "wttr"])
-        self.assertEqual(self.make(**{"weather.yandex_key": "k"}).providers(), ["yandex", "open-meteo", "wttr"])
+        self.assertEqual(self.make().providers(), ["open-meteo", "wttr", "met"])
+        self.assertEqual(self.make(**{"weather.yandex_key": "k"}).providers(), ["yandex", "open-meteo", "wttr", "met"])
         self.assertEqual(self.make(**{"weather.provider": "wttr", "weather.yandex_key": ""}).providers(),
-                         ["wttr", "open-meteo"])
+                         ["wttr", "open-meteo", "met"])
         self.assertEqual(self.make(**{"weather.provider": "met"}).providers(), ["met", "open-meteo", "wttr"])
 
     def test_open_meteo_down_uses_wttr(self):
@@ -110,11 +110,14 @@ class FallbackTest(BusCase):
 
     def test_all_down_short_message(self):
         weather = self.make()
-        fake = mock.AsyncMock(side_effect=[llm.HTTPError(404, "<html>" + "x" * 500), llm.NetworkError("timed out")])
+        fake = mock.AsyncMock(side_effect=[llm.HTTPError(404, "<html>" + "x" * 500),
+                                           llm.NetworkError("timed out"), llm.NetworkError("unreachable")])
         with mock.patch.object(weather_mod.llm, "request_json_async", fake):
             with self.assertRaises(ValueError) as caught:
                 asyncio.run(weather.forecast(59.9, 30.3))
-        self.assertEqual(str(caught.exception), "Open-Meteo — HTTP 404; wttr.in — timed out")
+        self.assertEqual(fake.await_count, 3)
+        self.assertEqual(str(caught.exception),
+                         "Open-Meteo — HTTP 404; wttr.in — timed out; MET Norway — unreachable")
 
     def test_yandex_key_header(self):
         weather = self.make(**{"weather.yandex_key": "secret"})

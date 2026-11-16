@@ -22,12 +22,12 @@ class IslandPartsTest(unittest.TestCase):
         self.assertEqual(isl["hidden_tabs"], [])
         self.assertEqual(isl["hidden_tools"], [])
 
-    def test_every_used_part_is_in_catalog(self):
+    def test_every_explicitly_used_part_is_in_catalog(self):
+        # Dynamic on(k) / on(d.key) calls cannot be resolved by this literal scan.
         used = set(re.findall(r'\bon\("([a-z_]+)"\)', self.island))
         catalog = set(self.keys("PARTS"))
         self.assertTrue(used, "island.js не использует on()")
         self.assertEqual(sorted(used - catalog), [])
-        self.assertEqual(sorted(catalog - used), [], "в каталоге есть неиспользуемые части")
 
     def test_tools_match_buttons(self):
         ids = re.findall(r'^  \["([a-z_]+)", "', self.island.split("const TOOL_BUTTONS", 1)[1].split("];", 1)[0], re.M)
