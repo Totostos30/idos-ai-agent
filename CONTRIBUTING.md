@@ -12,13 +12,14 @@
 
 ```powershell
 .venv\Scripts\python -m unittest discover -s tests
+node --test tests/frontend/*.test.js
 npm run build
 cd src-tauri
 cargo check --locked
 cd ..
 ```
 
-Для сборки релиза используйте `scripts\Build-Release.ps1`; не добавляйте результаты из `release/`, `dist/` и `src-tauri/target/`.
+Для сборки релиза используйте `scripts\Build-Release.ps1`; не добавляйте результаты из `release/`, `dist/` и `src-tauri/target/`. JavaScript-тесты запускаются отдельно командой выше; текущий CI запускает Python-тесты, Vite и Rust при push в `main`/`master`, pull request или вручную, но не при прямом push в `coderrabbit`.
 
 ## Правила изменений
 
